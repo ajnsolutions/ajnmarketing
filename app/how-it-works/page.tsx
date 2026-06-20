@@ -1,0 +1,78 @@
+import { FinalCta } from "@/components/final-cta";
+import { HowItWorksSteps } from "@/components/how-it-works-steps";
+import { SectionHeading } from "@/components/section-heading";
+
+export const metadata = {
+  title: "How It Works",
+  description:
+    "See how AJN Marketing scans your presence, generates local content, gets your approval, publishes updates, and reports back every week.",
+};
+
+export default function HowItWorksPage() {
+  return (
+    <>
+      <section className="bg-gradient-to-b from-brand-50 to-white py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionHeading
+            align="left"
+            eyebrow="How it works"
+            title="Marketing done for you — with your approval at every step"
+            description="You stay in control without doing the work. We handle Google, reviews, and local content while you focus on jobs, crews, and customers."
+          />
+        </div>
+      </section>
+
+      <section className="pb-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <HowItWorksSteps />
+        </div>
+      </section>
+
+      <section className="bg-slate-50 py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionHeading
+            title="What you actually do"
+            description="Most weeks, your entire job is reading one message and tapping approve."
+          />
+          <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-3">
+            {[
+              {
+                title: "Approve updates",
+                copy: "Review suggested profile changes, review replies, and content posts by email or text.",
+              },
+              {
+                title: "Read your report",
+                copy: "Get a short weekly summary in plain English — no dashboards required.",
+              },
+              {
+                title: "Run your business",
+                copy: "That's it. We handle the rest while you stay focused on the work that pays.",
+              },
+            ].map((item) => (
+              <article
+                key={item.title}
+                className="rounded-2xl border border-slate-200 bg-white p-6"
+              >
+                <h3 className="text-lg font-bold text-slate-900">{item.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{item.copy}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="rounded-3xl border border-slate-200 bg-white px-8 py-12 sm:px-12">
+            <SectionHeading
+              title="Built for busy owners, not marketing teams"
+              description="Whether you're a one-truck plumber or a growing HVAC company, AJN Marketing is designed for people who want local visibility without becoming marketers."
+            />
+          </div>
+        </div>
+      </section>
+
+      <FinalCta />
+    </>
+  );
+}
