@@ -104,21 +104,21 @@ const industriesServed = [
 const testimonials = [
   {
     quote:
-      "AJN helped us increase our visibility on Google and brought in more calls within weeks.",
+      "AJN helped us improve our visibility on Google and brought in more calls from local customers.",
     name: "Mike R.",
-    role: "Plumbing Company Owner",
+    role: "Plumbing Business Owner",
   },
   {
     quote:
-      "Our review rating improved and customers started finding us before our competitors. Simple process, real results.",
+      "We used to struggle with reviews and online visibility. Now our Google presence looks professional and active every week.",
     name: "Sarah T.",
     role: "HVAC Company Owner",
   },
   {
     quote:
-      "We didn't have time for marketing. AJN handles it, sends updates we can approve quickly, and our leads went up.",
-    name: "James L.",
-    role: "Roofing Company Owner",
+      "The best part is that we don't have to manage the marketing ourselves. AJN keeps everything moving.",
+    name: "Daniel M.",
+    role: "Roofing Contractor",
   },
 ] as const;
 
