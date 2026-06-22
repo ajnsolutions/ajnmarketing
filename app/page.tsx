@@ -1,183 +1,263 @@
-import Link from "next/link";
 import { CtaButton } from "@/components/cta-button";
-import { FeatureGrid } from "@/components/feature-grid";
-import { FinalCta } from "@/components/final-cta";
-import { HowItWorksSteps } from "@/components/how-it-works-steps";
-import { PricingCard } from "@/components/pricing-card";
-import { SectionHeading } from "@/components/section-heading";
-import { pricingTiers, tagline, targetIndustries } from "@/lib/site-content";
+import { HeroMarketingVisual } from "@/components/home/hero-marketing-visual";
+import { HeroTrustBar } from "@/components/home/hero-trust-bar";
+import {
+  FeatureCard,
+  IndustryCard,
+  SectionHeading,
+  TestimonialCard,
+} from "@/components/home/home-sections";
+import { StatsStrip } from "@/components/home/stats-strip";
+
+const processCards = [
+  {
+    title: "Optimize",
+    description:
+      "We improve your Google Business Profile, local listings, and online presence so you show up in more searches.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Promote",
+    description:
+      "We create local content and visibility strategies that help the right customers find your business.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 9v6h2l5 5V4L6 9H4z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 9a3 3 0 1 1 0 6" />
+      </svg>
+    ),
+  },
+  {
+    title: "Convert",
+    description:
+      "We turn visibility into phone calls, leads, appointments, and real revenue for your business.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M4 19h16M8 17v-5M12 17V8M16 17v-3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 6l3-3 3 3M19 3v5" />
+      </svg>
+    ),
+  },
+] as const;
+
+const industriesServed = [
+  {
+    title: "Plumbing",
+    description: "Help homeowners find your business when they need service fast.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14 4h4v4M10 20H6v-4M20 10l-8 8M6 6l4 4" />
+      </svg>
+    ),
+  },
+  {
+    title: "HVAC",
+    description: "Stay visible when customers search for heating and cooling help.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19" />
+      </svg>
+    ),
+  },
+  {
+    title: "Electrical",
+    description: "Build trust with homeowners searching for licensed electricians.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Roofing",
+    description: "Show up for repair, replacement, and storm damage searches.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m3 12 9-9 9 9M5 10v10h14V10" />
+      </svg>
+    ),
+  },
+  {
+    title: "Insurance",
+    description: "Improve local discoverability when prospects compare agencies.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Landscaping",
+    description: "Get found by homeowners looking for lawn and outdoor services.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 22V8M8 12c-3-2-4-6 0-8 4 2 4 6 0 8M16 12c3-2 4-6 0-8-4 2-4 6 0 8" />
+      </svg>
+    ),
+  },
+] as const;
+
+const testimonials = [
+  {
+    quote:
+      "AJN helped us increase our visibility on Google and brought in more calls within weeks.",
+    name: "Mike R.",
+    role: "Plumbing Company Owner",
+  },
+  {
+    quote:
+      "Our review rating improved and customers started finding us before our competitors. Simple process, real results.",
+    name: "Sarah T.",
+    role: "HVAC Company Owner",
+  },
+  {
+    quote:
+      "We didn't have time for marketing. AJN handles it, sends updates we can approve quickly, and our leads went up.",
+    name: "James L.",
+    role: "Roofing Company Owner",
+  },
+] as const;
 
 export default function HomePage() {
   return (
     <>
-      <section className="bg-gradient-to-b from-brand-50 to-white py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="max-w-3xl">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-brand-700">
-              For local service businesses
-            </p>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              {tagline}
+      <section className="relative overflow-hidden bg-surface">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.95),rgba(248,250,252,1))]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(37,99,235,0.08),transparent_50%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(34,197,94,0.05),transparent_45%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.18) 1px, transparent 0)",
+            backgroundSize: "28px 28px",
+          }}
+        />
+
+        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-20 sm:py-24 lg:grid-cols-2 lg:gap-16 lg:py-28">
+          <div>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-muted shadow-sm ring-1 ring-slate-900/[0.03]">
+              <span className="h-2 w-2 rounded-full bg-growth-500" aria-hidden="true" />
+              Local Marketing That Delivers Results
+            </div>
+
+            <h1 className="max-w-xl text-[2.85rem] font-bold tracking-[-0.03em] text-navy-900 sm:text-6xl lg:text-[4rem] lg:leading-[1.05]">
+              More Visibility.
+              <br />
+              More Calls.
+              <br />
+              <span className="text-growth-500">More Customers.</span>
             </h1>
-            <p className="mt-6 text-lg leading-8 text-slate-600 sm:text-xl">
-              AJN Marketing helps contractors, trades, and local service
-              businesses improve Google visibility, manage reviews, and publish
-              local content — without the owner doing any marketing.
+            <p className="mt-7 max-w-xl text-lg leading-8 text-text-muted sm:text-xl sm:leading-9">
+              We manage and optimize your Google Business Profile so local
+              customers find your business before they find your competitors.
             </p>
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <CtaButton>See Your Free Demo</CtaButton>
+
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <CtaButton showArrow>See Your Free Demo</CtaButton>
               <CtaButton href="/how-it-works" variant="secondary">
                 How It Works
               </CtaButton>
             </div>
-            <div className="mt-10 flex flex-wrap gap-2">
-              {targetIndustries.map((industry) => (
-                <span
-                  key={industry}
-                  className="rounded-full bg-white px-3 py-1 text-sm font-medium text-slate-600 ring-1 ring-slate-200"
-                >
-                  {industry}
-                </span>
-              ))}
-            </div>
+
+            <HeroTrustBar />
           </div>
+
+          <HeroMarketingVisual />
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <SectionHeading
-            eyebrow="The problem"
-            title="You're great at the work. Marketing keeps getting in the way."
-            description="Most local business owners didn't start a company to chase SEO reports, reply to every review, or figure out what to post on Google. Yet that's what it takes to stay visible — and most vendors make it harder, not easier."
-          />
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-3">
-            {[
-              "Tired of SEO vendors who overpromise and underdeliver",
-              "No time to manage Google, reviews, and content between jobs",
-              "Unsure what's actually working in your town",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm leading-7 text-slate-700"
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <StatsStrip />
 
-      <section className="bg-slate-50 py-20">
+      <section className="bg-white py-24 sm:py-28">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionHeading
-            eyebrow="The solution"
-            title="Your Google presence, reviews, and local content — handled for you."
-            description="We improve how you show up on Google, watch your reviews, and publish content that sounds like your business and your town. You approve from your phone. We do the rest."
-          />
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-3">
-            {[
-              {
-                title: "Google visibility",
-                copy: "A stronger Business Profile and local presence so nearby customers find you first.",
-              },
-              {
-                title: "Review management",
-                copy: "New reviews monitored and professional reply drafts sent for your quick approval.",
-              },
-              {
-                title: "Local content",
-                copy: "Posts and updates written for your trade, your city, and the work you actually do.",
-              },
-            ].map((item) => (
-              <article
-                key={item.title}
-                className="rounded-2xl border border-slate-200 bg-white p-6"
-              >
-                <h3 className="text-lg font-bold text-slate-900">{item.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{item.copy}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <SectionHeading
-            eyebrow="How it works"
-            title="Five simple steps. Zero marketing homework."
-            description="We scan your presence, create updates, get your approval, publish, and report back every week."
-          />
-          <div className="mt-12">
-            <HowItWorksSteps compact />
-          </div>
-          <div className="mt-10 text-center">
-            <Link
-              href="/how-it-works"
-              className="text-sm font-semibold text-brand-700 hover:text-brand-800"
-            >
-              See the full process →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-slate-50 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <SectionHeading
-            eyebrow="What's included"
-            title="Everything you need to stay visible locally"
-            description="Built for owners who want results without learning marketing."
-          />
-          <div className="mt-12">
-            <FeatureGrid />
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="rounded-3xl border border-brand-200 bg-brand-50 px-8 py-12 text-center sm:px-12">
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand-700">
-              Our guarantee
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">
+              Our Proven Process
             </p>
-            <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              90-day visibility guarantee
+            <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-navy-900 sm:text-4xl">
+              How We Grow Your Business
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-              If we don&apos;t improve your local Google visibility within 90
-              days, we&apos;ll work for free until we do. No fine print. No
-              runaround.
-            </p>
           </div>
-        </div>
-      </section>
-
-      <section className="bg-slate-50 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <SectionHeading
-            eyebrow="Pricing"
-            title="Simple monthly plans"
-            description="Choose the level that fits your business. Every plan starts with a free demo."
-          />
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {pricingTiers.map((tier) => (
-              <PricingCard key={tier.name} {...tier} />
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {processCards.map((card) => (
+              <FeatureCard
+                key={card.title}
+                icon={card.icon}
+                title={card.title}
+                description={card.description}
+                iconVariant="green"
+              />
             ))}
           </div>
-          <div className="mt-10 text-center">
-            <Link
-              href="/pricing"
-              className="text-sm font-semibold text-brand-700 hover:text-brand-800"
-            >
-              Compare all plan details →
-            </Link>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200/80 bg-surface py-24 sm:py-28">
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionHeading
+            title="Industries We Serve"
+            description="Purpose-built for local service businesses that depend on phone calls, appointments, and trust."
+          />
+          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {industriesServed.map((industry) => (
+              <IndustryCard
+                key={industry.title}
+                icon={industry.icon}
+                title={industry.title}
+                description={industry.description}
+              />
+            ))}
           </div>
         </div>
       </section>
 
-      <FinalCta />
+      <section className="bg-white py-24 sm:py-28">
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionHeading title="Trusted By Local Business Owners" />
+          <div className="mt-14 grid gap-6 lg:grid-cols-3">
+            {testimonials.map((testimonial) => (
+              <TestimonialCard
+                key={testimonial.name}
+                quote={testimonial.quote}
+                name={testimonial.name}
+                role={testimonial.role}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-deep-navy py-24 sm:py-28">
+        <div className="mx-auto max-w-3xl px-6 text-center">
+          <h2 className="text-3xl font-bold tracking-[-0.02em] text-white sm:text-4xl">
+            Ready To See What Customers Find When They Search For Your Business?
+          </h2>
+          <p className="mt-6 text-lg leading-8 text-slate-300">
+            Get a free personalized demo and see how AJN Marketing can improve
+            your online visibility.
+          </p>
+          <div className="mt-10">
+            <CtaButton variant="light" showArrow>
+              See Your Free Demo
+            </CtaButton>
+          </div>
+        </div>
+      </section>
     </>
   );
 }

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <rect width="180" height="180" rx="40" fill="#0B1426" />
+  <text
+    x="28"
+    y="118"
+    fill="#FFFFFF"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="62"
+    font-weight="800"
+    letter-spacing="-2"
+  >
+    AJN
+  </text>
+  <path
+    d="M148 118V58M148 58L128 78M148 58L168 78"
+    stroke="#2563EB"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
