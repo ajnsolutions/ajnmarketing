@@ -40,7 +40,7 @@ export function CtaButton({
     light:
       "bg-white text-brand-700 shadow-lg shadow-black/10 hover:bg-slate-50 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0",
     navy:
-      "bg-navy-900 text-white shadow-md shadow-navy-900/20 hover:bg-deep-navy hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+      "bg-[#081426] text-white shadow-md shadow-[#081426]/25 hover:bg-[#0B1426] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 active:translate-y-0",
   }[variant];
 
   return (

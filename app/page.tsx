@@ -242,12 +242,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-deep-navy py-24 sm:py-28">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-[-0.02em] text-white sm:text-4xl">
-            Ready To See What Customers Find When They Search For Your Business?
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-slate-300">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#081426] to-[#0B1426] py-24 sm:py-28">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.22]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.14) 1px, transparent 0)",
+            backgroundSize: "28px 28px",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(37,99,235,0.1),transparent_50%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 top-8 h-64 w-64 rounded-full border border-white/[0.04] sm:-right-12"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full border border-white/[0.03]"
+        />
+
+        <div className="relative mx-auto max-w-3xl px-6 text-center">
+          <p className="text-lg leading-8 text-slate-200 sm:text-xl sm:leading-9">
             Get a free personalized demo and see how AJN Marketing can improve
             your online visibility.
           </p>

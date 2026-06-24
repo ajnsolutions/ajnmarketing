@@ -31,18 +31,18 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4 lg:gap-8 lg:py-5">
+    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white shadow-sm shadow-slate-200/30">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3.5 lg:gap-8 lg:py-4">
         <Link
           href="/"
-          className="mr-2 shrink-0 transition-opacity duration-200 hover:opacity-90 lg:mr-10"
+          className="mr-2 shrink-0 transition-opacity duration-200 hover:opacity-90 lg:mr-8"
         >
           <Image
             src="/images/AJN_marketing_logo.png"
             alt="AJN Marketing"
-            width={160}
-            height={80}
-            className="h-12 w-auto sm:h-14 md:h-16 lg:h-20"
+            width={124}
+            height={62}
+            className="h-11 w-auto lg:h-[62px]"
             priority
           />
         </Link>
@@ -57,7 +57,7 @@ export function SiteHeader() {
                 className={`text-sm font-medium transition-colors duration-200 ${
                   active
                     ? "text-brand-600"
-                    : "text-text-muted hover:text-brand-600"
+                    : "text-[#475569] hover:text-brand-600"
                 }`}
               >
                 {link.label}
@@ -69,7 +69,7 @@ export function SiteHeader() {
         <div className="hidden items-center gap-5 lg:flex">
           <Link
             href="#"
-            className="inline-flex items-center gap-2 text-sm font-medium text-text-muted transition-colors duration-200 hover:text-navy-900"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#475569] transition-colors duration-200 hover:text-[#0B1426]"
           >
             <UserIcon />
             Log In
