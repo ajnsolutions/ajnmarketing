@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { HeaderLogo } from "@/components/ajn-header-logo";
 import { navLinks } from "@/lib/site-content";
 import { CtaButton } from "./cta-button";
 
@@ -37,7 +37,14 @@ export function SiteHeader() {
           href="/"
           className="mr-2 shrink-0 transition-opacity duration-200 hover:opacity-90 lg:mr-10"
         >
-          <HeaderLogo />
+          <Image
+            src="/images/AJN_marketing_logo.png"
+            alt="AJN Marketing"
+            width={160}
+            height={80}
+            className="h-12 w-auto sm:h-14 md:h-16 lg:h-20"
+            priority
+          />
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-9 lg:flex">
