@@ -8,7 +8,7 @@ export function DashboardTopbar({
   onMenuClick: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
       <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <button
@@ -33,7 +33,7 @@ export function DashboardTopbar({
           </div>
 
           <div className="hidden min-w-0 lg:block">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
               Company
             </p>
             <button
@@ -51,7 +51,7 @@ export function DashboardTopbar({
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-900 shadow-sm transition-colors hover:bg-slate-50 sm:inline-flex sm:items-center sm:gap-2"
+            className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-900 shadow-sm transition-colors hover:bg-slate-50 md:inline-flex md:items-center md:gap-2"
           >
             Riverside Plumbing Co.
             <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 text-slate-400" stroke="currentColor" strokeWidth="1.8">
@@ -72,14 +72,27 @@ export function DashboardTopbar({
 
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition-colors hover:bg-slate-50 sm:gap-3 sm:pr-4"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#081426] text-xs font-bold text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#081426] text-xs font-bold text-white">
               MR
             </span>
-            <span className="hidden text-sm font-medium text-navy-900 sm:inline">
-              Mike R.
+            <span className="hidden text-left sm:block">
+              <span className="block text-sm font-semibold leading-tight text-navy-900">
+                Mike Reynolds
+              </span>
+              <span className="block text-xs leading-tight text-text-muted">Owner</span>
             </span>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className="hidden h-4 w-4 shrink-0 text-slate-400 sm:block"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 8l5 5 5-5" />
+            </svg>
           </button>
         </div>
       </div>

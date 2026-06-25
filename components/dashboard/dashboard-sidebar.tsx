@@ -15,51 +15,58 @@ export function DashboardSidebar({
   const pathname = usePathname();
 
   const nav = (
-    <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-      {dashboardNavItems.map((item) => {
-        const active =
-          item.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname.startsWith(item.href);
+    <div className="flex flex-1 flex-col px-3 py-5">
+      <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        Main
+      </p>
+      <nav className="flex flex-col gap-2">
+        {dashboardNavItems.map((item) => {
+          const active =
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname.startsWith(item.href);
 
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              active
-                ? "bg-white/10 text-white shadow-sm ring-1 ring-white/10"
-                : "text-slate-400 hover:bg-white/[0.04] hover:text-white"
-            }`}
-          >
-            <span className={active ? "text-brand-600" : "text-slate-500"}>
-              {item.icon}
-            </span>
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={`flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
+                active
+                  ? "bg-white text-[#081426] shadow-sm"
+                  : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
+              }`}
+            >
+              <span className={active ? "text-brand-600" : "text-slate-500"}>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 
   return (
     <>
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-white/10 bg-[#081426] lg:flex">
-        <div className="border-b border-white/10 px-5 py-5">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-[#081426] lg:flex">
+        <div className="border-b border-white/10 px-4 py-5">
           <Link href="/dashboard" className="inline-flex transition-opacity hover:opacity-90">
             <Image
               src="/images/AJN_marketing_logo_BLACK.png"
               alt="AJN Marketing"
-              width={128}
-              height={64}
-              className="h-10 w-auto"
+              width={112}
+              height={56}
+              className="h-9 w-auto"
             />
           </Link>
         </div>
         {nav}
-        <div className="mt-auto border-t border-white/10 px-5 py-4">
-          <p className="text-xs text-slate-500">Customer workspace</p>
+        <div className="mt-auto border-t border-white/10 px-4 py-4">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            Customer workspace
+          </p>
           <p className="mt-1 text-sm font-medium text-slate-300">Demo preview mode</p>
         </div>
       </aside>
@@ -72,14 +79,14 @@ export function DashboardSidebar({
             className="absolute inset-0 bg-[#081426]/60 backdrop-blur-sm"
             onClick={onNavigate}
           />
-          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col bg-[#081426] shadow-2xl">
-            <div className="border-b border-white/10 px-5 py-5">
+          <aside className="relative flex h-full w-64 max-w-[85vw] flex-col bg-[#081426] shadow-2xl">
+            <div className="border-b border-white/10 px-4 py-5">
               <Image
                 src="/images/AJN_marketing_logo_BLACK.png"
                 alt="AJN Marketing"
-                width={128}
-                height={64}
-                className="h-10 w-auto"
+                width={112}
+                height={56}
+                className="h-9 w-auto"
               />
             </div>
             {nav}
