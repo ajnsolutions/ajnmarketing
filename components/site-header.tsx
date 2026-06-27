@@ -68,7 +68,7 @@ export function SiteHeader() {
 
         <div className="relative z-10 ml-auto hidden items-center gap-4 lg:flex">
           <Link
-            href="/dashboard"
+            href="/login"
             className="inline-flex items-center gap-2 text-sm font-medium text-[#475569] transition-colors duration-200 hover:text-[#0B1426]"
           >
             <UserIcon />
@@ -115,7 +115,7 @@ export function SiteHeader() {
               );
             })}
             <Link
-              href="/dashboard"
+              href="/login"
               onClick={() => setOpen(false)}
               className="inline-flex items-center gap-2 text-base font-medium text-[#475569]"
             >

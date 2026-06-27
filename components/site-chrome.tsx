@@ -7,8 +7,13 @@ import { SiteHeader } from "@/components/site-header";
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isDashboard = pathname.startsWith("/dashboard");
+  const isAuth =
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password";
+  const isOnboarding = pathname.startsWith("/onboarding");
 
-  if (isDashboard) {
+  if (isDashboard || isAuth || isOnboarding) {
     return children;
   }
 
