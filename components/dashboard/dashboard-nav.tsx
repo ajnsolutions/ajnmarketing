@@ -38,6 +38,15 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Website Analysis",
+    href: "/dashboard/website-analysis",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10M8 7V5m8 2V5M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
+      </svg>
+    ),
+  },
+  {
     label: "Content",
     href: "/dashboard/content",
     icon: (
