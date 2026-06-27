@@ -47,6 +47,15 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Brand Voice",
+    href: "/dashboard/brand-voice",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M8 8h8M8 12h6M8 16h4" />
+      </svg>
+    ),
+  },
+  {
     label: "Content",
     href: "/dashboard/content",
     icon: (
