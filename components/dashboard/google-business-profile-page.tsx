@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 function MiniSparkline({ trend }: { trend: "up" | "down" | "neutral" }) {
   const paths = {
     up: "M2 14 L8 11 L14 12 L20 8 L26 6",
@@ -211,12 +213,20 @@ export function GoogleBusinessProfilePage() {
             Track your visibility, reviews, calls, and optimization progress in one place.
           </p>
         </div>
-        <button
-          type="button"
-          className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:bg-[#0B1426] hover:-translate-y-0.5 hover:shadow-lg"
-        >
-          Optimize Profile
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/dashboard/google-business-profile/connect"
+            className="inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
+          >
+            Connect / Manage Connection
+          </Link>
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:bg-[#0B1426] hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            Optimize Profile
+          </button>
+        </div>
       </div>
 
       <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
