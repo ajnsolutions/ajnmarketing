@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import {
+  formatGbpConnectionStatus,
+  formatGbpSyncDate,
+} from "@/lib/google-business-profile/persistence";
+import type { GoogleBusinessProfileConnectionStatus } from "@/lib/google-business-profile/types";
 
 function SectionCard({
   title,
@@ -27,8 +33,59 @@ function SectionCard({
   );
 }
 
-export function GbpConnectPage() {
-  const [connectMessage, setConnectMessage] = useState<string | null>(null);
+function GoogleConnectButton() {
+  return (
+    <a
+      href="/api/google-business-profile/connect"
+      className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#081426] shadow-md transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-lg"
+    >
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path
+          fill="#4285F4"
+          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        />
+        <path
+          fill="#34A853"
+          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        />
+        <path
+          fill="#FBBC05"
+          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        />
+        <path
+          fill="#EA4335"
+          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        />
+      </svg>
+      Connect Google Business Profile
+    </a>
+  );
+}
+
+export function GbpConnectPage({
+  initialStatus,
+}: {
+  initialStatus: GoogleBusinessProfileConnectionStatus;
+}) {
+  const searchParams = useSearchParams();
+  const [disconnectMessage, setDisconnectMessage] = useState<string | null>(null);
+
+  const status = initialStatus;
+  const connection = status.connection;
+  const isConnected = status.connected && connection?.connection_status === "connected";
+
+  const bannerMessage = useMemo(() => {
+    if (searchParams.get("connected") === "1") {
+      return "Google Business Profile connected successfully. Location sync comes in the next phase.";
+    }
+
+    const error = searchParams.get("error");
+    if (error) {
+      return `Google connection failed: ${decodeURIComponent(error).replace(/_/g, " ")}`;
+    }
+
+    return null;
+  }, [searchParams]);
 
   const accessItems = [
     "Profile details",
@@ -40,7 +97,7 @@ export function GbpConnectPage() {
 
   const steps = [
     { title: "Sign in with Google", description: "Use the Google account that manages your business profile." },
-    { title: "Choose your business profile", description: "Select Riverside Plumbing Co. or the location you want AJN to manage." },
+    { title: "Choose your business profile", description: "Select the Google Business Profile location you want AJN to manage." },
     { title: "Grant approved permissions", description: "Review exactly what AJN can read and publish on your behalf." },
     { title: "AJN begins monitoring and optimizing", description: "We import your data and start generating recommendations." },
   ];
@@ -102,6 +159,10 @@ export function GbpConnectPage() {
     "Begin weekly approval workflow",
   ];
 
+  const previewInitials = (connection?.google_account_name ?? connection?.gbp_location_name ?? "GBP")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -129,78 +190,138 @@ export function GbpConnectPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
                 Current Status
               </p>
-              <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-300 ring-1 ring-amber-400/20">
-                Not Connected
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 ${
+                  status.setupRequired
+                    ? "bg-amber-500/15 text-amber-300 ring-amber-400/20"
+                    : isConnected
+                      ? "bg-growth-500/15 text-growth-300 ring-emerald-400/20"
+                      : "bg-amber-500/15 text-amber-300 ring-amber-400/20"
+                }`}
+              >
+                {status.setupRequired
+                  ? "Setup Required"
+                  : formatGbpConnectionStatus(connection?.connection_status ?? "not_connected")}
               </span>
             </div>
-            <p className="mt-4 text-lg font-semibold text-white">
-              Recommended action: <span className="text-brand-300">Connect Google</span>
-            </p>
-            <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
-              What AJN will access
-            </p>
-            <ul className="mt-3 space-y-2">
-              {accessItems.map((item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-slate-200">
-                  <span className="text-growth-500">✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            {connectMessage && (
-              <p className="mt-5 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-                {connectMessage}
+
+            {status.setupRequired ? (
+              <>
+                <p className="mt-4 text-lg font-semibold text-white">
+                  Google connection setup required.
+                </p>
+                <p className="mt-3 text-sm leading-7 text-slate-300">
+                  {status.setupMessage ??
+                    "Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI to your server environment."}
+                </p>
+              </>
+            ) : isConnected ? (
+              <>
+                <p className="mt-4 text-lg font-semibold text-white">Google account connected</p>
+                <dl className="mt-5 space-y-3 text-sm text-slate-200">
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-slate-400">
+                      Connected account
+                    </dt>
+                    <dd className="mt-1">
+                      {connection?.google_account_name ?? "Google account"} ·{" "}
+                      {connection?.google_account_email ?? "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-slate-400">
+                      Location selected
+                    </dt>
+                    <dd className="mt-1">
+                      {connection?.gbp_location_name ??
+                        "Not selected yet — location sync comes in the next phase"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-slate-400">
+                      Last synced
+                    </dt>
+                    <dd className="mt-1">{formatGbpSyncDate(connection?.last_synced_at)}</dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDisconnectMessage(
+                      "Disconnect is UI-only for now. Token removal will ship in a future update."
+                    )
+                  }
+                  className="mt-6 inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+                >
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="mt-4 text-lg font-semibold text-white">
+                  Recommended action: <span className="text-brand-300">Connect Google</span>
+                </p>
+                <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
+                  What AJN will access
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {accessItems.map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-slate-200">
+                      <span className="text-growth-500">✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <GoogleConnectButton />
+              </>
+            )}
+
+            {(bannerMessage || disconnectMessage) && (
+              <p
+                className={`mt-5 rounded-xl border px-4 py-3 text-sm font-medium ${
+                  bannerMessage?.includes("failed") || searchParams.get("error")
+                    ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                    : "border-amber-400/30 bg-amber-500/10 text-amber-100"
+                }`}
+              >
+                {disconnectMessage ?? bannerMessage}
               </p>
             )}
-            <button
-              type="button"
-              onClick={() =>
-                setConnectMessage(
-                  "Google connection coming soon — this preview shows the future connection flow."
-                )
-              }
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#081426] shadow-md transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-lg"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Connect Google Business Profile
-            </button>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-5 ring-1 ring-white/10">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Preview after connecting
+              {isConnected ? "Connected account preview" : "Preview after connecting"}
             </p>
             <div className="mt-4 flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg font-bold text-white ring-1 ring-white/10">
-                RP
+                {previewInitials}
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-bold text-white">Riverside Plumbing Co.</h3>
-                  <span className="rounded-full bg-growth-500/20 px-2 py-0.5 text-[11px] font-semibold text-growth-400 ring-1 ring-emerald-400/20">
-                    Verified
-                  </span>
+                  <h3 className="text-lg font-bold text-white">
+                    {isConnected
+                      ? (connection?.gbp_location_name ??
+                        connection?.google_account_name ??
+                        "Connected Google account")
+                      : "Your business profile"}
+                  </h3>
+                  {isConnected && (
+                    <span className="rounded-full bg-growth-500/20 px-2 py-0.5 text-[11px] font-semibold text-growth-400 ring-1 ring-emerald-400/20">
+                      Connected
+                    </span>
+                  )}
                 </div>
-                <p className="mt-1 text-sm text-slate-300">Danville, CA</p>
-                <p className="mt-2 text-sm font-semibold text-amber-300">★ 4.9 · 128 reviews</p>
-                <p className="mt-1 text-sm text-growth-400">Open today</p>
+                <p className="mt-1 text-sm text-slate-300">
+                  {isConnected
+                    ? (connection?.google_account_email ?? "Google account linked")
+                    : "Profile details, reviews, and insights will appear here after connection"}
+                </p>
+                {!isConnected && (
+                  <p className="mt-2 text-sm text-slate-400">
+                    Live profile data sync is not enabled in this phase.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -238,25 +359,37 @@ export function GbpConnectPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Connected Profile Preview" subtitle="Example of what you will see after connecting">
+      <SectionCard title="Connected Profile Preview" subtitle="What you will see after connecting">
         <div className="rounded-xl border border-brand-200 bg-brand-50/30 p-6 ring-1 ring-brand-100">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white text-xl font-bold text-brand-600 shadow-sm ring-1 ring-slate-200">
-              RP
+              {previewInitials}
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-xl font-bold text-navy-900">Riverside Plumbing Co.</h3>
-                <span className="rounded-full bg-growth-50 px-2.5 py-1 text-[11px] font-semibold text-growth-500 ring-1 ring-emerald-100">
-                  Verified
-                </span>
+                <h3 className="text-xl font-bold text-navy-900">
+                  {isConnected
+                    ? (connection?.gbp_location_name ??
+                      connection?.google_account_name ??
+                      "Connected Google account")
+                    : "Your business profile"}
+                </h3>
+                {isConnected && (
+                  <span className="rounded-full bg-growth-50 px-2.5 py-1 text-[11px] font-semibold text-growth-500 ring-1 ring-emerald-100">
+                    Connected
+                  </span>
+                )}
               </div>
-              <p className="mt-1 text-sm text-text-muted">Danville, CA</p>
-              <div className="mt-3 flex flex-wrap gap-3 text-sm">
-                <span className="font-semibold text-amber-600">4.9 rating</span>
-                <span className="text-text-muted">128 reviews</span>
-                <span className="font-semibold text-growth-500">Open today</span>
-              </div>
+              <p className="mt-1 text-sm text-text-muted">
+                {isConnected
+                  ? (connection?.google_account_email ?? "Google account linked")
+                  : "Live profile details will appear here after connection and sync."}
+              </p>
+              {!isConnected && (
+                <p className="mt-3 text-sm text-text-muted">
+                  Reviews, insights, and post history sync are coming in the next phase.
+                </p>
+              )}
             </div>
           </div>
         </div>
