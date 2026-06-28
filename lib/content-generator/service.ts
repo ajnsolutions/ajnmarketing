@@ -3,11 +3,17 @@ import "server-only";
 import { getAiMarketingProfileForUser } from "@/lib/ai-marketing-profile/persistence";
 import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { createContentGenerator } from "@/lib/content-generator/generator";
-import { formatOpenAiContentError } from "@/lib/content-generator/openai-generator";
+import {
+  formatOpenAiContentError,
+  OpenAIContentGenerator,
+} from "@/lib/content-generator/openai-generator";
+import { mapMarketingPlanChannelToContentType } from "@/lib/content-generator/prompt-builder";
 import type {
   ContentGenerationContext,
   ContentGenerationRequest,
   ContentGenerationResult,
+  GeneratedContentDraft,
+  MarketingPlanContentRequest,
 } from "@/lib/content-generator/types";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import type { BusinessProfile } from "@/lib/business-profile";
@@ -64,6 +70,33 @@ export async function generateContentForCurrentUser(
   }
 }
 
+export async function generateContentFromMarketingPlanItem(
+  context: ContentGenerationContext,
+  request: MarketingPlanContentRequest
+): Promise<{ draft: GeneratedContentDraft | null; error?: string }> {
+  try {
+    const generator = createContentGenerator();
+
+    if (!(generator instanceof OpenAIContentGenerator)) {
+      return { draft: null, error: "Marketing plan content generation requires OpenAI." };
+    }
+
+    const draft = await generator.generateFromMarketingPlanItem(context, request);
+    return { draft };
+  } catch (error) {
+    return { draft: null, error: formatOpenAiContentError(error) };
+  }
+}
+
+export function resolveMarketingPlanContentType(
+  request: MarketingPlanContentRequest
+): string {
+  return mapMarketingPlanChannelToContentType(
+    request.recommendedChannel,
+    request.planItemType
+  );
+}
+
 export async function getContentGenerationContextForCurrentUser(): Promise<ContentGenerationContext | null> {
   const supabase = await createClient();
   const {
@@ -85,4 +118,10 @@ export async function getContentGenerationContextForCurrentUser(): Promise<Conte
     aiMarketingProfile,
     websiteAnalysis,
   };
+}
+
+export async function loadContentGenerationContextForUser(
+  userId: string
+): Promise<ContentGenerationContext | null> {
+  return loadGenerationContext(userId);
 }

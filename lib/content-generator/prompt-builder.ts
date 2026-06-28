@@ -3,6 +3,7 @@ import type {
   ContentGenerationBusinessIntel,
   ContentGenerationContext,
   ContentGenerationRequest,
+  MarketingPlanContentRequest,
 } from "@/lib/content-generator/types";
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
@@ -184,6 +185,105 @@ export function buildContentGenerationPrompt(
     "3. Promotion / Engagement",
     "",
     "Each variation must include title, content, cta, hashtags, seoKeywords, qualityScore, voiceScore, and reasoning.",
+  ].join("\n");
+
+  return { system, user };
+}
+
+export function mapMarketingPlanChannelToContentType(
+  channel: string | undefined,
+  planItemType: MarketingPlanContentRequest["planItemType"]
+): string {
+  const normalized = channel?.trim().toLowerCase() ?? "";
+
+  if (planItemType === "email") return "Email Campaign";
+  if (planItemType === "blog") return "Blog Intro";
+  if (normalized.includes("google")) return "Google Business Profile Post";
+  if (normalized.includes("facebook")) return "Facebook Post";
+  if (normalized.includes("instagram")) return "Instagram Caption";
+  if (normalized.includes("linkedin")) return "LinkedIn Post";
+  if (planItemType === "video") return "Educational Post";
+  if (planItemType === "campaign") return "Promotion";
+  if (planItemType === "social") return "Educational Post";
+
+  return "Educational Post";
+}
+
+export function buildMarketingPlanItemContentPrompt(
+  context: ContentGenerationContext,
+  request: MarketingPlanContentRequest
+): { system: string; user: string } {
+  const intel = buildBusinessIntel(context);
+  const contentType = mapMarketingPlanChannelToContentType(
+    request.recommendedChannel,
+    request.planItemType
+  );
+
+  const system = [
+    "You are AJN Marketing's AI content engine.",
+    "Generate one polished, approval-ready marketing draft using ONLY the supplied business intelligence and marketing plan item.",
+    "Never invent services, audiences, cities, industries, emergencies, repairs, homeowners, plumbing, HVAC, dental, or other details unless explicitly supported by the source data.",
+    "Never use generic placeholder copy or template filler.",
+    "Use the business brand voice exactly.",
+    "Return structured JSON only.",
+  ].join(" ");
+
+  const user = [
+    "BUSINESS INTELLIGENCE",
+    JSON.stringify(
+      {
+        businessName: intel.businessName,
+        industry: intel.industry,
+        services: intel.services,
+        serviceAreas: intel.serviceAreas,
+        idealCustomer: intel.idealCustomer,
+        targetAudience: intel.targetAudience,
+        customerPersona: intel.customerPersona,
+        brandPersonality: intel.brandPersonality,
+        writingTone: intel.writingTone,
+        brandVoice: intel.brandVoice,
+        valueProposition: intel.valueProposition,
+        keywords: intel.keywords,
+        preferredCtas: intel.preferredCtas,
+        commonObjections: intel.commonObjections,
+        seoStrategy: intel.seoStrategy,
+        contentStrategy: intel.contentStrategy,
+        reviewStrategy: intel.reviewStrategy,
+        googleBusinessStrategy: intel.googleBusinessStrategy,
+        websiteSummary: intel.websiteSummary,
+        contentOpportunities: intel.contentOpportunities,
+        marketingGoals: intel.marketingGoals,
+        avoidWords: intel.avoidWords,
+      },
+      null,
+      2
+    ),
+    "",
+    "MARKETING PLAN CONTEXT",
+    JSON.stringify(
+      {
+        executiveSummary: request.marketingPlanSummary ?? "",
+        marketingThemes: request.marketingThemes ?? [],
+      },
+      null,
+      2
+    ),
+    "",
+    "SELECTED MARKETING PLAN ITEM",
+    JSON.stringify(
+      {
+        planItemType: request.planItemType,
+        title: request.planItemTitle,
+        description: request.planItemDescription,
+        recommendedChannel: request.recommendedChannel ?? contentType,
+        scheduledDate: request.scheduledDate ?? "",
+        contentType,
+      },
+      null,
+      2
+    ),
+    "",
+    "Generate exactly one polished draft with title, content, cta, hashtags, seoKeywords, qualityScore, voiceScore, and reasoning.",
   ].join("\n");
 
   return { system, user };

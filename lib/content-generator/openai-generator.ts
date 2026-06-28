@@ -1,13 +1,15 @@
 import "server-only";
 
 import OpenAI from "openai";
-import { buildContentGenerationPrompt } from "@/lib/content-generator/prompt-builder";
+import { buildContentGenerationPrompt, buildMarketingPlanItemContentPrompt } from "@/lib/content-generator/prompt-builder";
 import type {
   ContentGenerationContext,
   ContentGenerationRequest,
   ContentGenerationResult,
   ContentGenerator,
+  GeneratedContentDraft,
   GeneratedContentVariation,
+  MarketingPlanContentRequest,
   VariationStyle,
 } from "@/lib/content-generator/types";
 
@@ -58,6 +60,31 @@ const CONTENT_GENERATION_JSON_SCHEMA = {
         },
       },
     },
+  },
+} as const;
+
+const SINGLE_DRAFT_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "title",
+    "content",
+    "cta",
+    "hashtags",
+    "seoKeywords",
+    "qualityScore",
+    "voiceScore",
+    "reasoning",
+  ],
+  properties: {
+    title: { type: "string" },
+    content: { type: "string" },
+    cta: { type: "string" },
+    hashtags: { type: "array", items: { type: "string" } },
+    seoKeywords: { type: "array", items: { type: "string" } },
+    qualityScore: { type: "integer" },
+    voiceScore: { type: "integer" },
+    reasoning: { type: "string" },
   },
 } as const;
 
@@ -121,6 +148,31 @@ function normalizeVariations(raw: unknown): GeneratedContentVariation[] {
   });
 }
 
+function normalizeDraft(raw: unknown): GeneratedContentDraft {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("Invalid content draft response");
+  }
+
+  const record = raw as Record<string, unknown>;
+
+  const draft: GeneratedContentDraft = {
+    title: readString(record.title, "Marketing Plan Draft"),
+    content: readString(record.content),
+    cta: readString(record.cta),
+    hashtags: readStringArray(record.hashtags),
+    seoKeywords: readStringArray(record.seoKeywords),
+    qualityScore: readScore(record.qualityScore, 80),
+    voiceScore: readScore(record.voiceScore, 85),
+    reasoning: readString(record.reasoning, "Generated from marketing plan item."),
+  };
+
+  if (!draft.content) {
+    throw new Error("OpenAI returned incomplete content draft");
+  }
+
+  return draft;
+}
+
 export class OpenAIContentGenerator implements ContentGenerator {
   private client: OpenAI;
 
@@ -182,6 +234,50 @@ export class OpenAIContentGenerator implements ContentGenerator {
     }
 
     return { variations };
+  }
+
+  async generateFromMarketingPlanItem(
+    context: ContentGenerationContext,
+    request: MarketingPlanContentRequest
+  ): Promise<GeneratedContentDraft> {
+    const { system, user } = buildMarketingPlanItemContentPrompt(context, request);
+
+    let response: OpenAI.Responses.Response;
+
+    try {
+      response = await this.client.responses.create({
+        model: OPENAI_CONTENT_GENERATOR_MODEL,
+        temperature: OPENAI_CONTENT_GENERATOR_TEMPERATURE,
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "marketing_plan_content_draft",
+            schema: SINGLE_DRAFT_JSON_SCHEMA,
+            strict: true,
+          },
+        },
+      });
+    } catch (error) {
+      throw new Error(formatOpenAiContentError(error));
+    }
+
+    const outputText = response.output_text?.trim();
+    if (!outputText) {
+      throw new Error("OpenAI returned an empty content draft response");
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(outputText);
+    } catch {
+      throw new Error("OpenAI returned invalid JSON for content draft");
+    }
+
+    return normalizeDraft(parsed);
   }
 }
 

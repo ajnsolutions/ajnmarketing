@@ -133,3 +133,17 @@ export type MarketingPlanPageData = {
   currentYear: number;
   monthName: string;
 };
+
+export type MarketingPlanCreateContentInput = {
+  plan_item_type: "calendar" | "campaign" | "blog" | "email" | "video" | "social";
+  plan_item_title: string;
+  plan_item_description: string;
+  recommended_channel?: string;
+  scheduled_date?: string;
+};
+
+export type MarketingPlanCreateContentResult = {
+  content_approval_id: string;
+  title: string;
+  status: "pending";
+};

@@ -91,3 +91,32 @@ export type ContentGenerationBusinessIntel = {
   avoidWords: string[];
   marketingGoals: string[];
 };
+
+export type MarketingPlanItemType =
+  | "calendar"
+  | "campaign"
+  | "blog"
+  | "email"
+  | "video"
+  | "social";
+
+export type MarketingPlanContentRequest = {
+  planItemType: MarketingPlanItemType;
+  planItemTitle: string;
+  planItemDescription: string;
+  recommendedChannel?: string;
+  scheduledDate?: string;
+  marketingPlanSummary?: string;
+  marketingThemes?: string[];
+};
+
+export type GeneratedContentDraft = {
+  title: string;
+  content: string;
+  cta: string;
+  hashtags: string[];
+  seoKeywords: string[];
+  qualityScore: number;
+  voiceScore: number;
+  reasoning: string;
+};
