@@ -7,6 +7,7 @@ import {
   formatApprovalStatus,
 } from "@/lib/content-approval/persistence";
 import { patchContentApprovalRequest } from "@/lib/content-approval-client";
+import { createPublishingQueueRequest } from "@/lib/publishing-queue-client";
 import type { ContentApproval, ContentApprovalStatus } from "@/lib/content-approval/types";
 
 function StatusBadge({ status }: { status: ContentApprovalStatus }) {
@@ -45,6 +46,22 @@ function ApprovalCard({
   const [title, setTitle] = useState(item.title);
   const [content, setContent] = useState(item.content);
   const [busy, setBusy] = useState<string | null>(null);
+
+  async function handleAddToQueue() {
+    setBusy("queue");
+
+    const { error } = await createPublishingQueueRequest({
+      content_approval_id: item.id,
+    });
+
+    setBusy(null);
+    onUpdated();
+    router.refresh();
+
+    if (error) {
+      window.alert(error);
+    }
+  }
 
   async function runAction(action: "approve" | "reject" | "regenerate" | "update") {
     setBusy(action);
@@ -174,6 +191,16 @@ function ApprovalCard({
               >
                 {busy === "regenerate" ? "Regenerating..." : "Regenerate"}
               </button>
+              {item.status === "approved" && (
+                <button
+                  type="button"
+                  disabled={!!busy}
+                  onClick={() => void handleAddToQueue()}
+                  className="rounded-full border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
+                >
+                  {busy === "queue" ? "Adding..." : "Add to Publishing Queue"}
+                </button>
+              )}
             </>
           )}
         </div>

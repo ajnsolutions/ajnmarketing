@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PublishingQueuePanel } from "@/components/dashboard/publishing-queue-panel";
+import type { PublishingQueueItem, PublishingQueueStats } from "@/lib/publishing-queue/types";
 
 function SectionCard({
   title,
@@ -179,7 +181,13 @@ function ContentCalendar() {
   );
 }
 
-export function ContentPage() {
+export function ContentPage({
+  publishingItems,
+  publishingStats,
+}: {
+  publishingItems: PublishingQueueItem[];
+  publishingStats: PublishingQueueStats;
+}) {
   const queueItems = [
     {
       title: "Spring Plumbing Maintenance Reminder",
@@ -414,6 +422,26 @@ export function ContentPage() {
           </div>
         </SectionCard>
       </div>
+
+      <SectionCard
+        title="Publishing Queue"
+        subtitle="Ready to Publish, Scheduled, Published, and Failed items"
+      >
+        <div className="mb-4 flex justify-end">
+          <Link
+            href="/dashboard/publishing"
+            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+          >
+            Open Publishing Queue →
+          </Link>
+        </div>
+        <PublishingQueuePanel
+          initialItems={publishingItems}
+          initialStats={publishingStats}
+          compact
+          showFilters={false}
+        />
+      </SectionCard>
 
       <SectionCard title="Content Calendar" subtitle="See what is scheduled and published this month">
         <ContentCalendar />

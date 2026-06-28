@@ -28,6 +28,15 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Publishing",
+    href: "/dashboard/publishing",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5M5 12l7-7 7 7" />
+      </svg>
+    ),
+  },
+  {
     label: "Google Business Profile",
     href: "/dashboard/google-business-profile",
     icon: (
