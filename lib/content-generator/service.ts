@@ -1,0 +1,88 @@
+import "server-only";
+
+import { getAiMarketingProfileForUser } from "@/lib/ai-marketing-profile/persistence";
+import { getBusinessProfileForUser } from "@/lib/business-profile-server";
+import { createContentGenerator } from "@/lib/content-generator/generator";
+import { formatOpenAiContentError } from "@/lib/content-generator/openai-generator";
+import type {
+  ContentGenerationContext,
+  ContentGenerationRequest,
+  ContentGenerationResult,
+} from "@/lib/content-generator/types";
+import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
+import type { BusinessProfile } from "@/lib/business-profile";
+import type { AiMarketingProfile } from "@/lib/ai-marketing-profile/types";
+import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
+import { createClient } from "@/lib/supabase/server";
+
+async function loadGenerationContext(userId: string): Promise<ContentGenerationContext | null> {
+  const supabase = await createClient();
+
+  const { data: profile, error } = await supabase
+    .from("business_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !profile) return null;
+
+  const [aiMarketingProfile, websiteAnalysis] = await Promise.all([
+    getAiMarketingProfileForUser(supabase, userId),
+    getWebsiteAnalysisForUser(supabase, userId),
+  ]);
+
+  return {
+    businessProfile: profile as BusinessProfile,
+    aiMarketingProfile: aiMarketingProfile as AiMarketingProfile | null,
+    websiteAnalysis: websiteAnalysis as WebsiteAnalysis | null,
+  };
+}
+
+export async function generateContentForCurrentUser(
+  request: ContentGenerationRequest
+): Promise<{ result: ContentGenerationResult | null; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { result: null, error: "Unauthorized" };
+  }
+
+  const context = await loadGenerationContext(user.id);
+  if (!context) {
+    return { result: null, error: "Business profile not found. Complete onboarding first." };
+  }
+
+  try {
+    const generator = createContentGenerator();
+    const result = await generator.generate(context, request);
+    return { result };
+  } catch (error) {
+    return { result: null, error: formatOpenAiContentError(error) };
+  }
+}
+
+export async function getContentGenerationContextForCurrentUser(): Promise<ContentGenerationContext | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const profile = await getBusinessProfileForUser();
+  if (!profile) return null;
+
+  const [aiMarketingProfile, websiteAnalysis] = await Promise.all([
+    getAiMarketingProfileForUser(supabase, user.id),
+    getWebsiteAnalysisForUser(supabase, user.id),
+  ]);
+
+  return {
+    businessProfile: profile,
+    aiMarketingProfile,
+    websiteAnalysis,
+  };
+}

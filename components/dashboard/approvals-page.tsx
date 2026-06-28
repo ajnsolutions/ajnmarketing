@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ApprovalQueue } from "@/components/dashboard/approval-queue";
+import type { ContentApproval, ContentApprovalStats } from "@/lib/content-approval/types";
 
 function SectionCard({
   title,
@@ -337,64 +339,13 @@ function WorkflowDiagram() {
   );
 }
 
-export function ApprovalsPage() {
-  const queueItems = [
-    {
-      type: "Google Business Profile Post",
-      title: "Spring Plumbing Maintenance Reminder",
-      preview:
-        "Keep your home running smoothly this season. Schedule a spring check-up and avoid costly surprises.",
-      priority: "High" as const,
-      publishDate: "Jun 18, 2026",
-      status: "Awaiting Approval" as const,
-    },
-    {
-      type: "Review Reply",
-      title: "Reply to 5-star review from Sarah M.",
-      preview:
-        "Thank you, Sarah! We're glad our team could resolve your water heater issue quickly. We appreciate your trust.",
-      priority: "High" as const,
-      publishDate: "Today",
-      status: "Ready to Publish" as const,
-    },
-    {
-      type: "Facebook Post",
-      title: "Before & After: Kitchen Repipe",
-      preview:
-        "See the difference a professional repipe makes. Cleaner water pressure and peace of mind for this Danville family.",
-      priority: "Medium" as const,
-      publishDate: "Jun 19, 2026",
-      status: "Awaiting Approval" as const,
-    },
-    {
-      type: "LinkedIn Post",
-      title: "Why Local Businesses Win on Google",
-      preview:
-        "Local visibility isn't luck — it's consistency. Here's how Riverside Plumbing stays top-of-mind in the community.",
-      priority: "Low" as const,
-      publishDate: "Jun 20, 2026",
-      status: "Scheduled" as const,
-    },
-    {
-      type: "Blog Article",
-      title: "5 Signs Your Water Heater Needs Replacement",
-      preview:
-        "Rusty water, inconsistent temperature, and rising energy bills can all signal it's time for an upgrade.",
-      priority: "Medium" as const,
-      publishDate: "Jun 21, 2026",
-      status: "AI Draft" as const,
-    },
-    {
-      type: "Email Campaign",
-      title: "Weekly Customer Update — June Edition",
-      preview:
-        "Your neighborhood plumbing team is ready for summer. Emergency service, maintenance plans, and new availability.",
-      priority: "Medium" as const,
-      publishDate: "Jun 22, 2026",
-      status: "Awaiting Approval" as const,
-    },
-  ];
-
+export function ApprovalsPage({
+  approvals,
+  stats,
+}: {
+  approvals: ContentApproval[];
+  stats: ContentApprovalStats;
+}) {
   const aiPriorities = [
     {
       title: "Respond to 3 new reviews today",
@@ -469,12 +420,12 @@ export function ApprovalsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard
-          label="Awaiting Approval"
-          value="6"
-          helper="+2 since yesterday"
-          trend="up"
+          label="Pending Approvals"
+          value={String(stats.pending)}
+          helper="Needs review"
+          trend="neutral"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -482,10 +433,10 @@ export function ApprovalsPage() {
           }
         />
         <KpiCard
-          label="Ready to Publish"
-          value="3"
-          helper="One-click approve"
-          trend="neutral"
+          label="Approved This Month"
+          value={String(stats.approvedThisMonth)}
+          helper="Ready for publishing"
+          trend="up"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -493,35 +444,13 @@ export function ApprovalsPage() {
           }
         />
         <KpiCard
-          label="Scheduled"
-          value="8"
-          helper="Next 7 days"
-          trend="up"
+          label="Rejected"
+          value={String(stats.rejected)}
+          helper="Needs revision"
+          trend="down"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
-            </svg>
-          }
-        />
-        <KpiCard
-          label="AI Drafts"
-          value="5"
-          helper="In progress"
-          trend="neutral"
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3M3 12h3m12 0h3" />
-            </svg>
-          }
-        />
-        <KpiCard
-          label="Completed This Week"
-          value="18"
-          helper="+4 vs last week"
-          trend="up"
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M4 19h16M8 17v-5M12 17V8M16 17v-3" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 9l-6 6M9 9l6 6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           }
         />
@@ -534,59 +463,7 @@ export function ApprovalsPage() {
             subtitle="Everything waiting for your review — approve in one click"
             action="View history"
           >
-            <BulkActionBar />
-            <div className="mt-4 space-y-4">
-              {queueItems.map((item) => (
-                <article
-                  key={item.title}
-                  className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                    <label className="mt-1 inline-flex shrink-0 cursor-pointer items-center">
-                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-brand-600" />
-                    </label>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <ContentTypeBadge type={item.type} />
-                        <PriorityBadge priority={item.priority} />
-                        <StatusBadge status={item.status} />
-                      </div>
-                      <h3 className="mt-3 font-semibold text-navy-900">{item.title}</h3>
-                      <p className="mt-2 text-sm leading-7 text-slate-600">{item.preview}</p>
-                      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                        Est. publish: {item.publishDate}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-                        >
-                          Preview
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <ApprovalQueue initialApprovals={approvals} />
           </SectionCard>
         </div>
 

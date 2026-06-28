@@ -161,6 +161,7 @@ function ActivityTimeline() {
 
 export function DashboardHome({
   analysisMeta,
+  approvalStats,
 }: {
   analysisMeta?: {
     statusLabel: string;
@@ -170,6 +171,11 @@ export function DashboardHome({
     isAnalyzing: boolean;
     isComplete: boolean;
     isFailed: boolean;
+  };
+  approvalStats?: {
+    pending: number;
+    approvedThisMonth: number;
+    rejected: number;
   };
 }) {
   return (
@@ -205,10 +211,34 @@ export function DashboardHome({
         />
         <KpiCard
           label="Content Awaiting Approval"
-          value="3"
-          delta="2 posts and 1 GBP update"
+          value={String(approvalStats?.pending ?? 0)}
+          delta="Pending review"
           trend="neutral"
-          period="needs your review"
+          period="approval queue"
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard
+          label="Pending Approvals"
+          value={String(approvalStats?.pending ?? 0)}
+          delta="Needs review"
+          trend="neutral"
+          period="approval workflow"
+        />
+        <KpiCard
+          label="Approved This Month"
+          value={String(approvalStats?.approvedThisMonth ?? 0)}
+          delta="Ready for publishing"
+          trend="up"
+          period="approval workflow"
+        />
+        <KpiCard
+          label="Rejected"
+          value={String(approvalStats?.rejected ?? 0)}
+          delta="Needs revision"
+          trend="down"
+          period="approval workflow"
         />
       </div>
 

@@ -56,6 +56,18 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "AI Profile",
+    href: "/dashboard/ai-profile",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 3A6.5 6.5 0 0 0 3 9.5V12h2.5A6.5 6.5 0 0 0 12 5.5V3H9.5Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 3H12v2.5A6.5 6.5 0 0 0 18.5 12H21V9.5A6.5 6.5 0 0 0 14.5 3Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 14.5V12h-2.5A6.5 6.5 0 0 1 12 18.5V21h2.5A6.5 6.5 0 0 0 21 14.5Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 21H12v-2.5A6.5 6.5 0 0 1 5.5 12H3v2.5A6.5 6.5 0 0 0 9.5 21Z" />
+      </svg>
+    ),
+  },
+  {
     label: "Content",
     href: "/dashboard/content",
     icon: (
