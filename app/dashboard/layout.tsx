@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { OnboardingGuard } from "@/components/onboarding/onboarding-guard";
+import { isOnboardingCompleteForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -22,9 +22,11 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  return (
-    <OnboardingGuard>
-      <DashboardShell>{children}</DashboardShell>
-    </OnboardingGuard>
-  );
+  const onboardingComplete = await isOnboardingCompleteForUser();
+
+  if (!onboardingComplete) {
+    redirect("/onboarding");
+  }
+
+  return <DashboardShell>{children}</DashboardShell>;
 }

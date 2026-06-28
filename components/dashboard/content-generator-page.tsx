@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
+import { formatAnalysisStatus } from "@/lib/website-analysis/persistence";
+import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 
 function SectionCard({
   title,
@@ -47,9 +50,9 @@ const goalOptions = [
   "Build trust",
 ];
 
-const aiInputs = [
-  { label: "Website Analysis", status: "Active" },
-  { label: "Brand Voice", status: "Strong Match" },
+const defaultAiInputs = [
+  { label: "Website Analysis", status: "Pending" },
+  { label: "Brand Voice", status: "Pending" },
   { label: "Market Context", status: "Updated today" },
   { label: "Google Business Profile", status: "Connected" },
   { label: "Review Data", status: "128 reviews analyzed" },
@@ -105,57 +108,59 @@ const historyRows = [
   },
 ];
 
-const variationsByType: Record<string, { title: string; copy: string; channel: string; performance: number; voiceMatch: number }[]> = {
-  "Google Business Profile Post": [
-    {
-      title: "Spring Check-Up Reminder",
-      copy: "Spring is the perfect time for a plumbing check-up. Riverside Plumbing Co. helps Danville homeowners catch small issues early. Call today for same-day service.",
-      channel: "Google Business Profile",
-      performance: 88,
-      voiceMatch: 96,
-    },
-    {
-      title: "Local Expert Tip",
-      copy: "Did you know a quick drain inspection can prevent costly backups? Our local team is here to help Danville families stay ahead of plumbing problems.",
-      channel: "Google Business Profile",
-      performance: 84,
-      voiceMatch: 94,
-    },
-    {
-      title: "Trusted Local Service",
-      copy: "When you need a plumber you can trust, Riverside Plumbing Co. is ready to help. Licensed, local, and available for emergency calls across the East Bay.",
-      channel: "Google Business Profile",
-      performance: 86,
-      voiceMatch: 95,
-    },
-  ],
-};
-
-const defaultVariations = [
-  {
-    title: "Service Spotlight",
-    copy: "Need reliable plumbing help in Danville? Riverside Plumbing Co. delivers fast, professional service for repairs, maintenance, and emergencies. Call our local team today.",
-    channel: "Multi-channel",
-    performance: 85,
-    voiceMatch: 94,
-  },
-  {
-    title: "Helpful Local Tip",
-    copy: "Small plumbing issues can turn into big expenses. Our team helps East Bay homeowners stay ahead with honest recommendations and clear pricing.",
-    channel: "Multi-channel",
-    performance: 82,
-    voiceMatch: 93,
-  },
-  {
-    title: "Trust-First Message",
-    copy: "Family-owned and locally trusted, Riverside Plumbing Co. is here when you need us most. Same-day service available for Danville and nearby communities.",
-    channel: "Multi-channel",
-    performance: 87,
-    voiceMatch: 95,
-  },
-];
+function buildVariations(businessName: string, targetCity: string, topic: string) {
+  return {
+    "Google Business Profile Post": [
+      {
+        title: "Spring Check-Up Reminder",
+        copy: `Spring is the perfect time for a ${topic.toLowerCase()} check-up. ${businessName} helps ${targetCity} homeowners catch small issues early. Call today for same-day service.`,
+        channel: "Google Business Profile",
+        performance: 88,
+        voiceMatch: 96,
+      },
+      {
+        title: "Local Expert Tip",
+        copy: `Did you know proactive ${topic.toLowerCase()} can prevent costly problems? Our local team is here to help ${targetCity} families stay ahead.`,
+        channel: "Google Business Profile",
+        performance: 84,
+        voiceMatch: 94,
+      },
+      {
+        title: "Trusted Local Service",
+        copy: `When you need a team you can trust, ${businessName} is ready to help. Licensed, local, and available for ${topic.toLowerCase()} across ${targetCity} and nearby communities.`,
+        channel: "Google Business Profile",
+        performance: 86,
+        voiceMatch: 95,
+      },
+    ],
+    default: [
+      {
+        title: "Service Spotlight",
+        copy: `Need reliable ${topic.toLowerCase()} in ${targetCity}? ${businessName} delivers fast, professional service for repairs, maintenance, and emergencies. Call our local team today.`,
+        channel: "Multi-channel",
+        performance: 85,
+        voiceMatch: 94,
+      },
+      {
+        title: "Helpful Local Tip",
+        copy: `Small ${topic.toLowerCase()} issues can turn into big expenses. Our team helps ${targetCity} homeowners stay ahead with honest recommendations and clear pricing.`,
+        channel: "Multi-channel",
+        performance: 82,
+        voiceMatch: 93,
+      },
+      {
+        title: "Trust-First Message",
+        copy: `Family-owned and locally trusted, ${businessName} is here when you need us most. Same-day ${topic.toLowerCase()} available for ${targetCity} and nearby communities.`,
+        channel: "Multi-channel",
+        performance: 87,
+        voiceMatch: 95,
+      },
+    ],
+  };
+}
 
 export function ContentGeneratorPage() {
+  const [analysis, setAnalysis] = useState<WebsiteAnalysis | null>(null);
   const [contentType, setContentType] = useState(contentTypes[0]);
   const [goals, setGoals] = useState<string[]>(["Promote a service"]);
   const [topic, setTopic] = useState("Water heater repair");
@@ -167,7 +172,59 @@ export function ContentGeneratorPage() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [generationKey, setGenerationKey] = useState(0);
 
-  const variations = variationsByType[contentType] ?? defaultVariations;
+  useEffect(() => {
+    async function loadAnalysis() {
+      const { analysis: savedAnalysis } = await fetchWebsiteAnalysis();
+      if (!savedAnalysis) return;
+
+      setAnalysis(savedAnalysis);
+
+      const firstService =
+        savedAnalysis.services?.[0]?.name ??
+        savedAnalysis.raw_summary?.primaryServices[0] ??
+        topic;
+      const firstCity =
+        savedAnalysis.cities?.[0] ?? savedAnalysis.raw_summary?.citiesMentioned[0] ?? targetCity;
+      const analysisTone =
+        savedAnalysis.tone ??
+        savedAnalysis.brand_voice ??
+        savedAnalysis.raw_summary?.tone ??
+        tone;
+
+      setTopic(firstService);
+      setTargetCity(firstCity);
+      setTone(analysisTone);
+    }
+
+    void loadAnalysis();
+  }, []);
+
+  const businessName =
+    analysis?.raw_summary?.businessName ?? "Your Business";
+  const aiInputs = defaultAiInputs.map((item) => {
+    if (item.label === "Website Analysis") {
+      return {
+        ...item,
+        status:
+          analysis?.analysis_status === "completed"
+            ? "Active"
+            : formatAnalysisStatus(analysis?.analysis_status),
+      };
+    }
+
+    if (item.label === "Brand Voice") {
+      return {
+        ...item,
+        status: analysis?.brand_voice ? "Strong Match" : "Pending",
+      };
+    }
+
+    return item;
+  });
+
+  const variationsByType = buildVariations(businessName, targetCity, topic);
+  const variations =
+    variationsByType[contentType as keyof typeof variationsByType] ?? variationsByType.default;
 
   function toggleGoal(goal: string) {
     setGoals((current) =>

@@ -1,3 +1,18 @@
+import type { BusinessProfile } from "@/lib/business-profile";
+import {
+  displayValue,
+  formatServiceAreas,
+  formatWebsiteDisplay,
+} from "@/lib/business-profile";
+import {
+  WebsiteAnalysisPoller,
+  WebsiteAnalysisRefreshButton,
+} from "@/components/dashboard/website-analysis-actions";
+import { getAnalysisDisplayMeta } from "@/lib/website-analysis-server";
+import { LOW_CONFIDENCE_CUSTOMER_PERSONA } from "@/lib/website-analysis/customer-persona";
+import { resolveContentOpportunities } from "@/lib/website-analysis/content-opportunities";
+import type { SeoFinding, WebsiteAnalysis } from "@/lib/website-analysis/types";
+
 function SectionCard({
   title,
   subtitle,
@@ -79,7 +94,45 @@ function ProfileField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AnalysisHero() {
+function StatusBadge({
+  statusLabel,
+  variant,
+}: {
+  statusLabel: string;
+  variant: "completed" | "running" | "failed" | "idle";
+}) {
+  const styles = {
+    completed: "bg-growth-500/15 text-growth-500 ring-emerald-400/20",
+    running: "bg-brand-500/15 text-brand-300 ring-brand-400/20",
+    failed: "bg-rose-500/15 text-rose-300 ring-rose-400/20",
+    idle: "bg-white/10 text-slate-300 ring-white/10",
+  }[variant];
+
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 ${styles}`}>
+      {variant === "running" && (
+        <span className="h-2 w-2 animate-pulse rounded-full bg-brand-300" aria-hidden="true" />
+      )}
+      {statusLabel}
+    </span>
+  );
+}
+
+function AnalysisHero({
+  score,
+  seoScore,
+  statusLabel,
+  lastAnalyzed,
+  variant,
+}: {
+  score: number | null;
+  seoScore: number | null;
+  statusLabel: string;
+  lastAnalyzed: string;
+  variant: "completed" | "running" | "failed" | "idle";
+}) {
+  const displayScore = score ?? 0;
+
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#081426] to-[#0B1426] p-6 shadow-lg shadow-slate-300/30 ring-1 ring-slate-900/[0.04] sm:p-8">
       <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -88,9 +141,7 @@ function AnalysisHero() {
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
               Analysis Status
             </p>
-            <span className="inline-flex items-center gap-2 rounded-full bg-growth-500/15 px-3 py-1 text-sm font-semibold text-growth-500 ring-1 ring-emerald-400/20">
-              Completed
-            </span>
+            <StatusBadge statusLabel={statusLabel} variant={variant} />
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
@@ -98,18 +149,26 @@ function AnalysisHero() {
                 Overall Website Score
               </p>
               <p className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                89<span className="text-xl font-semibold text-slate-400"> / 100</span>
+                {score ?? "—"}
+                {score !== null && (
+                  <span className="text-xl font-semibold text-slate-400"> / 100</span>
+                )}
               </p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                AI Confidence
+                SEO Score
               </p>
-              <p className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">96%</p>
+              <p className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                {seoScore ?? "—"}
+                {seoScore !== null && (
+                  <span className="text-xl font-semibold text-slate-400"> / 100</span>
+                )}
+              </p>
             </div>
           </div>
           <p className="mt-5 text-sm text-slate-400">
-            Last scanned: <span className="font-medium text-slate-300">2 hours ago</span>
+            Last scanned: <span className="font-medium text-slate-300">{lastAnalyzed}</span>
           </p>
         </div>
 
@@ -122,14 +181,14 @@ function AnalysisHero() {
                 cy="18"
                 r="15.5"
                 fill="none"
-                stroke="#22C55E"
+                stroke={variant === "failed" ? "#F87171" : variant === "running" ? "#60A5FA" : "#22C55E"}
                 strokeWidth="3"
                 strokeLinecap="round"
-                strokeDasharray="89 100"
+                strokeDasharray={`${displayScore} 100`}
               />
             </svg>
             <div className="absolute text-center">
-              <p className="text-3xl font-bold text-white">89</p>
+              <p className="text-3xl font-bold text-white">{score ?? "—"}</p>
               <p className="text-xs font-medium text-slate-400">Score</p>
             </div>
           </div>
@@ -139,105 +198,109 @@ function AnalysisHero() {
   );
 }
 
-export function WebsiteAnalysisPage() {
-  const seoItems = [
-    { label: "Meta Titles", status: "good" as const, detail: "Unique titles on 94% of pages" },
-    { label: "Meta Descriptions", status: "warning" as const, detail: "Missing on 3 key service pages" },
-    { label: "Page Speed", status: "good" as const, detail: "Mobile score: 88 · Desktop: 94" },
-    { label: "Mobile Friendly", status: "good" as const, detail: "Responsive layout detected" },
-    { label: "Indexability", status: "good" as const, detail: "No major crawl blocks found" },
-    { label: "Structured Data", status: "warning" as const, detail: "LocalBusiness schema incomplete" },
-  ];
+function AnalyzingState() {
+  return (
+    <section className="rounded-2xl border border-brand-100 bg-brand-50/40 p-8 text-center ring-1 ring-brand-100">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+        <span className="h-3 w-3 animate-pulse rounded-full bg-brand-600" aria-hidden="true" />
+      </div>
+      <h2 className="mt-5 text-xl font-bold text-navy-900">Analyzing your website...</h2>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-text-muted">
+        We&apos;re scanning your site, extracting services, local signals, and brand voice to build
+        your AI marketing profile.
+      </p>
+    </section>
+  );
+}
 
-  const services = [
-    { name: "Water Heater Repair", confidence: 97, opportunity: "High" },
-    { name: "Emergency Plumbing", confidence: 95, opportunity: "High" },
-    { name: "Drain Cleaning", confidence: 92, opportunity: "Medium" },
-    { name: "Leak Detection", confidence: 88, opportunity: "High" },
-    { name: "Pipe Repair", confidence: 86, opportunity: "Medium" },
-    { name: "Commercial Plumbing", confidence: 79, opportunity: "Medium" },
-  ];
+function buildOpportunities(extraction: WebsiteAnalysis["raw_summary"]) {
+  if (!extraction) return [];
 
-  const websiteOpportunities = [
-    {
-      title: "Missing FAQs",
-      priority: "High" as const,
-      impact: "Improves local search visibility",
-      difficulty: "Low effort",
-    },
-    {
-      title: "More Local Landing Pages",
-      priority: "High" as const,
-      impact: "Captures nearby city searches",
-      difficulty: "Medium effort",
-    },
-    {
-      title: "Internal Linking",
-      priority: "Medium" as const,
-      impact: "Strengthens service page authority",
-      difficulty: "Low effort",
-    },
-    {
-      title: "Image Optimization",
-      priority: "Medium" as const,
-      impact: "Faster load times on mobile",
-      difficulty: "Low effort",
-    },
-    {
-      title: "Review Schema",
-      priority: "Medium" as const,
-      impact: "Rich results in Google",
-      difficulty: "Medium effort",
-    },
-    {
-      title: "Service Area Pages",
-      priority: "High" as const,
-      impact: "Better geo-targeted rankings",
-      difficulty: "Medium effort",
-    },
-  ];
+  return extraction.highestRoiImprovements.map((title, index) => ({
+    title,
+    priority: (index === 0 ? "High" : "Medium") as "High" | "Medium",
+    impact: extraction.seoIssues[index] ?? "Improves local search visibility",
+    difficulty: index === 0 ? "Low effort" : "Medium effort",
+  }));
+}
 
-  const contentIdeas = [
-    {
-      title: "Top 10 Plumbing Tips for Homeowners",
-      seoScore: 82,
-      competition: "Medium",
-    },
-    {
-      title: "Signs Your Water Heater Needs Replacing",
-      seoScore: 88,
-      competition: "Low",
-    },
-    {
-      title: "Emergency Plumbing Checklist",
-      seoScore: 79,
-      competition: "Medium",
-    },
-    {
-      title: "Seasonal Maintenance Guide",
-      seoScore: 85,
-      competition: "Low",
-    },
-  ];
+export function WebsiteAnalysisPage({
+  profile,
+  analysis,
+}: {
+  profile: BusinessProfile | null;
+  analysis: WebsiteAnalysis | null;
+}) {
+  const meta = getAnalysisDisplayMeta(analysis);
+  const extraction = analysis?.raw_summary ?? null;
+  const isAnalyzing = meta.isAnalyzing;
+  const isComplete = meta.isComplete && !!extraction;
+
+  const businessName = displayValue(extraction?.businessName ?? profile?.business_name, "Your Business");
+  const industry = displayValue(extraction?.industry ?? profile?.industry, "Local Service Business");
+  const website = formatWebsiteDisplay(analysis?.website ?? profile?.website ?? null);
+  const phone = displayValue(extraction?.phoneNumbers[0] ?? profile?.phone);
+  const serviceAreas = extraction?.serviceAreas.length
+    ? extraction.serviceAreas.join(" · ")
+    : formatServiceAreas(profile);
+  const primaryServices = extraction?.primaryServices.length
+    ? extraction.primaryServices.join(", ")
+    : displayValue(profile?.primary_services, "Services will appear here after analysis");
+  const tone = displayValue(analysis?.tone ?? extraction?.tone ?? profile?.brand_voice_tone);
+  const preferredWords = extraction?.keywords.length
+    ? extraction.keywords.join(", ")
+    : displayValue(profile?.preferred_words, "Trusted, local, fast, licensed, family-owned");
+  const avoidWords = displayValue(profile?.avoid_words, "Cheap, discount, lowest price");
+  const exampleParagraph =
+    analysis?.brand_voice ??
+    extraction?.brandVoice ??
+    profile?.voice_notes?.trim() ??
+    `For years, ${businessName} has been a trusted local choice for honest, professional service.`;
+  const customerPersona = displayValue(
+    meta.isComplete ? analysis?.raw_summary?.customerPersona : undefined,
+    LOW_CONFIDENCE_CUSTOMER_PERSONA
+  );
+  const businessHours = extraction?.businessHours.length
+    ? extraction.businessHours.join(" · ")
+    : "Hours not detected yet";
+  const primaryCta = extraction?.callsToAction[0] ?? "Contact us for service";
+
+  const seoItems: SeoFinding[] =
+    analysis?.seo_findings ??
+    [
+      { label: "Meta Titles", status: "warning", detail: "Waiting for analysis" },
+      { label: "Meta Descriptions", status: "warning", detail: "Waiting for analysis" },
+    ];
+
+  const services = analysis?.services ?? [];
+  const websiteOpportunities = buildOpportunities(extraction);
+  const contentIdeas = meta.isComplete ? resolveContentOpportunities(extraction) : [];
+
+  const heroVariant = meta.isFailed
+    ? "failed"
+    : isAnalyzing
+      ? "running"
+      : isComplete
+        ? "completed"
+        : "idle";
 
   return (
     <div className="space-y-8">
+      <WebsiteAnalysisPoller shouldPoll={isAnalyzing} />
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
             Website Analysis
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Our AI has analyzed your website and built a marketing profile for your business.
+            {isAnalyzing
+              ? "We're learning everything we can from your website to power AJN AI across the platform."
+              : "Our AI has analyzed your website and built a marketing profile for your business."}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-          >
-            Refresh Analysis
-          </button>
+          <WebsiteAnalysisRefreshButton />
           <button
             type="button"
             className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
@@ -247,213 +310,230 @@ export function WebsiteAnalysisPage() {
         </div>
       </div>
 
-      <AnalysisHero />
+      <AnalysisHero
+        score={analysis?.analysis_score ?? null}
+        seoScore={analysis?.seo_score ?? null}
+        statusLabel={meta.statusLabel}
+        lastAnalyzed={meta.lastAnalyzed}
+        variant={heroVariant}
+      />
 
-      <SectionCard
-        title="Business Profile Learned"
-        subtitle="Key details extracted from your website"
-      >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ProfileField label="Business Name" value="Riverside Plumbing Co." />
-          <ProfileField label="Industry" value="Plumbing & HVAC Services" />
-          <ProfileField
-            label="Primary Services"
-            value="Emergency plumbing, drain cleaning, water heater repair, repiping"
-          />
-          <ProfileField label="Service Areas" value="Danville, San Ramon, Walnut Creek, Alamo" />
-          <ProfileField label="Business Hours" value="Mon–Fri 7am–6pm · Sat 8am–2pm · 24/7 Emergency" />
-          <ProfileField label="Phone" value="(555) 482-9100" />
-          <ProfileField label="Website" value="riversideplumbing.com" />
-          <ProfileField label="Primary Call-To-Action" value="Call Now for Same-Day Service" />
-        </div>
-      </SectionCard>
+      {isAnalyzing && <AnalyzingState />}
 
-      <SectionCard title="AI Brand Voice" subtitle="How your website communicates with customers">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ProfileField label="Writing Tone" value="Friendly, trustworthy, and locally focused" />
-          <ProfileField label="Reading Level" value="8th grade — clear and accessible" />
-          <ProfileField label="Customer Persona" value="Homeowners and property managers in the East Bay" />
-          <ProfileField label="Brand Personality" value="Reliable neighbor · Expert problem-solver" />
-          <ProfileField label="Words Frequently Used" value="Trusted, local, fast, licensed, family-owned" />
-          <ProfileField label="Words Avoided" value="Cheap, discount, lowest price" />
-        </div>
-        <blockquote className="mt-4 rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60">
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Example extracted from website
+      {meta.isFailed && (
+        <section className="rounded-2xl border border-rose-100 bg-rose-50/50 p-6 ring-1 ring-rose-100">
+          <h2 className="text-lg font-bold text-navy-900">Analysis could not be completed</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-600">
+            We couldn&apos;t finish scanning your website. Check that your URL is correct, then try
+            refreshing the analysis.
           </p>
-          <p className="mt-3 text-sm leading-7 text-slate-600">
-            &ldquo;For over 20 years, Riverside Plumbing Co. has been Danville&apos;s trusted choice
-            for honest, same-day plumbing service. From emergency repairs to water heater
-            installations, our licensed team treats your home like our own.&rdquo;
-          </p>
-        </blockquote>
-      </SectionCard>
+        </section>
+      )}
 
-      <SectionCard title="SEO Snapshot" subtitle="Technical and on-page SEO health">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {seoItems.map((item) => (
-            <article
-              key={item.label}
-              className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <p className="font-semibold text-navy-900">{item.label}</p>
-                <SeoStatusBadge status={item.status} />
-              </div>
-              <p className="mt-2 text-sm text-text-muted">{item.detail}</p>
-            </article>
-          ))}
-        </div>
-      </SectionCard>
+      {!isAnalyzing && (
+        <>
+          <SectionCard
+            title="Business Profile Learned"
+            subtitle="Key details extracted from your website"
+          >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ProfileField label="Business Name" value={businessName} />
+              <ProfileField label="Industry" value={industry} />
+              <ProfileField label="Primary Services" value={primaryServices} />
+              <ProfileField label="Service Areas" value={serviceAreas} />
+              <ProfileField label="Business Hours" value={businessHours} />
+              <ProfileField label="Phone" value={phone} />
+              <ProfileField label="Website" value={website} />
+              <ProfileField label="Primary Call-To-Action" value={primaryCta} />
+              {extraction?.pageCountEstimate ? (
+                <ProfileField
+                  label="Page Count Estimate"
+                  value={`~${extraction.pageCountEstimate} pages`}
+                />
+              ) : null}
+            </div>
+          </SectionCard>
 
-      <SectionCard title="Service Detection" subtitle="Services identified from your website content">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <article
-              key={service.name}
-              className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
-            >
-              <h3 className="font-semibold text-navy-900">{service.name}</h3>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100">
-                  {service.confidence}% confidence
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${
-                    service.opportunity === "High"
-                      ? "bg-growth-50 text-growth-500 ring-emerald-100"
-                      : "bg-amber-50 text-amber-700 ring-amber-100"
-                  }`}
+          <SectionCard title="AI Brand Voice" subtitle="How your website communicates with customers">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ProfileField label="Writing Tone" value={tone} />
+              <ProfileField
+                label="Reading Level"
+                value={displayValue(extraction?.readingLevel, "Pending analysis")}
+              />
+              <ProfileField
+                label="Customer Persona"
+                value={customerPersona}
+              />
+              <ProfileField
+                label="Value Proposition"
+                value={displayValue(extraction?.valueProposition, "Pending analysis")}
+              />
+              <ProfileField label="Words Frequently Used" value={preferredWords} />
+              <ProfileField label="Words Avoided" value={avoidWords} />
+            </div>
+            <blockquote className="mt-4 rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Example extracted from website
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">&ldquo;{exampleParagraph}&rdquo;</p>
+            </blockquote>
+          </SectionCard>
+
+          <SectionCard title="SEO Snapshot" subtitle="Technical and on-page SEO health">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {seoItems.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
                 >
-                  {service.opportunity} opportunity
-                </span>
-              </div>
-            </article>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Website Opportunities"
-        subtitle="Priority improvements ranked by estimated ROI"
-        action="View all"
-      >
-        <div className="grid gap-4 lg:grid-cols-2">
-          {websiteOpportunities.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <h3 className="font-semibold text-navy-900">{item.title}</h3>
-                <PriorityBadge priority={item.priority} />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                <span className="rounded-full bg-growth-50 px-3 py-1 font-medium text-growth-600 ring-1 ring-emerald-100">
-                  {item.impact}
-                </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200">
-                  {item.difficulty}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="mt-4 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
-              >
-                Generate Fix
-              </button>
-            </article>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Content Opportunities" subtitle="Article ideas based on your services and market">
-        <div className="grid gap-4 lg:grid-cols-2">
-          {contentIdeas.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60"
-            >
-              <h3 className="font-semibold text-navy-900">{item.title}</h3>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-600 ring-1 ring-brand-100">
-                  SEO Score: {item.seoScore}
-                </span>
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 ring-1 ring-amber-100">
-                  Competition: {item.competition}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="mt-4 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
-              >
-                Generate Article
-              </button>
-            </article>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard title="AI Summary" subtitle="Executive overview of your website analysis">
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-              What the AI learned
-            </h3>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
-              Riverside Plumbing Co. presents as a trusted, locally focused plumbing business serving
-              the Danville and East Bay area. Your website clearly communicates emergency availability,
-              licensed expertise, and family-owned values — strong foundations for local SEO and
-              Google Business Profile content.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-emerald-100 bg-growth-50/50 p-4 ring-1 ring-emerald-100">
-              <h3 className="font-semibold text-growth-600">Strengths</h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                <li>• Clear service offerings and emergency positioning</li>
-                <li>• Strong local trust signals and customer-focused language</li>
-                <li>• Good mobile performance and indexability</li>
-              </ul>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold text-navy-900">{item.label}</p>
+                    <SeoStatusBadge status={item.status} />
+                  </div>
+                  <p className="mt-2 text-sm text-text-muted">{item.detail}</p>
+                </article>
+              ))}
             </div>
-            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4 ring-1 ring-amber-100">
-              <h3 className="font-semibold text-amber-700">Weaknesses</h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                <li>• Missing FAQs and structured data on key pages</li>
-                <li>• Limited geo-targeted landing pages for nearby cities</li>
-                <li>• Meta descriptions incomplete on service pages</li>
-              </ul>
-            </div>
-          </div>
+          </SectionCard>
 
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-              Highest ROI improvements
-            </h3>
-            <ol className="mt-3 space-y-2 text-sm leading-7 text-slate-600">
-              <li>1. Add FAQ sections to top service pages</li>
-              <li>2. Create landing pages for San Ramon and Walnut Creek</li>
-              <li>3. Implement LocalBusiness and review schema markup</li>
-            </ol>
-          </div>
+          {services.length > 0 && (
+            <SectionCard title="Service Detection" subtitle="Services identified from your website content">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {services.map((service) => (
+                  <article
+                    key={service.name}
+                    className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
+                  >
+                    <h3 className="font-semibold text-navy-900">{service.name}</h3>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100">
+                        {service.confidence}% confidence
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${
+                          service.opportunity === "High"
+                            ? "bg-growth-50 text-growth-500 ring-emerald-100"
+                            : "bg-amber-50 text-amber-700 ring-amber-100"
+                        }`}
+                      >
+                        {service.opportunity} opportunity
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </SectionCard>
+          )}
 
-          <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-5 ring-1 ring-brand-100">
-            <h3 className="font-semibold text-navy-900">Next recommended actions</h3>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
-              Approve AI-generated FAQ content, publish two local landing pages, and schedule
-              Google Business Profile posts aligned with your highest-opportunity services:
-              emergency plumbing and water heater repair.
-            </p>
-            <button
-              type="button"
-              className="mt-4 rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0B1426]"
+          {websiteOpportunities.length > 0 && (
+            <SectionCard
+              title="Website Opportunities"
+              subtitle="Priority improvements ranked by estimated ROI"
+              action="View all"
             >
-              Go to Approval Center
-            </button>
-          </div>
-        </div>
-      </SectionCard>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {websiteOpportunities.map((item) => (
+                  <article
+                    key={item.title}
+                    className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <h3 className="font-semibold text-navy-900">{item.title}</h3>
+                      <PriorityBadge priority={item.priority} />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                      <span className="rounded-full bg-growth-50 px-3 py-1 font-medium text-growth-600 ring-1 ring-emerald-100">
+                        {item.impact}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200">
+                        {item.difficulty}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {contentIdeas.length > 0 && (
+            <SectionCard title="Content Opportunities" subtitle="Article ideas based on your services and market">
+              <div className="grid gap-4 lg:grid-cols-2">
+                {contentIdeas.map((item) => (
+                  <article
+                    key={item.title}
+                    className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60"
+                  >
+                    <h3 className="font-semibold text-navy-900">{item.title}</h3>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-600 ring-1 ring-brand-100">
+                        SEO Score: {item.seoScore}
+                      </span>
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 ring-1 ring-amber-100">
+                        Competition: {item.competition}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {extraction && (
+            <SectionCard title="AI Summary" subtitle="Executive overview of your website analysis">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+                    What the AI learned
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{extraction.executiveSummary}</p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-emerald-100 bg-growth-50/50 p-4 ring-1 ring-emerald-100">
+                    <h3 className="font-semibold text-growth-600">Strengths</h3>
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                      {extraction.strengths.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4 ring-1 ring-amber-100">
+                    <h3 className="font-semibold text-amber-700">Weaknesses</h3>
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                      {(extraction.weaknesses.length ? extraction.weaknesses : extraction.seoIssues).map(
+                        (item) => (
+                          <li key={item}>• {item}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+                    Highest ROI improvements
+                  </h3>
+                  <ol className="mt-3 space-y-2 text-sm leading-7 text-slate-600">
+                    {extraction.highestRoiImprovements.map((item, index) => (
+                      <li key={item}>
+                        {index + 1}. {item}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-5 ring-1 ring-brand-100">
+                  <h3 className="font-semibold text-navy-900">Next recommended actions</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">
+                    {extraction.nextRecommendedActions}
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -159,7 +159,19 @@ function ActivityTimeline() {
   );
 }
 
-export function DashboardHome() {
+export function DashboardHome({
+  analysisMeta,
+}: {
+  analysisMeta?: {
+    statusLabel: string;
+    lastAnalyzed: string;
+    score: number | null;
+    seoScore: number | null;
+    isAnalyzing: boolean;
+    isComplete: boolean;
+    isFailed: boolean;
+  };
+}) {
   return (
     <div className="space-y-8">
       <div>
@@ -257,6 +269,70 @@ export function DashboardHome() {
         </div>
 
         <div className="space-y-6">
+          <Panel title="Website Analysis">
+            <div className="space-y-5">
+              <div
+                className={`flex items-center justify-between gap-4 rounded-xl border px-4 py-3.5 ${
+                  analysisMeta?.isFailed
+                    ? "border-rose-100 bg-rose-50"
+                    : analysisMeta?.isAnalyzing
+                      ? "border-brand-100 bg-brand-50"
+                      : "border-emerald-100 bg-growth-50"
+                }`}
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    Analysis Status
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-navy-900">
+                    {analysisMeta?.statusLabel ?? "Not started"}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold ring-1 ${
+                    analysisMeta?.isFailed
+                      ? "text-rose-600 ring-rose-100"
+                      : analysisMeta?.isAnalyzing
+                        ? "text-brand-600 ring-brand-100"
+                        : "text-growth-500 ring-emerald-100"
+                  }`}
+                >
+                  {analysisMeta?.isAnalyzing && (
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-brand-600" aria-hidden="true" />
+                  )}
+                  {analysisMeta?.isAnalyzing
+                    ? "In progress"
+                    : analysisMeta?.isComplete
+                      ? "Ready"
+                      : analysisMeta?.isFailed
+                        ? "Retry needed"
+                        : "Pending"}
+                </span>
+              </div>
+
+              <ul className="space-y-3">
+                <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-200/60">
+                  <span className="text-sm font-medium text-navy-900">Last analyzed</span>
+                  <span className="text-sm font-semibold text-slate-600">
+                    {analysisMeta?.lastAnalyzed ?? "Not yet analyzed"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-200/60">
+                  <span className="text-sm font-medium text-navy-900">Analysis score</span>
+                  <span className="text-sm font-semibold text-slate-600">
+                    {analysisMeta?.score != null ? `${analysisMeta.score}/100` : "—"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-200/60">
+                  <span className="text-sm font-medium text-navy-900">SEO score</span>
+                  <span className="text-sm font-semibold text-slate-600">
+                    {analysisMeta?.seoScore != null ? `${analysisMeta.seoScore}/100` : "—"}
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </Panel>
+
           <Panel title="Google Business Profile Status">
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4 rounded-xl border border-emerald-100 bg-growth-50 px-4 py-3.5">

@@ -1,3 +1,14 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import type { BusinessProfile } from "@/lib/business-profile";
+import {
+  profileToSettingsForm,
+  settingsFormToProfileRow,
+  type SettingsFormData,
+} from "@/lib/business-profile";
+import { fetchBusinessProfile, upsertBusinessProfile } from "@/lib/business-profile-client";
+
 function SectionCard({
   title,
   subtitle,
@@ -24,11 +35,13 @@ function SectionCard({
 
 function Field({
   label,
-  defaultValue,
+  value,
+  onChange,
   type = "text",
 }: {
   label: string;
-  defaultValue: string;
+  value: string;
+  onChange: (value: string) => void;
   type?: string;
 }) {
   return (
@@ -36,7 +49,8 @@ function Field({
       <span className="text-sm font-medium text-navy-900">{label}</span>
       <input
         type={type}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="mt-2 w-full rounded-xl border border-slate-200 bg-[#F8FAFC] px-4 py-2.5 text-sm text-navy-900 placeholder:text-slate-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
@@ -101,13 +115,75 @@ function PlatformRow({
 }
 
 export function SettingsPage() {
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [form, setForm] = useState<SettingsFormData>(profileToSettingsForm(null));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { profile: savedProfile, error: loadError } = await fetchBusinessProfile();
+
+      if (loadError) {
+        setError(loadError);
+      } else if (savedProfile) {
+        setProfile(savedProfile);
+        setForm(profileToSettingsForm(savedProfile));
+      }
+
+      setLoading(false);
+    }
+
+    loadProfile();
+  }, []);
+
+  async function handleSave(event?: FormEvent) {
+    event?.preventDefault();
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+
+    const row = settingsFormToProfileRow(
+      profile?.user_id ?? "",
+      form,
+      profile
+    );
+
+    const { error: saveError } = await upsertBusinessProfile(row);
+
+    setSaving(false);
+
+    if (saveError) {
+      setError(saveError);
+      return;
+    }
+
+    const { profile: savedProfile } = await fetchBusinessProfile();
+    if (savedProfile) {
+      setProfile(savedProfile);
+      setForm(profileToSettingsForm(savedProfile));
+    }
+
+    setMessage("Settings saved to your business profile.");
+  }
+
   const teamMembers = [
     { name: "Mike Reynolds", role: "Owner", email: "mike@riversideplumbing.com" },
     { name: "Sarah Chen", role: "Office Manager", email: "sarah@riversideplumbing.com" },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm font-medium text-text-muted">Loading settings...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
+    <form className="space-y-8" onSubmit={handleSave}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">Settings</h1>
@@ -116,22 +192,59 @@ export function SettingsPage() {
           </p>
         </div>
         <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Save Changes
+          {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
+
+      {message && (
+        <p className="rounded-xl border border-emerald-200 bg-growth-50 px-4 py-3 text-sm font-medium text-growth-600">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
+          {error}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Business Profile" subtitle="Information used across your AJN workspace">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Business name" defaultValue="Riverside Plumbing Co." />
-            <Field label="Industry" defaultValue="Plumbing & HVAC" />
-            <Field label="Website" defaultValue="https://riversideplumbing.com" />
-            <Field label="Phone" defaultValue="(555) 482-9100" type="tel" />
-            <Field label="City" defaultValue="Danville" />
-            <Field label="State" defaultValue="California" />
+            <Field
+              label="Business name"
+              value={form.businessName}
+              onChange={(value) => setForm((current) => ({ ...current, businessName: value }))}
+            />
+            <Field
+              label="Industry"
+              value={form.industry}
+              onChange={(value) => setForm((current) => ({ ...current, industry: value }))}
+            />
+            <Field
+              label="Website"
+              value={form.website}
+              onChange={(value) => setForm((current) => ({ ...current, website: value }))}
+            />
+            <Field
+              label="Phone"
+              value={form.phone}
+              onChange={(value) => setForm((current) => ({ ...current, phone: value }))}
+              type="tel"
+            />
+            <Field
+              label="City"
+              value={form.city}
+              onChange={(value) => setForm((current) => ({ ...current, city: value }))}
+            />
+            <Field
+              label="State"
+              value={form.state}
+              onChange={(value) => setForm((current) => ({ ...current, state: value }))}
+            />
           </div>
         </SectionCard>
 
@@ -163,13 +276,25 @@ export function SettingsPage() {
 
       <SectionCard title="Brand Voice" subtitle="Guide how AJN AI writes for your business">
         <div className="grid gap-4 lg:grid-cols-3">
-          <Field label="Tone" defaultValue="Friendly, professional, and local" />
-          <Field label="Words to use" defaultValue="Trusted, reliable, local, expert, fast" />
-          <Field label="Words to avoid" defaultValue="Cheap, discount, lowest price, generic" />
+          <Field
+            label="Tone"
+            value={form.tone}
+            onChange={(value) => setForm((current) => ({ ...current, tone: value }))}
+          />
+          <Field
+            label="Words to use"
+            value={form.wordsToUse}
+            onChange={(value) => setForm((current) => ({ ...current, wordsToUse: value }))}
+          />
+          <Field
+            label="Words to avoid"
+            value={form.wordsToAvoid}
+            onChange={(value) => setForm((current) => ({ ...current, wordsToAvoid: value }))}
+          />
         </div>
         <p className="mt-4 text-sm leading-6 text-text-muted">
-          AJN AI uses these settings when drafting posts, review replies, and email content for
-          Riverside Plumbing Co.
+          AJN AI uses these settings when drafting posts, review replies, and email content for{" "}
+          {form.businessName || "your business"}.
         </p>
       </SectionCard>
 
@@ -203,10 +328,14 @@ export function SettingsPage() {
           <div className="space-y-3">
             <PlatformRow
               name="Google Business Profile"
-              status="Synced daily · Danville location"
+              status={`Synced daily · ${form.city || "your city"} location`}
               connected
             />
-            <PlatformRow name="Facebook" status="Page connected · Riverside Plumbing" connected />
+            <PlatformRow
+              name="Facebook"
+              status={`Page connected · ${form.businessName || "your business"}`}
+              connected
+            />
             <PlatformRow name="Instagram" status="Not yet connected" connected={false} />
             <PlatformRow name="LinkedIn" status="Company page connected" connected />
           </div>
@@ -215,12 +344,13 @@ export function SettingsPage() {
 
       <div className="flex justify-end">
         <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-full bg-[#081426] px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center justify-center rounded-full bg-[#081426] px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Save Changes
+          {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
-    </div>
+    </form>
   );
 }

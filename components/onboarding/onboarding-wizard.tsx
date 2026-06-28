@@ -6,12 +6,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   initialOnboardingData,
-  loadOnboardingDraft,
-  markOnboardingComplete,
   marketingGoalOptions,
-  saveOnboardingDraft,
   type OnboardingData,
 } from "@/lib/onboarding-storage";
+import { profileRowToOnboardingData } from "@/lib/business-profile";
+import { fetchBusinessProfile, saveOnboardingProgress } from "@/lib/business-profile-client";
 
 const STEPS = [
   "Welcome",
@@ -88,10 +87,23 @@ export function OnboardingWizard() {
   const [data, setData] = useState<OnboardingData>(initialOnboardingData);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const draft = loadOnboardingDraft();
-    if (draft) setData(draft);
+    async function loadProfile() {
+      const { profile, error } = await fetchBusinessProfile();
+
+      if (error) {
+        setSavedNotice(`Could not load saved progress: ${error}`);
+      } else if (profile) {
+        setData(profileRowToOnboardingData(profile));
+      }
+
+      setLoading(false);
+    }
+
+    loadProfile();
   }, []);
 
   function updateField<K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) {
@@ -107,13 +119,44 @@ export function OnboardingWizard() {
     }));
   }
 
-  function handleSaveAndContinueLater() {
-    saveOnboardingDraft(data);
-    setSavedNotice("Progress saved on this device. You can return anytime to finish setup.");
+  async function persistProgress(onboardingCompleted = false) {
+    setSaving(true);
+    const { error } = await saveOnboardingProgress(data, onboardingCompleted);
+    setSaving(false);
+
+    if (error) {
+      setSavedNotice(`Could not save progress: ${error}`);
+      return false;
+    }
+
+    return true;
   }
 
-  function handleFinish() {
-    markOnboardingComplete();
+  async function handleSaveAndContinueLater() {
+    const saved = await persistProgress(false);
+    if (!saved) return;
+
+    setSavedNotice("Progress saved to your account. You can continue on any device.");
+  }
+
+  async function handleContinue() {
+    if (step === 0) {
+      setStep(1);
+      return;
+    }
+
+    const saved = await persistProgress(false);
+    if (!saved) return;
+
+    setStep((current) => current + 1);
+  }
+
+  async function handleFinish() {
+    const saved = await persistProgress(true);
+    if (!saved) return;
+
+    void fetch("/api/website-analysis", { method: "POST" });
+
     setCompleted(true);
     window.setTimeout(() => {
       router.push("/dashboard");
@@ -122,6 +165,14 @@ export function OnboardingWizard() {
   }
 
   const progress = ((step + 1) / STEPS.length) * 100;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-full items-center justify-center bg-[#F8FAFC] px-6 py-16">
+        <p className="text-sm font-medium text-text-muted">Loading your setup...</p>
+      </div>
+    );
+  }
 
   if (completed) {
     return (
@@ -531,18 +582,20 @@ export function OnboardingWizard() {
               {step < STEPS.length - 1 ? (
                 <button
                   type="button"
-                  onClick={() => setStep((current) => current + 1)}
-                  className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-600/20 transition-colors hover:bg-brand-700"
+                  onClick={handleContinue}
+                  disabled={saving}
+                  className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-600/20 transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {step === 0 ? "Start Setup" : "Continue"}
+                  {saving ? "Saving..." : step === 0 ? "Start Setup" : "Continue"}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleFinish}
-                  className="rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
+                  disabled={saving}
+                  className="rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Finish Setup
+                  {saving ? "Saving..." : "Finish Setup"}
                 </button>
               )}
             </div>

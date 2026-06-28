@@ -1,6 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { BusinessProfile } from "@/lib/business-profile";
+import { displayValue, parseWordList } from "@/lib/business-profile";
+import { fetchBusinessProfile, upsertBusinessProfile } from "@/lib/business-profile-client";
+import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
+import { formatRelativeTime } from "@/lib/website-analysis/persistence";
+import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 
 function SectionCard({
   title,
@@ -53,8 +59,15 @@ function WordChip({ word, tone }: { word: string; tone: "use" | "avoid" }) {
   );
 }
 
-function VoiceHero() {
+function VoiceHero({
+  matchScore,
+  lastLearned,
+}: {
+  matchScore: number | null;
+  lastLearned: string;
+}) {
   const sources = ["Website", "Google Profile", "Reviews"];
+  const score = matchScore ?? 0;
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#081426] to-[#0B1426] p-6 shadow-lg shadow-slate-300/30 ring-1 ring-slate-900/[0.04] sm:p-8">
@@ -64,13 +77,15 @@ function VoiceHero() {
             Voice Match Score
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-4">
-            <p className="text-5xl font-bold tracking-tight text-white sm:text-6xl">94%</p>
+            <p className="text-5xl font-bold tracking-tight text-white sm:text-6xl">
+              {matchScore != null ? `${matchScore}%` : "—"}
+            </p>
             <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-growth-500/15 px-3 py-1.5 text-sm font-semibold text-growth-500 ring-1 ring-emerald-400/20">
               Strong Match
             </span>
           </div>
           <p className="mt-4 text-sm text-slate-400">
-            Last learned: <span className="font-medium text-slate-300">2 hours ago</span>
+            Last learned: <span className="font-medium text-slate-300">{lastLearned}</span>
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -99,11 +114,11 @@ function VoiceHero() {
                 stroke="#22C55E"
                 strokeWidth="3"
                 strokeLinecap="round"
-                strokeDasharray="94 100"
+                strokeDasharray={`${score} 100`}
               />
             </svg>
             <div className="absolute text-center">
-              <p className="text-3xl font-bold text-white">94%</p>
+              <p className="text-3xl font-bold text-white">{matchScore ?? "—"}</p>
               <p className="text-xs font-medium text-slate-400">Match</p>
             </div>
           </div>
@@ -122,9 +137,77 @@ const toneOptions = [
 ];
 
 export function BrandVoicePage() {
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [analysis, setAnalysis] = useState<WebsiteAnalysis | null>(null);
   const [selectedTones, setSelectedTones] = useState<string[]>(["More Friendly"]);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const [{ profile: savedProfile }, { analysis: savedAnalysis }] = await Promise.all([
+        fetchBusinessProfile(),
+        fetchWebsiteAnalysis(),
+      ]);
+
+      if (savedProfile) {
+        setProfile(savedProfile);
+        setNotes(savedProfile.voice_notes ?? "");
+      }
+
+      if (savedAnalysis) {
+        setAnalysis(savedAnalysis);
+      }
+
+      setLoading(false);
+    }
+
+    loadProfile();
+  }, []);
+
+  const businessName = displayValue(
+    analysis?.raw_summary?.businessName ?? profile?.business_name,
+    "your business"
+  );
+  const tone = displayValue(
+    analysis?.tone ?? analysis?.raw_summary?.tone ?? profile?.brand_voice_tone,
+    "Friendly and professional"
+  );
+  const wordsToUse = analysis?.keywords?.length
+    ? analysis.keywords
+    : parseWordList(profile?.preferred_words, [
+        "fast service",
+        "local experts",
+        "trusted",
+        "reliable",
+        "emergency help",
+        "family-owned",
+        "professional",
+      ]);
+  const wordsToAvoid = parseWordList(profile?.avoid_words, [
+    "cheap",
+    "guaranteed miracle",
+    "best ever",
+    "complicated jargon",
+    "aggressive sales language",
+  ]);
+  const exampleParagraph =
+    analysis?.brand_voice ??
+    analysis?.raw_summary?.brandVoice ??
+    profile?.voice_notes?.trim() ??
+    "We are a local team focused on honest service, fast response, and building long-term trust in our community.";
+
+  const writingStyle = [
+    { label: "Tone", value: tone },
+    {
+      label: "Reading Level",
+      value: displayValue(analysis?.raw_summary?.readingLevel, "Easy to understand"),
+    },
+    { label: "Sentence Style", value: "Short and clear" },
+    { label: "Marketing Style", value: "Helpful, not pushy" },
+    { label: "Call-To-Action Style", value: "Direct and practical" },
+  ];
 
   const personalities = [
     {
@@ -149,51 +232,25 @@ export function BrandVoicePage() {
     },
   ];
 
-  const writingStyle = [
-    { label: "Tone", value: "Friendly and professional" },
-    { label: "Reading Level", value: "Easy to understand" },
-    { label: "Sentence Style", value: "Short and clear" },
-    { label: "Marketing Style", value: "Helpful, not pushy" },
-    { label: "Call-To-Action Style", value: "Direct and practical" },
-  ];
-
-  const wordsToUse = [
-    "fast service",
-    "local experts",
-    "trusted",
-    "reliable",
-    "emergency help",
-    "family-owned",
-    "professional",
-  ];
-
-  const wordsToAvoid = [
-    "cheap",
-    "guaranteed miracle",
-    "best ever",
-    "complicated jargon",
-    "aggressive sales language",
-  ];
-
   const samples = [
     {
       type: "Google Business Profile post",
-      text: "Spring is a great time for a plumbing check-up. Our local team helps Danville homeowners catch small issues before they become costly repairs. Call Riverside Plumbing Co. today.",
+      text: `Spring is a great time for a check-up. ${businessName} helps local homeowners catch small issues early. Call us today for same-day service.`,
       match: 96,
     },
     {
       type: "Review reply",
-      text: "Thank you, Sarah! We're glad we could resolve your water heater issue quickly. We appreciate your trust and look forward to helping you again.",
+      text: "Thank you, Sarah! We're glad we could resolve your issue quickly. We appreciate your trust and look forward to helping you again.",
       match: 94,
     },
     {
       type: "Facebook post",
-      text: "Same-day service matters when a pipe bursts. Our licensed team is ready to help Danville families get back to normal — fast, honest, and local.",
+      text: `Same-day service matters when you need help fast. ${businessName} is ready to serve local families — fast, honest, and professional.`,
       match: 92,
     },
     {
       type: "Blog intro",
-      text: "Not sure if your water heater is on its last legs? Here are five signs Danville homeowners should watch for — and when to call a trusted local plumber.",
+      text: `Not sure if it's time for a replacement? Here are five signs local homeowners should watch for — and when to call ${businessName}.`,
       match: 93,
     },
   ];
@@ -215,8 +272,29 @@ export function BrandVoicePage() {
   }
 
   function handleSaveNotes() {
-    setNotesSaved(true);
-    window.setTimeout(() => setNotesSaved(false), 3000);
+    if (!profile) {
+      setNotesSaved(true);
+      window.setTimeout(() => setNotesSaved(false), 3000);
+      return;
+    }
+
+    void upsertBusinessProfile({
+      ...profile,
+      voice_notes: notes || null,
+    }).then(({ error }) => {
+      if (!error) {
+        setNotesSaved(true);
+        window.setTimeout(() => setNotesSaved(false), 3000);
+      }
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm font-medium text-text-muted">Loading brand voice profile...</p>
+      </div>
+    );
   }
 
   return (
@@ -244,7 +322,10 @@ export function BrandVoicePage() {
         </div>
       </div>
 
-      <VoiceHero />
+      <VoiceHero
+        matchScore={analysis?.analysis_score ?? null}
+        lastLearned={formatRelativeTime(analysis?.updated_at ?? analysis?.created_at)}
+      />
 
       <SectionCard title="Brand Personality" subtitle="Core traits AJN AI uses when writing for you">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -274,6 +355,12 @@ export function BrandVoicePage() {
             </article>
           ))}
         </div>
+        <blockquote className="mt-4 rounded-xl border border-slate-100 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Example from your business profile
+          </p>
+          <p className="mt-3 text-sm leading-7 text-slate-600">&ldquo;{exampleParagraph}&rdquo;</p>
+        </blockquote>
       </SectionCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -363,7 +450,7 @@ export function BrandVoicePage() {
             className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] px-4 py-3 text-sm text-navy-900 placeholder:text-slate-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
           {notesSaved && (
-            <p className="mt-3 text-sm font-medium text-growth-500">Notes saved on this device.</p>
+            <p className="mt-3 text-sm font-medium text-growth-500">Notes saved to your business profile.</p>
           )}
           <button
             type="button"

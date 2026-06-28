@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
+import { isOnboardingCompleteForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -15,6 +16,12 @@ export default async function OnboardingPage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  const onboardingComplete = await isOnboardingCompleteForUser();
+
+  if (onboardingComplete) {
+    redirect("/dashboard");
   }
 
   return <OnboardingWizard />;
