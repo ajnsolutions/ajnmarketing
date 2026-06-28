@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { GoogleBusinessHomeStats } from "@/lib/google-business/types";
 import type { MarketingAgentTaskStats } from "@/lib/marketing-agent/types";
 
 function KpiCard({
@@ -176,6 +177,7 @@ export function DashboardHome({
   analysisMeta,
   approvalStats,
   taskStats,
+  gbpStats,
 }: {
   analysisMeta?: {
     statusLabel: string;
@@ -192,6 +194,7 @@ export function DashboardHome({
     rejected: number;
   };
   taskStats?: MarketingAgentTaskStats;
+  gbpStats?: GoogleBusinessHomeStats;
 }) {
   return (
     <div className="space-y-8">
@@ -203,6 +206,51 @@ export function DashboardHome({
           Welcome back, Mike. Here&apos;s what&apos;s happening with Riverside Plumbing
           today.
         </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard
+          label="Average Rating"
+          value={gbpStats?.connected ? gbpStats.averageRating?.toFixed(1) ?? "—" : "—"}
+          delta={gbpStats?.connected ? "Google Business Profile" : "Connect GBP to sync"}
+          trend="neutral"
+          period="google reviews"
+        />
+        <KpiCard
+          label="New Reviews"
+          value={gbpStats?.connected ? String(gbpStats.newReviewsThisMonth) : "—"}
+          delta="This month"
+          trend="up"
+          period="google reviews"
+        />
+        <KpiCard
+          label="Website Clicks"
+          value={gbpStats?.connected ? String(gbpStats.websiteClicks) : "—"}
+          delta="From Google profile"
+          trend="neutral"
+          period="google insights"
+        />
+        <KpiCard
+          label="Phone Calls"
+          value={gbpStats?.connected ? String(gbpStats.phoneCalls) : "—"}
+          delta="From Google profile"
+          trend="neutral"
+          period="google insights"
+        />
+        <KpiCard
+          label="Profile Views"
+          value={gbpStats?.connected ? String(gbpStats.profileViews) : "—"}
+          delta="Search + Maps this month"
+          trend="neutral"
+          period="google insights"
+        />
+        <KpiCard
+          label="Pending Review Replies"
+          value={gbpStats?.connected ? String(gbpStats.pendingReviewReplies) : "—"}
+          delta="Needs response"
+          trend="neutral"
+          period="google reviews"
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -446,60 +494,104 @@ export function DashboardHome({
             </div>
           </Panel>
 
-          <Panel title="Google Business Profile Status">
+          <Panel title="Google Business Profile Status" action="Open GBP" actionHref="/dashboard/google-business-profile">
             <div className="space-y-5">
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-emerald-100 bg-growth-50 px-4 py-3.5">
+              <div
+                className={`flex items-center justify-between gap-4 rounded-xl border px-4 py-3.5 ${
+                  gbpStats?.connected
+                    ? "border-emerald-100 bg-growth-50"
+                    : "border-slate-100 bg-[#F8FAFC]"
+                }`}
+              >
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    Profile Health
+                    Connection
                   </p>
-                  <p className="mt-1 text-lg font-bold text-navy-900">Strong</p>
+                  <p className="mt-1 text-lg font-bold text-navy-900">
+                    {gbpStats?.connected ? "Connected" : "Not connected"}
+                  </p>
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-growth-500 ring-1 ring-emerald-100">
-                  <span className="h-2 w-2 rounded-full bg-growth-500" aria-hidden="true" />
-                  Healthy
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold ring-1 ${
+                    gbpStats?.connected
+                      ? "text-growth-500 ring-emerald-100"
+                      : "text-slate-500 ring-slate-200"
+                  }`}
+                >
+                  {gbpStats?.connected ? "Live data" : "Setup required"}
                 </span>
               </div>
 
               <ul className="space-y-3">
                 {[
-                  "Profile Complete",
-                  "Verified",
-                  "Posting Weekly",
-                  "Reviews Responded",
+                  {
+                    label: "Average Rating",
+                    value: gbpStats?.averageRating?.toFixed(1) ?? "—",
+                  },
+                  {
+                    label: "New Reviews This Month",
+                    value: gbpStats?.connected ? String(gbpStats.newReviewsThisMonth) : "—",
+                  },
+                  {
+                    label: "Profile Views",
+                    value: gbpStats?.connected ? String(gbpStats.profileViews) : "—",
+                  },
+                  {
+                    label: "Website Clicks",
+                    value: gbpStats?.connected ? String(gbpStats.websiteClicks) : "—",
+                  },
+                  {
+                    label: "Phone Calls",
+                    value: gbpStats?.connected ? String(gbpStats.phoneCalls) : "—",
+                  },
+                  {
+                    label: "Pending Review Replies",
+                    value: gbpStats?.connected ? String(gbpStats.pendingReviewReplies) : "—",
+                  },
                 ].map((item) => (
                   <li
-                    key={item}
-                    className="flex items-center gap-3 text-sm font-medium text-navy-900"
+                    key={item.label}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-200/60"
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-growth-50 text-xs text-growth-500 ring-1 ring-emerald-100">
-                      ✓
-                    </span>
-                    {item}
+                    <span className="text-sm font-medium text-navy-900">{item.label}</span>
+                    <span className="text-sm font-semibold text-slate-600">{item.value}</span>
                   </li>
                 ))}
               </ul>
             </div>
           </Panel>
 
-          <Panel title="Recent Reviews" action="View all">
-            <ul className="space-y-3">
-              {[
-                { name: "Sarah T.", rating: "5.0", text: "Fast, professional, and easy to work with." },
-                { name: "Daniel M.", rating: "5.0", text: "Showed up on time and explained everything clearly." },
-              ].map((review) => (
-                <li
-                  key={review.name}
-                  className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-navy-900">{review.name}</p>
-                    <p className="text-sm font-semibold text-amber-500">★ {review.rating}</p>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{review.text}</p>
-                </li>
-              ))}
-            </ul>
+          <Panel title="Recent Reviews" action="View all" actionHref="/dashboard/google-business-profile">
+            {!gbpStats?.connected ? (
+              <p className="text-sm text-text-muted">
+                Connect Google Business Profile to see recent reviews.
+              </p>
+            ) : gbpStats.recentReviews.length === 0 ? (
+              <p className="text-sm text-text-muted">
+                No reviews synced yet. Refresh data on the Google Business Profile page.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {gbpStats.recentReviews.map((review) => (
+                  <li
+                    key={review.id}
+                    className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold text-navy-900">
+                        {review.reviewer_name ?? "Google reviewer"}
+                      </p>
+                      <p className="text-sm font-semibold text-amber-500">
+                        ★ {review.rating.toFixed(1)}
+                      </p>
+                    </div>
+                    {review.comment && (
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{review.comment}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Panel>
 
           <Panel title="Recent Activity" action="View all">

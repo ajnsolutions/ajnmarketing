@@ -1,62 +1,20 @@
 import Link from "next/link";
-
-function MiniSparkline({ trend }: { trend: "up" | "down" | "neutral" }) {
-  const paths = {
-    up: "M2 14 L8 11 L14 12 L20 8 L26 6",
-    down: "M2 6 L8 9 L14 8 L20 12 L26 14",
-    neutral: "M2 10 L8 10 L14 9 L20 10 L26 10",
-  };
-
-  const colors = {
-    up: "#22C55E",
-    down: "#EF4444",
-    neutral: "#94A3B8",
-  };
-
-  return (
-    <svg viewBox="0 0 28 16" className="h-4 w-14" aria-hidden="true">
-      <path
-        d={paths[trend]}
-        fill="none"
-        stroke={colors[trend]}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+import { GoogleBusinessReviewCard } from "@/components/dashboard/google-business-review-card";
+import { GoogleBusinessSyncButton } from "@/components/dashboard/google-business-sync-button";
+import { formatGoogleSyncDate } from "@/lib/google-business/persistence";
+import type { GoogleBusinessDashboardData, GoogleBusinessPost } from "@/lib/google-business/types";
 
 function MetricCard({
   label,
   value,
-  delta,
-  trend,
 }: {
   label: string;
   value: string;
-  delta: string;
-  trend: "up" | "down" | "neutral";
 }) {
-  const trendColor = {
-    up: "text-growth-500",
-    down: "text-rose-500",
-    neutral: "text-slate-500",
-  }[trend];
-
   return (
     <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03]">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-text-muted">{label}</p>
-        <MiniSparkline trend={trend} />
-      </div>
+      <p className="text-sm font-medium text-text-muted">{label}</p>
       <p className="mt-3 text-3xl font-bold tracking-tight text-navy-900">{value}</p>
-      <p className={`mt-2 text-sm font-semibold ${trendColor}`}>
-        {trend === "up" && "↑ "}
-        {trend === "down" && "↓ "}
-        {delta}
-      </p>
-      <p className="mt-1 text-xs text-slate-400">vs last month</p>
     </article>
   );
 }
@@ -64,137 +22,159 @@ function MetricCard({
 function SectionCard({
   title,
   subtitle,
-  action,
   children,
-  className = "",
 }: {
   title: string;
   subtitle?: string;
-  action?: string;
   children: React.ReactNode;
-  className?: string;
 }) {
   return (
-    <section
-      className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] ${className}`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
-        <div>
-          <h2 className="text-base font-bold tracking-tight text-navy-900 sm:text-lg">
-            {title}
-          </h2>
-          {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
-        </div>
-        {action && (
-          <button
-            type="button"
-            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
-          >
-            {action}
-          </button>
-        )}
+    <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03]">
+      <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+        <h2 className="text-base font-bold tracking-tight text-navy-900 sm:text-lg">{title}</h2>
+        {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
       </div>
       <div className="px-5 py-4 sm:px-6 sm:py-5">{children}</div>
     </section>
   );
 }
 
-function PriorityBadge({ priority }: { priority: "High" | "Medium" | "Low" }) {
-  const styles = {
-    High: "bg-rose-50 text-rose-600 ring-rose-100",
-    Medium: "bg-amber-50 text-amber-700 ring-amber-100",
-    Low: "bg-slate-100 text-slate-600 ring-slate-200",
-  }[priority];
-
+function EmptyState({ message }: { message: string }) {
   return (
-    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${styles}`}>
-      {priority}
-    </span>
+    <div className="rounded-xl border border-dashed border-slate-200 bg-[#F8FAFC] px-5 py-8 text-center ring-1 ring-slate-200/60">
+      <p className="text-sm text-text-muted">{message}</p>
+    </div>
   );
 }
 
-function StatusBadge({
-  status,
+function PostList({ posts, emptyMessage }: { posts: GoogleBusinessPost[]; emptyMessage: string }) {
+  if (posts.length === 0) {
+    return <EmptyState message={emptyMessage} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {posts.slice(0, 6).map((post) => (
+        <article
+          key={post.id}
+          className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
+              {post.status}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+              {post.source === "local" ? "Local draft" : "Google"}
+            </span>
+          </div>
+          <p className="mt-3 font-semibold text-navy-900">
+            {post.title ?? post.summary?.slice(0, 80) ?? "Google Business post"}
+          </p>
+          {post.summary && (
+            <p className="mt-2 text-sm leading-6 text-slate-600">{post.summary}</p>
+          )}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function GrowthChart({
+  labels,
+  values,
+  color,
+  title,
 }: {
-  status: "Ready" | "Scheduled" | "Needs Approval" | "Draft Ready" | "Approved" | "Needs Review";
+  labels: string[];
+  values: number[];
+  color: string;
+  title: string;
 }) {
-  const styles = {
-    Ready: "bg-growth-50 text-growth-500 ring-emerald-100",
-    Scheduled: "bg-brand-50 text-brand-600 ring-brand-100",
-    "Needs Approval": "bg-amber-50 text-amber-700 ring-amber-100",
-    "Draft Ready": "bg-brand-50 text-brand-600 ring-brand-100",
-    Approved: "bg-growth-50 text-growth-500 ring-emerald-100",
-    "Needs Review": "bg-amber-50 text-amber-700 ring-amber-100",
-  }[status];
+  if (labels.length === 0 || values.length === 0) {
+    return null;
+  }
+
+  const max = Math.max(...values, 1);
+  const width = 560;
+  const height = 120;
+  const step = values.length > 1 ? width / (values.length - 1) : width;
+
+  const points = values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - (value / max) * (height - 16) - 8;
+      return `${x},${y}`;
+    })
+    .join(" ");
 
   return (
-    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${styles}`}>
-      {status}
-    </span>
+    <div className="overflow-hidden rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">{title}</p>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" aria-hidden="true">
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+      </svg>
+      <div className="mt-2 flex justify-between text-[10px] text-slate-400">
+        <span>{labels[0]}</span>
+        <span>{labels[labels.length - 1]}</span>
+      </div>
+    </div>
   );
 }
 
-export function GoogleBusinessProfilePage() {
-  const rankings: {
-    keyword: string;
-    position: string;
-    change: string;
-    trend: "up" | "down" | "neutral";
-  }[] = [
-    { keyword: "plumber near me", position: "#2", change: "Up 2", trend: "up" },
-    { keyword: "emergency plumbing danville", position: "#1", change: "Up 1", trend: "up" },
-    { keyword: "water heater repair", position: "#4", change: "No change", trend: "neutral" },
-    { keyword: "drain cleaning near me", position: "#3", change: "Up 3", trend: "up" },
-  ];
+function formatAddress(addressJson: Record<string, unknown>): string {
+  const parts = [
+    addressJson.addressLines,
+    addressJson.locality,
+    addressJson.administrativeArea,
+    addressJson.postalCode,
+  ]
+    .flat()
+    .filter(Boolean);
 
-  const reviews = [
-    {
-      name: "Sarah T.",
-      rating: "5.0",
-      text: "Fast response, clear pricing, and excellent work. Highly recommend for any plumbing issue.",
-      badge: "Draft Ready" as const,
-    },
-    {
-      name: "Daniel M.",
-      rating: "5.0",
-      text: "Professional team and great communication from start to finish.",
-      badge: "Approved" as const,
-    },
-    {
-      name: "Jennifer K.",
-      rating: "4.0",
-      text: "Good service overall. Would appreciate a quicker callback next time.",
-      badge: "Needs Review" as const,
-    },
-  ];
+  return parts.length > 0 ? parts.join(", ") : "—";
+}
 
-  const recommendations = [
-    {
-      title: "Add 5 new job photos this week",
-      priority: "High" as const,
-      status: "Ready" as const,
-    },
-    {
-      title: "Publish your weekly Google post",
-      priority: "High" as const,
-      status: "Scheduled" as const,
-    },
-    {
-      title: "Respond to 3 reviews",
-      priority: "Medium" as const,
-      status: "Needs Approval" as const,
-    },
-    {
-      title: "Add drain cleaning as a highlighted service",
-      priority: "Medium" as const,
-      status: "Ready" as const,
-    },
-    {
-      title: "Update holiday hours before next month",
-      priority: "Low" as const,
-      status: "Scheduled" as const,
-    },
-  ];
+export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashboardData }) {
+  if (data.setupRequired) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
+          Google Business Profile
+        </h1>
+        <EmptyState message={data.setupMessage ?? "Google OAuth setup is required before connecting."} />
+        <Link
+          href="/dashboard/google-business-profile/connect"
+          className="inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Open Connection Settings
+        </Link>
+      </div>
+    );
+  }
+
+  if (!data.connected) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
+          Google Business Profile
+        </h1>
+        <EmptyState message="Connect your Google Business Profile to sync locations, reviews, posts, and performance insights." />
+        <Link
+          href="/dashboard/google-business-profile/connect"
+          className="inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Connect Google Business Profile
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -206,11 +186,14 @@ export function GoogleBusinessProfilePage() {
             </h1>
             <span className="inline-flex items-center gap-2 rounded-full bg-growth-50 px-3 py-1 text-xs font-semibold text-growth-500 ring-1 ring-emerald-100">
               <span className="h-2 w-2 rounded-full bg-growth-500" aria-hidden="true" />
-              Connected
+              {data.connectionStatus}
             </span>
           </div>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Track your visibility, reviews, calls, and optimization progress in one place.
+            Monitor and manage your connected Google Business Profile with live synced data.
+          </p>
+          <p className="mt-1 text-xs font-medium text-slate-500">
+            Last Sync: {formatGoogleSyncDate(data.lastSyncedAt)}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -218,151 +201,96 @@ export function GoogleBusinessProfilePage() {
             href="/dashboard/google-business-profile/connect"
             className="inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
           >
-            Connect / Manage Connection
+            Manage Connection
           </Link>
-          <button
-            type="button"
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:bg-[#0B1426] hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            Optimize Profile
-          </button>
+          <GoogleBusinessSyncButton />
         </div>
       </div>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-start">
-          <div>
-            <p className="text-sm font-medium text-text-muted">Profile Health Score</p>
-            <div className="mt-3 flex flex-wrap items-end gap-4">
-              <p className="text-5xl font-bold tracking-tight text-navy-900 sm:text-6xl">92%</p>
-              <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-growth-50 px-3 py-1.5 text-sm font-semibold text-growth-500 ring-1 ring-emerald-100">
-                <span className="h-2 w-2 rounded-full bg-growth-500" aria-hidden="true" />
-                Strong
-              </span>
-            </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {[
-                { label: "Verification", value: "Verified" },
-                { label: "Completion", value: "96%" },
-                { label: "Last Optimized", value: "2 days ago" },
-                { label: "Status", value: "Active" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-slate-100 bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-200/60"
-                >
-                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-navy-900">{item.value}</p>
-                </div>
-              ))}
-            </div>
+      <SectionCard title="Sync Status" subtitle="Latest Google Business Profile sync">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
+            <p className="text-xs font-medium text-text-muted">Last Synced</p>
+            <p className="mt-2 text-sm font-semibold text-navy-900">
+              {formatGoogleSyncDate(data.lastSyncedAt)}
+            </p>
           </div>
-
-          <div>
-            <p className="text-sm font-semibold text-navy-900">Optimization checklist</p>
-            <ul className="mt-4 space-y-3">
-              {[
-                "Business info complete",
-                "Photos updated",
-                "Reviews monitored",
-                "Weekly post scheduled",
-                "Service areas verified",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm font-medium text-navy-900">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-growth-50 text-xs text-growth-500 ring-1 ring-emerald-100">
-                    ✓
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
+          <div className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
+            <p className="text-xs font-medium text-text-muted">Sync Status</p>
+            <p className="mt-2 text-sm font-semibold text-navy-900">
+              {data.latestSync?.sync_status ?? "No sync yet"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
+            <p className="text-xs font-medium text-text-muted">Reviews Synced</p>
+            <p className="mt-2 text-sm font-semibold text-navy-900">
+              {data.latestSync?.reviews_synced ?? 0}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
+            <p className="text-xs font-medium text-text-muted">Insights Synced</p>
+            <p className="mt-2 text-sm font-semibold text-navy-900">
+              {data.latestSync?.insights_synced ?? 0}
+            </p>
           </div>
         </div>
-      </section>
+        {data.latestSync?.error_message && (
+          <p className="mt-4 text-sm text-amber-700">{data.latestSync.error_message}</p>
+        )}
+      </SectionCard>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="Search Views" value="1,284" delta="+18%" trend="up" />
-        <MetricCard label="Maps Views" value="842" delta="+12%" trend="up" />
-        <MetricCard label="Phone Calls" value="47" delta="+24%" trend="up" />
-        <MetricCard label="Website Clicks" value="63" delta="+9%" trend="up" />
-        <MetricCard label="Direction Requests" value="18" delta="-4%" trend="down" />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <SectionCard
-          title="Local Rankings"
-          subtitle="How customers find you in local search"
-          action="View all keywords"
-          className="xl:col-span-2"
-        >
+      <SectionCard title="Sync History" subtitle="Recent Google Business Profile sync runs">
+        {data.syncHistory.length === 0 ? (
+          <EmptyState message="No sync history yet. Click Refresh Data to start your first sync." />
+        ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-text-muted">
-                  <th className="pb-3 pr-4 font-semibold">Keyword</th>
-                  <th className="pb-3 pr-4 font-semibold">Position</th>
-                  <th className="pb-3 font-semibold">Change</th>
+                  <th className="pb-3 pr-4 font-semibold">Started</th>
+                  <th className="pb-3 pr-4 font-semibold">Status</th>
+                  <th className="pb-3 pr-4 font-semibold">Locations</th>
+                  <th className="pb-3 pr-4 font-semibold">Reviews</th>
+                  <th className="pb-3 pr-4 font-semibold">Posts</th>
+                  <th className="pb-3 font-semibold">Insights</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rankings.map((row) => (
-                  <tr key={row.keyword}>
-                    <td className="py-4 pr-4 font-medium text-navy-900">{row.keyword}</td>
-                    <td className="py-4 pr-4 font-semibold text-brand-600">{row.position}</td>
-                    <td className="py-4">
-                      <span
-                        className={`inline-flex items-center gap-1 font-semibold ${
-                          row.trend === "up"
-                            ? "text-growth-500"
-                            : row.trend === "down"
-                              ? "text-rose-500"
-                              : "text-slate-500"
-                        }`}
-                      >
-                        {row.trend === "up" && "↑"}
-                        {row.trend === "down" && "↓"}
-                        {row.change}
-                      </span>
+                {data.syncHistory.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="py-3 pr-4 font-medium text-navy-900">
+                      {formatGoogleSyncDate(entry.started_at)}
                     </td>
+                    <td className="py-3 pr-4">{entry.sync_status}</td>
+                    <td className="py-3 pr-4">{entry.locations_synced}</td>
+                    <td className="py-3 pr-4">{entry.reviews_synced}</td>
+                    <td className="py-3 pr-4">{entry.posts_synced}</td>
+                    <td className="py-3">{entry.insights_synced}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        )}
+      </SectionCard>
 
-          <div className="mt-6 overflow-hidden rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Ranking trend
-            </p>
-            <svg viewBox="0 0 560 120" className="h-auto w-full" aria-hidden="true">
-              {[24, 48, 72, 96].map((y) => (
-                <line key={y} x1="0" y1={y} x2="560" y2={y} stroke="#E2E8F0" strokeWidth="1" />
-              ))}
-              <path
-                d="M0 78 C70 72, 140 68, 210 62 S350 48, 420 42 S500 36, 560 30"
-                fill="none"
-                stroke="#2563EB"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Business Information">
-          <dl className="space-y-4">
+      <SectionCard title="Business Overview" subtitle="Connected location information">
+        {data.location ? (
+          <dl className="grid gap-4 sm:grid-cols-2">
             {[
-              { label: "Business", value: "Riverside Plumbing Co." },
-              { label: "Category", value: "Plumber" },
-              { label: "Service Area", value: "Danville, CA + nearby cities" },
-              { label: "Phone", value: "(555) 555-0147" },
-              { label: "Website", value: "riversideplumbing.example" },
-              { label: "Hours", value: "Open today · 8:00 AM – 6:00 PM" },
-              { label: "Status", value: "Verified" },
+              { label: "Business", value: data.location.location_title ?? "—" },
+              { label: "Category", value: data.location.primary_category ?? "—" },
+              { label: "Phone", value: data.location.phone ?? "—" },
+              { label: "Website", value: data.location.website_uri ?? "—" },
+              { label: "Address", value: formatAddress(data.location.address_json) },
+              { label: "Verification", value: data.location.verification_status ?? "—" },
+              {
+                label: "Average Rating",
+                value: data.reviewSummary.averageRating?.toFixed(1) ?? "—",
+              },
+              { label: "Review Count", value: String(data.reviewSummary.reviewCount) },
             ].map((item) => (
-              <div key={item.label} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
+              <div key={item.label} className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                   {item.label}
                 </dt>
@@ -370,16 +298,39 @@ export function GoogleBusinessProfilePage() {
               </div>
             ))}
           </dl>
-        </SectionCard>
+        ) : (
+          <EmptyState message="No location synced yet. Click Refresh Data to download your Google Business location." />
+        )}
+      </SectionCard>
+
+      <div>
+        <h2 className="mb-4 text-lg font-bold text-navy-900">Performance</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <MetricCard label="Search Views" value={String(data.insights.searchViews)} />
+          <MetricCard label="Maps Views" value={String(data.insights.mapsViews)} />
+          <MetricCard label="Website Clicks" value={String(data.insights.websiteClicks)} />
+          <MetricCard label="Phone Calls" value={String(data.insights.phoneCalls)} />
+          <MetricCard label="Direction Requests" value={String(data.insights.directionRequests)} />
+        </div>
+        <p className="mt-2 text-xs text-text-muted">Current month totals from synced Google insights.</p>
       </div>
 
-      <SectionCard title="Reviews" subtitle="Monitor reputation and AI-assisted responses" action="Manage reviews">
+      <SectionCard title="Reviews" subtitle="Reputation monitoring and AI-assisted reply drafts">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "Average Rating", value: "4.9" },
-            { label: "Total Reviews", value: "128" },
-            { label: "New Reviews This Month", value: "12" },
-            { label: "Reviews Needing Response", value: "3" },
+            {
+              label: "Average Rating",
+              value: data.reviewSummary.averageRating?.toFixed(1) ?? "—",
+            },
+            { label: "Review Count", value: String(data.reviewSummary.reviewCount) },
+            {
+              label: "New Reviews This Month",
+              value: String(data.reviewSummary.newReviewsThisMonth),
+            },
+            {
+              label: "Unanswered Reviews",
+              value: String(data.reviewSummary.unansweredCount),
+            },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -391,52 +342,149 @@ export function GoogleBusinessProfilePage() {
           ))}
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          {reviews.map((review) => (
-            <article
-              key={review.name}
-              className="rounded-xl border border-slate-100 bg-white p-4 ring-1 ring-slate-200/60"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-navy-900">{review.name}</p>
-                  <p className="mt-1 text-sm font-semibold text-amber-500">★ {review.rating}</p>
-                </div>
-                <StatusBadge status={review.badge} />
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{review.text}</p>
-            </article>
-          ))}
+        <div className="mt-8 space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900">Unanswered Reviews</h3>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {data.unansweredReviews.length === 0 ? (
+                <EmptyState message="No unanswered reviews." />
+              ) : (
+                data.unansweredReviews.map((review) => (
+                  <GoogleBusinessReviewCard key={review.id} review={review} />
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900">Recent Reviews</h3>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {data.recentReviews.length === 0 ? (
+                <EmptyState message="No reviews synced yet. Click Refresh Data to download reviews." />
+              ) : (
+                data.recentReviews.map((review) => (
+                  <GoogleBusinessReviewCard key={review.id} review={review} />
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="AI Optimization Recommendations"
-        subtitle="Suggested actions to improve visibility and engagement"
-        action="View all"
-      >
-        <div className="space-y-3">
-          {recommendations.map((item) => (
-            <div
-              key={item.title}
-              className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-navy-900">{item.title}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <PriorityBadge priority={item.priority} />
-                  <StatusBadge status={item.status} />
+      <SectionCard title="Posts" subtitle="Published, scheduled, and draft Google Business posts">
+        <div className="mb-4">
+          <Link
+            href="/dashboard/content/generator"
+            className="inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
+          >
+            Create Google Post
+          </Link>
+          <p className="mt-2 text-xs text-text-muted">
+            Content is generated with the AI Content Generator and requires Approval Center approval
+            before publishing. Replies are never auto-posted.
+          </p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900">Published</h3>
+            <div className="mt-3">
+              <PostList posts={data.posts.published} emptyMessage="No published posts synced yet." />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900">Scheduled</h3>
+            <div className="mt-3">
+              <PostList posts={data.posts.scheduled} emptyMessage="No scheduled posts." />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900">Draft</h3>
+            <div className="mt-3">
+              <PostList posts={data.posts.draft} emptyMessage="No draft posts." />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Insights" subtitle="Monthly trends and top performing months">
+        {data.insights.monthlyTrends.length === 0 ? (
+          <EmptyState message="No insights synced yet. Click Refresh Data to download performance metrics." />
+        ) : (
+          <div className="space-y-6">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-text-muted">
+                    <th className="pb-3 pr-4 font-semibold">Month</th>
+                    <th className="pb-3 pr-4 font-semibold">Search</th>
+                    <th className="pb-3 pr-4 font-semibold">Maps</th>
+                    <th className="pb-3 pr-4 font-semibold">Website</th>
+                    <th className="pb-3 pr-4 font-semibold">Calls</th>
+                    <th className="pb-3 font-semibold">Directions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.insights.monthlyTrends.map((row) => (
+                    <tr key={row.month}>
+                      <td className="py-3 pr-4 font-medium text-navy-900">{row.month}</td>
+                      <td className="py-3 pr-4">{row.searchViews}</td>
+                      <td className="py-3 pr-4">{row.mapsViews}</td>
+                      <td className="py-3 pr-4">{row.websiteClicks}</td>
+                      <td className="py-3 pr-4">{row.phoneCalls}</td>
+                      <td className="py-3">{row.directionRequests}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {data.insights.topPerformingMonths.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-navy-900">Best Performing Months</h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  {data.insights.topPerformingMonths.map((month) => (
+                    <div
+                      key={month.month}
+                      className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
+                    >
+                      <p className="text-xs font-medium text-text-muted">{month.month}</p>
+                      <p className="mt-2 text-lg font-bold text-navy-900">
+                        {month.totalEngagement} engagements
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <button
-                type="button"
-                className="inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-              >
-                Review
-              </button>
-            </div>
-          ))}
-        </div>
+            )}
+
+            {data.insights.growthCharts.labels.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-navy-900">Growth Charts</h3>
+                <div className="mt-3 grid gap-4 lg:grid-cols-3">
+                  <GrowthChart
+                    title="Profile Views"
+                    labels={data.insights.growthCharts.labels}
+                    values={data.insights.growthCharts.profileViews}
+                    color="#2563EB"
+                  />
+                  <GrowthChart
+                    title="Website Clicks"
+                    labels={data.insights.growthCharts.labels}
+                    values={data.insights.growthCharts.websiteClicks}
+                    color="#22C55E"
+                  />
+                  <GrowthChart
+                    title="Phone Calls"
+                    labels={data.insights.growthCharts.labels}
+                    values={data.insights.growthCharts.phoneCalls}
+                    color="#F59E0B"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </SectionCard>
     </div>
   );
