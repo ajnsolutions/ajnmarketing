@@ -14,6 +14,24 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
 
+  const sidebarLogo = (
+    <Link
+      href="/dashboard/command-center"
+      onClick={onNavigate}
+      className="block w-full transition-opacity hover:opacity-90"
+    >
+      <Image
+        src="/images/AJN_marketing_logo_BLACK_transparent.png"
+        alt="AJN Marketing"
+        width={1024}
+        height={264}
+        priority
+        sizes="(max-width: 1024px) 224px, 192px"
+        className="h-auto max-h-14 w-full object-contain object-left"
+      />
+    </Link>
+  );
+
   const nav = (
     <div className="flex flex-1 flex-col px-3 py-5">
       <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -52,15 +70,7 @@ export function DashboardSidebar({
     <>
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-[#081426] lg:flex">
         <div className="border-b border-white/10 px-4 py-5">
-          <Link href="/dashboard/command-center" className="inline-flex transition-opacity hover:opacity-90">
-            <Image
-              src="/images/AJN_marketing_logo_BLACK.png"
-              alt="AJN Marketing"
-              width={112}
-              height={56}
-              className="h-9 w-auto"
-            />
-          </Link>
+          {sidebarLogo}
         </div>
         {nav}
         <div className="mt-auto border-t border-white/10 px-4 py-4">
@@ -80,15 +90,7 @@ export function DashboardSidebar({
             onClick={onNavigate}
           />
           <aside className="relative flex h-full w-64 max-w-[85vw] flex-col bg-[#081426] shadow-2xl">
-            <div className="border-b border-white/10 px-4 py-5">
-              <Image
-                src="/images/AJN_marketing_logo_BLACK.png"
-                alt="AJN Marketing"
-                width={112}
-                height={56}
-                className="h-9 w-auto"
-              />
-            </div>
+            <div className="border-b border-white/10 px-4 py-5">{sidebarLogo}</div>
             {nav}
           </aside>
         </div>
