@@ -3,6 +3,11 @@ import type {
   MarketingPlanCreateContentInput,
   MarketingPlanCreateContentResult,
 } from "@/lib/marketing-planner/types";
+import {
+  pollBackgroundJobUntilSettled,
+  queueBackgroundJob,
+} from "@/lib/background-jobs/client";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 
 export async function fetchMarketingPlan(): Promise<{
   plan: MarketingPlan | null;
@@ -23,19 +28,28 @@ export async function fetchMarketingPlan(): Promise<{
 
 export async function refreshMarketingPlan(): Promise<{
   plan: MarketingPlan | null;
+  jobId?: string;
   error?: string;
 }> {
-  const response = await fetch("/api/marketing-plan", { method: "POST" });
-  const payload = (await response.json()) as {
-    plan?: MarketingPlan | null;
-    error?: string;
-  };
+  const { job, error } = await queueBackgroundJob({
+    jobType: BackgroundJobTypes.MARKETING_PLAN_GENERATION,
+    priority: "high",
+  });
 
-  if (!response.ok) {
-    return { plan: null, error: payload.error ?? "Unable to generate marketing plan" };
+  if (error || !job) {
+    return { plan: null, error: error ?? "Unable to generate marketing plan" };
   }
 
-  return { plan: payload.plan ?? null };
+  const { error: pollError } = await pollBackgroundJobUntilSettled(job.id, {
+    timeoutMs: 180000,
+  });
+
+  if (pollError) {
+    return { plan: null, jobId: job.id, error: pollError };
+  }
+
+  const refreshed = await fetchMarketingPlan();
+  return { ...refreshed, jobId: job.id };
 }
 
 export async function createMarketingPlanContent(

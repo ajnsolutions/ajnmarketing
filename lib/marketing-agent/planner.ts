@@ -1,6 +1,7 @@
 import "server-only";
 
 import OpenAI from "openai";
+import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { buildBusinessIntel } from "@/lib/content-generator/prompt-builder";
 import type { ContentGenerationContext } from "@/lib/content-generator/types";
 import {
@@ -191,7 +192,7 @@ export async function generateMarketingAgentTasks(
   generationContext: ContentGenerationContext
 ): Promise<GeneratedMarketingTask[]> {
   if (!process.env.OPENAI_API_KEY?.trim()) {
-    throw new Error("Marketing agent requires OPENAI_API_KEY.");
+    throw new Error("Marketing task generation is temporarily unavailable.");
   }
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -245,16 +246,14 @@ export async function generateMarketingAgentTasks(
 }
 
 export function formatMarketingAgentError(error: unknown): string {
+  const fallback = "Marketing task generation is temporarily unavailable. Please try again later.";
+
   if (error instanceof OpenAI.APIError) {
-    if (error.status === 401) return "Marketing agent failed: OpenAI authentication error.";
-    if (error.status === 429) return "Marketing agent failed: OpenAI rate limit reached. Try again shortly.";
-    if (error.status === 503) return "Marketing agent failed: OpenAI is temporarily unavailable.";
-    return error.message || "Marketing agent failed due to an OpenAI error.";
+    if (error.status === 401) return fallback;
+    if (error.status === 429) return "Marketing task generation is busy right now. Try again shortly.";
+    if (error.status === 503) return fallback;
+    return toSafeUserErrorMessage(error, fallback);
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Marketing agent failed due to an unexpected error.";
+  return toSafeUserErrorMessage(error, fallback);
 }

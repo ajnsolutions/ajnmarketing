@@ -9,7 +9,7 @@ import {
   getGoogleBusinessProfileConnectionWithTokensForUser,
 } from "@/lib/google-business-profile/persistence";
 import type { GoogleBusinessProfileConnectionRecord } from "@/lib/google-business-profile/types";
-import { decryptToken, encryptToken } from "@/lib/security/token-encryption";
+import { decryptToken, encryptToken, TokenEncryptionError } from "@/lib/security/token-encryption";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type GoogleAccessContext = {
@@ -89,10 +89,19 @@ export async function getGoogleAccessContextForUser(
   const needsRefresh = !expiresAt || expiresAt <= Date.now() + 60_000;
 
   if (!needsRefresh) {
-    return {
-      accessToken: decryptToken(connection.access_token_encrypted),
-      connection,
-    };
+    try {
+      return {
+        accessToken: decryptToken(connection.access_token_encrypted),
+        connection,
+      };
+    } catch (error) {
+      if (error instanceof TokenEncryptionError) {
+        throw new Error(
+          "Unable to read stored Google credentials. Reconnect your Google Business Profile."
+        );
+      }
+      throw error;
+    }
   }
 
   if (!connection.refresh_token_encrypted) {
@@ -103,9 +112,19 @@ export async function getGoogleAccessContextForUser(
     throw new Error("Google connection expired. Reconnect your Google Business Profile.");
   }
 
-  const refreshed = await refreshGoogleAccessToken(
-    decryptToken(connection.refresh_token_encrypted)
-  );
+  let refreshToken: string;
+  try {
+    refreshToken = decryptToken(connection.refresh_token_encrypted);
+  } catch (error) {
+    if (error instanceof TokenEncryptionError) {
+      throw new Error(
+        "Unable to read stored Google credentials. Reconnect your Google Business Profile."
+      );
+    }
+    throw error;
+  }
+
+  const refreshed = await refreshGoogleAccessToken(refreshToken);
 
   await persistRefreshedTokens(
     supabase,

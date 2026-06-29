@@ -12,6 +12,8 @@ import {
 } from "@/lib/website-analysis/persistence";
 import type { WebsiteAnalysis, WebsiteExtractionResult } from "@/lib/website-analysis/types";
 import type { BusinessProfile } from "@/lib/business-profile";
+import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
+import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
 
 export async function queueWebsiteAnalysisForProfile(
@@ -97,6 +99,15 @@ export async function runWebsiteAnalysisForUser(userId: string): Promise<Website
     status: "running",
   });
 
+  await logAuditEvent(supabase, {
+    userId,
+    businessProfileId: typedProfile.id,
+    action: AuditActions.WEBSITE_ANALYSIS_STARTED,
+    entityType: "website_analysis",
+    status: "started",
+    metadata: { website: typedProfile.website },
+  });
+
   const website = await fetchWebsiteContentSafe(typedProfile.website!);
   const input = buildWebsiteInput(typedProfile, website);
   const extractor = createWebsiteExtractor();
@@ -125,16 +136,41 @@ export async function runWebsiteAnalysisForUser(userId: string): Promise<Website
     );
 
     const result = await saveWebsiteAnalysisResult(supabase, row);
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: typedProfile.id,
+      action: AuditActions.WEBSITE_ANALYSIS_COMPLETED,
+      entityType: "website_analysis",
+      entityId: result?.id ?? null,
+      status: "success",
+      metadata: {
+        analysisScore: result?.analysis_score ?? null,
+        seoScore: result?.seo_score ?? null,
+      },
+    });
+
     return result;
   } catch (error) {
-    console.error("[WebsiteAnalysis] Analysis failed:", formatOpenAiError(error));
+    const safeError = sanitizeUserErrorMessage(formatOpenAiError(error), "Website analysis failed");
+    console.error("[WebsiteAnalysis] Analysis failed:", safeError);
     await markWebsiteAnalysisFailed(
       supabase,
       userId,
       typedProfile.website!,
       typedProfile.id,
-      formatOpenAiError(error)
+      safeError
     );
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: typedProfile.id,
+      action: AuditActions.WEBSITE_ANALYSIS_FAILED,
+      entityType: "website_analysis",
+      status: "failure",
+      metadata: auditErrorMetadata(error, "Website analysis failed"),
+    });
+
     return null;
   }
 }

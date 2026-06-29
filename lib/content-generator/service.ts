@@ -19,6 +19,7 @@ import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import type { BusinessProfile } from "@/lib/business-profile";
 import type { AiMarketingProfile } from "@/lib/ai-marketing-profile/types";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
+import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 
 async function loadGenerationContext(userId: string): Promise<ContentGenerationContext | null> {
@@ -44,6 +45,40 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
   };
 }
 
+export async function generateContentForUser(
+  userId: string,
+  request: ContentGenerationRequest
+): Promise<{ result: ContentGenerationResult | null; error?: string }> {
+  const supabase = await createClient();
+  const context = await loadGenerationContext(userId);
+
+  if (!context) {
+    return { result: null, error: "Business profile not found. Complete onboarding first." };
+  }
+
+  try {
+    const generator = createContentGenerator();
+    const result = await generator.generate(context, request);
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: context.businessProfile.id,
+      action: AuditActions.CONTENT_GENERATED,
+      entityType: "content_generation",
+      status: "success",
+      metadata: {
+        contentType: request.contentType,
+        variationCount: result.variations.length,
+        tone: request.tone ?? null,
+      },
+    });
+
+    return { result };
+  } catch (error) {
+    return { result: null, error: formatOpenAiContentError(error) };
+  }
+}
+
 export async function generateContentForCurrentUser(
   request: ContentGenerationRequest
 ): Promise<{ result: ContentGenerationResult | null; error?: string }> {
@@ -56,18 +91,7 @@ export async function generateContentForCurrentUser(
     return { result: null, error: "Unauthorized" };
   }
 
-  const context = await loadGenerationContext(user.id);
-  if (!context) {
-    return { result: null, error: "Business profile not found. Complete onboarding first." };
-  }
-
-  try {
-    const generator = createContentGenerator();
-    const result = await generator.generate(context, request);
-    return { result };
-  } catch (error) {
-    return { result: null, error: formatOpenAiContentError(error) };
-  }
+  return generateContentForUser(user.id, request);
 }
 
 export async function generateContentFromMarketingPlanItem(
@@ -82,6 +106,23 @@ export async function generateContentFromMarketingPlanItem(
     }
 
     const draft = await generator.generateFromMarketingPlanItem(context, request);
+
+    await logAuditEvent(await createClient(), {
+      userId: context.businessProfile.user_id,
+      businessProfileId: context.businessProfile.id,
+      action: AuditActions.CONTENT_GENERATED,
+      entityType: "content_generation",
+      status: "success",
+      metadata: {
+        contentType: mapMarketingPlanChannelToContentType(
+          request.recommendedChannel,
+          request.planItemType
+        ),
+        source: "marketing_plan",
+        planItemType: request.planItemType,
+      },
+    });
+
     return { draft };
   } catch (error) {
     return { draft: null, error: formatOpenAiContentError(error) };

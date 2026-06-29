@@ -25,7 +25,7 @@ export async function generateGoogleReviewReplyDraft(input: {
   review: GoogleBusinessReview;
 }): Promise<string> {
   if (!process.env.OPENAI_API_KEY?.trim()) {
-    throw new Error("Review reply drafting requires OPENAI_API_KEY.");
+    throw new Error("Review reply drafting is temporarily unavailable.");
   }
 
   const generationContext = await loadContentGenerationContextForUser(input.userId);

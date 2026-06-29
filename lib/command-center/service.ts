@@ -9,6 +9,7 @@ import {
   computeWeeklyWins,
 } from "@/lib/command-center/scoring";
 import type { CommandCenterPageData } from "@/lib/command-center/types";
+import { getBackgroundJobDashboardDataForCurrentUser } from "@/lib/background-jobs/server";
 
 const EMPTY_DATA: CommandCenterPageData = {
   businessName: "Business",
@@ -39,6 +40,10 @@ const EMPTY_DATA: CommandCenterPageData = {
   },
   competitorWatchMessage:
     "Live competitor monitoring is not connected yet. This section will surface competitor activity once monitoring is enabled.",
+  backgroundJobs: {
+    recent: [],
+    counts: { queued: 0, running: 0, failed: 0, completed: 0 },
+  },
 };
 
 export async function getCommandCenterPageDataForCurrentUser(): Promise<CommandCenterPageData> {
@@ -46,7 +51,10 @@ export async function getCommandCenterPageDataForCurrentUser(): Promise<CommandC
   if (!context) return EMPTY_DATA;
 
   const businessHealth = computeBusinessHealthScores(context);
-  const generated = await generateCommandCenterInsights({ context, businessHealth });
+  const [generated, backgroundJobs] = await Promise.all([
+    generateCommandCenterInsights({ context, businessHealth }),
+    getBackgroundJobDashboardDataForCurrentUser(),
+  ]);
 
   return {
     businessName: context.generationContext?.businessProfile.business_name ?? "Business",
@@ -60,5 +68,6 @@ export async function getCommandCenterPageDataForCurrentUser(): Promise<CommandC
     weeklyWins: computeWeeklyWins(context),
     competitorWatchMessage:
       "Live competitor monitoring is not connected yet. This section will surface competitor activity once monitoring is enabled.",
+    backgroundJobs,
   };
 }

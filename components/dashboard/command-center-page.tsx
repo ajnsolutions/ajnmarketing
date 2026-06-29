@@ -3,6 +3,7 @@ import {
   CommandCenterQuickActions,
   CommandCenterTakeActionButton,
 } from "@/components/dashboard/command-center-actions";
+import { CommandCenterBackgroundJobs } from "@/components/dashboard/command-center-background-jobs";
 import type { CommandCenterPageData, CommandCenterPriority } from "@/lib/command-center/types";
 
 function SectionCard({
@@ -323,6 +324,10 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
 
       <SectionCard title="Quick Actions" subtitle="Common workflows">
         <CommandCenterQuickActions />
+      </SectionCard>
+
+      <SectionCard title="Background Jobs" subtitle="Recent async work across your workspace">
+        <CommandCenterBackgroundJobs data={data.backgroundJobs} />
       </SectionCard>
     </div>
   );

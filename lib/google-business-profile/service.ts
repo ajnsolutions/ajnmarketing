@@ -16,7 +16,9 @@ import {
   upsertGoogleBusinessProfileConnection,
 } from "@/lib/google-business-profile/persistence";
 import type { GoogleBusinessProfileConnectionStatus } from "@/lib/google-business-profile/types";
-import { encryptToken } from "@/lib/security/token-encryption";
+import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
+import { encryptToken, TokenEncryptionError } from "@/lib/security/token-encryption";
+import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
 
@@ -112,9 +114,28 @@ export async function completeGoogleBusinessOAuthCallback(
       return { success: false, error: "Unable to store Google Business Profile connection" };
     }
 
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: profile.id,
+      action: AuditActions.GOOGLE_OAUTH_CONNECTED,
+      entityType: "google_business_profile_connection",
+      entityId: connection.id,
+      status: "success",
+      metadata: {
+        googleAccountEmail: userInfo.email,
+        scopes: parseGoogleOAuthScopes(tokenResponse.scope).length,
+      },
+    });
+
     return { success: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Google OAuth callback failed";
+    const message =
+      error instanceof TokenEncryptionError
+        ? "Google connection storage is not configured. Contact your workspace administrator."
+        : sanitizeUserErrorMessage(
+            error instanceof Error ? error.message : "Google OAuth callback failed",
+            "Google connection failed. Please try again."
+          );
 
     const supabase = await createClient();
     await markGoogleBusinessProfileConnectionStatus(supabase, userId, "error");

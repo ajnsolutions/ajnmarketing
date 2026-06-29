@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
-import { syncGoogleBusinessForCurrentUser } from "@/lib/google-business/service";
+import { queueBackgroundJobForCurrentUser } from "@/lib/background-jobs/service";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 
 export async function POST() {
-  const result = await syncGoogleBusinessForCurrentUser();
+  const { job, duplicate, error } = await queueBackgroundJobForCurrentUser({
+    jobType: BackgroundJobTypes.GOOGLE_BUSINESS_SYNC,
+    priority: "high",
+  });
 
-  if (!result.success && result.error === "Unauthorized") {
-    return NextResponse.json(result, { status: 401 });
+  if (error || !job) {
+    return NextResponse.json(
+      { success: false, syncLog: null, error: error ?? "Unable to queue Google Business sync" },
+      { status: error === "Unauthorized" ? 401 : 502 }
+    );
   }
 
-  if (!result.success && !result.syncLog) {
-    return NextResponse.json(result, { status: 502 });
-  }
-
-  return NextResponse.json(result);
+  return NextResponse.json({
+    success: true,
+    job,
+    duplicate: Boolean(duplicate),
+    syncLog: null,
+  });
 }

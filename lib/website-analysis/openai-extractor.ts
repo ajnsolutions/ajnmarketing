@@ -1,6 +1,7 @@
 import "server-only";
 
 import OpenAI from "openai";
+import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import type { WebsiteExtractor, WebsiteExtractionResult } from "@/lib/website-analysis/types";
 import { normalizeCustomerPersona } from "@/lib/website-analysis/customer-persona";
 import {
@@ -365,18 +366,16 @@ export class OpenAIWebsiteExtractor implements WebsiteExtractor {
 }
 
 export function formatOpenAiError(error: unknown): string {
+  const fallback = "Website analysis is temporarily unavailable. Please try again later.";
+
   if (error instanceof OpenAI.APIError) {
-    if (error.status === 401) return "AI service authentication failed. Please try again later.";
-    if (error.status === 429) return "OpenAI rate limit reached. Try again shortly.";
-    if (error.status === 503) return "OpenAI service is temporarily unavailable.";
-    return error.message || "OpenAI request failed";
+    if (error.status === 401) return fallback;
+    if (error.status === 429) return "Website analysis is busy right now. Try again shortly.";
+    if (error.status === 503) return fallback;
+    return toSafeUserErrorMessage(error, fallback);
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Website analysis failed due to an unexpected OpenAI error";
+  return toSafeUserErrorMessage(error, fallback);
 }
 
 export function isOpenAiConfigured(): boolean {

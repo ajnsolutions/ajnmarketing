@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { syncGoogleBusinessProfile } from "@/lib/google-business/client";
+import { queueBackgroundJob, pollBackgroundJobUntilSettled } from "@/lib/background-jobs/client";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 import type { CommandCenterRecommendedAction } from "@/lib/command-center/types";
 
 export function actionHref(action: CommandCenterRecommendedAction): string {
@@ -49,14 +51,26 @@ export function CommandCenterQuickActions() {
   async function runWebsiteAnalysisRefresh() {
     setBusy("analysis");
     setMessage(null);
-    const response = await fetch("/api/website-analysis", { method: "POST" });
-    if (!response.ok) {
-      const payload = (await response.json()) as { error?: string };
-      setMessage(payload.error ?? "Unable to refresh website analysis");
+
+    const { job, error } = await queueBackgroundJob({
+      jobType: BackgroundJobTypes.WEBSITE_ANALYSIS,
+      priority: "high",
+    });
+
+    if (error || !job) {
+      setMessage(error ?? "Unable to queue website analysis");
       setBusy(null);
       return;
     }
+
+    const { error: pollError } = await pollBackgroundJobUntilSettled(job.id);
     setBusy(null);
+
+    if (pollError) {
+      setMessage(pollError);
+      return;
+    }
+
     router.refresh();
   }
 

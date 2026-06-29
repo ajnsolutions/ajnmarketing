@@ -12,6 +12,7 @@ import type {
   ContentApprovalStats,
 } from "@/lib/content-approval/types";
 import type { BusinessProfile } from "@/lib/business-profile";
+import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 
 function buildRegeneratedContent(content: string, version: number): string {
@@ -50,11 +51,29 @@ export async function submitContentForApproval(
 ): Promise<ContentApproval | null> {
   const supabase = await createClient();
 
-  return createContentApproval(supabase, {
+  const approval = await createContentApproval(supabase, {
     userId,
     businessProfileId: profile.id,
     data: input,
   });
+
+  if (approval) {
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: profile.id,
+      action: AuditActions.CONTENT_SENT_TO_APPROVAL,
+      entityType: "content_approval",
+      entityId: approval.id,
+      status: "success",
+      metadata: {
+        contentType: approval.content_type,
+        source: approval.source,
+        title: approval.title,
+      },
+    });
+  }
+
+  return approval;
 }
 
 export async function patchContentApprovalForUser(
@@ -67,7 +86,7 @@ export async function patchContentApprovalForUser(
   if (!existing) return null;
 
   if (input.action === "approve") {
-    return updateContentApproval(supabase, userId, input.id, {
+    const updated = await updateContentApproval(supabase, userId, input.id, {
       status: "approved",
       approved_at: new Date().toISOString(),
       approved_by: userId,
@@ -76,10 +95,24 @@ export async function patchContentApprovalForUser(
       content: input.content ?? existing.content,
       notes: input.notes ?? existing.notes,
     });
+
+    if (updated) {
+      await logAuditEvent(supabase, {
+        userId,
+        businessProfileId: existing.business_profile_id,
+        action: AuditActions.CONTENT_APPROVED,
+        entityType: "content_approval",
+        entityId: updated.id,
+        status: "success",
+        metadata: { contentType: updated.content_type, source: updated.source },
+      });
+    }
+
+    return updated;
   }
 
   if (input.action === "reject") {
-    return updateContentApproval(supabase, userId, input.id, {
+    const updated = await updateContentApproval(supabase, userId, input.id, {
       status: "rejected",
       rejected_reason: input.rejected_reason ?? "Rejected by reviewer",
       approved_at: null,
@@ -88,6 +121,24 @@ export async function patchContentApprovalForUser(
       content: input.content ?? existing.content,
       notes: input.notes ?? existing.notes,
     });
+
+    if (updated) {
+      await logAuditEvent(supabase, {
+        userId,
+        businessProfileId: existing.business_profile_id,
+        action: AuditActions.CONTENT_REJECTED,
+        entityType: "content_approval",
+        entityId: updated.id,
+        status: "success",
+        metadata: {
+          contentType: updated.content_type,
+          source: updated.source,
+          reasonProvided: Boolean(input.rejected_reason?.trim()),
+        },
+      });
+    }
+
+    return updated;
   }
 
   if (input.action === "regenerate") {

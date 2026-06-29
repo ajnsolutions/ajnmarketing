@@ -21,6 +21,7 @@ import type {
   MarketingAgentTaskPatchInput,
   MarketingAgentTasksPageData,
 } from "@/lib/marketing-agent/types";
+import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { getPublishingQueueForUser } from "@/lib/publishing-queue/persistence";
 import { createClient } from "@/lib/supabase/server";
 
@@ -155,6 +156,82 @@ export async function getMarketingAgentTasksForCurrentUser(): Promise<MarketingA
   return buildPageData(tasks);
 }
 
+export async function regenerateMarketingAgentTasksForUser(userId: string): Promise<{
+  data: MarketingAgentTasksPageData;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const today = getTodayDateString();
+  const generationContext = await loadContentGenerationContextForUser(userId);
+
+  if (!generationContext) {
+    return {
+      data: await getMarketingAgentTasksForUserId(userId),
+      error: "Business profile not found. Complete onboarding first.",
+    };
+  }
+
+  const { context, marketingPlanId, businessProfileId } = await buildMarketingAgentContext(userId);
+
+  if (!context || !businessProfileId) {
+    return {
+      data: await getMarketingAgentTasksForUserId(userId),
+      error: "Unable to load marketing agent context.",
+    };
+  }
+
+  try {
+    const generatedTasks = await generateMarketingAgentTasks(context, generationContext);
+
+    await dismissPendingTasksForDate(supabase, userId, today);
+
+    await insertMarketingTasks(supabase, {
+      userId,
+      businessProfileId,
+      marketingPlanId,
+      dueDate: today,
+      tasks: generatedTasks,
+    });
+
+    const tasks = await getMarketingTasksForUserOnDate(supabase, userId, today);
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId,
+      action: AuditActions.MARKETING_AGENT_TASKS_GENERATED,
+      entityType: "marketing_agent_task",
+      status: "success",
+      metadata: {
+        taskCount: tasks.length,
+        dueDate: today,
+      },
+    });
+
+    return { data: buildPageData(tasks) };
+  } catch (error) {
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: businessProfileId ?? null,
+      action: AuditActions.MARKETING_AGENT_TASKS_GENERATED,
+      entityType: "marketing_agent_task",
+      status: "failure",
+      metadata: auditErrorMetadata(error, "Unable to regenerate marketing tasks"),
+    });
+
+    return {
+      data: await getMarketingAgentTasksForUserId(userId),
+      error: error instanceof Error ? error.message : "Unable to regenerate marketing tasks",
+    };
+  }
+}
+
+async function getMarketingAgentTasksForUserId(userId: string): Promise<MarketingAgentTasksPageData> {
+  const supabase = await createClient();
+  const today = getTodayDateString();
+  const tasks = await getMarketingTasksForUserOnDate(supabase, userId, today);
+  return buildPageData(tasks);
+}
+
 export async function regenerateMarketingAgentTasksForCurrentUser(): Promise<{
   data: MarketingAgentTasksPageData;
   error?: string;
@@ -174,46 +251,7 @@ export async function regenerateMarketingAgentTasksForCurrentUser(): Promise<{
     };
   }
 
-  const today = getTodayDateString();
-  const generationContext = await loadContentGenerationContextForUser(user.id);
-
-  if (!generationContext) {
-    return {
-      data: await getMarketingAgentTasksForCurrentUser(),
-      error: "Business profile not found. Complete onboarding first.",
-    };
-  }
-
-  const { context, marketingPlanId, businessProfileId } = await buildMarketingAgentContext(user.id);
-
-  if (!context || !businessProfileId) {
-    return {
-      data: await getMarketingAgentTasksForCurrentUser(),
-      error: "Unable to load marketing agent context.",
-    };
-  }
-
-  try {
-    const generatedTasks = await generateMarketingAgentTasks(context, generationContext);
-
-    await dismissPendingTasksForDate(supabase, user.id, today);
-
-    await insertMarketingTasks(supabase, {
-      userId: user.id,
-      businessProfileId,
-      marketingPlanId,
-      dueDate: today,
-      tasks: generatedTasks,
-    });
-
-    const tasks = await getMarketingTasksForUserOnDate(supabase, user.id, today);
-    return { data: buildPageData(tasks) };
-  } catch (error) {
-    return {
-      data: await getMarketingAgentTasksForCurrentUser(),
-      error: error instanceof Error ? error.message : "Unable to regenerate marketing tasks",
-    };
-  }
+  return regenerateMarketingAgentTasksForUser(user.id);
 }
 
 export async function patchMarketingAgentTaskForCurrentUser(

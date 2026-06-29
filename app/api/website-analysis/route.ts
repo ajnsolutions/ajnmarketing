@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { BusinessProfile } from "@/lib/business-profile";
+import { queueBackgroundJobForCurrentUser } from "@/lib/background-jobs/service";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
-import { runWebsiteAnalysisForUser } from "@/lib/website-analysis/service";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -42,6 +43,17 @@ export async function POST() {
     return NextResponse.json({ error: "No website configured" }, { status: 400 });
   }
 
-  const analysis = await runWebsiteAnalysisForUser(user.id);
-  return NextResponse.json({ analysis });
+  const { job, duplicate, error } = await queueBackgroundJobForCurrentUser({
+    jobType: BackgroundJobTypes.WEBSITE_ANALYSIS,
+    priority: "high",
+  });
+
+  if (error || !job) {
+    return NextResponse.json(
+      { error: error ?? "Unable to queue website analysis" },
+      { status: error === "Unauthorized" ? 401 : 502 }
+    );
+  }
+
+  return NextResponse.json({ job, duplicate: Boolean(duplicate) });
 }

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import {
   getMarketingAgentTasksForCurrentUser,
   patchMarketingAgentTaskForCurrentUser,
-  regenerateMarketingAgentTasksForCurrentUser,
 } from "@/lib/marketing-agent/service";
+import { queueBackgroundJobForCurrentUser } from "@/lib/background-jobs/service";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 import type { MarketingAgentTaskPatchInput } from "@/lib/marketing-agent/types";
 
 export async function GET() {
@@ -12,13 +13,23 @@ export async function GET() {
 }
 
 export async function POST() {
-  const { data, error } = await regenerateMarketingAgentTasksForCurrentUser();
+  const { job, duplicate, error } = await queueBackgroundJobForCurrentUser({
+    jobType: BackgroundJobTypes.AI_TASK_GENERATION,
+    priority: "normal",
+  });
 
-  if (error) {
-    return NextResponse.json({ ...data, error }, { status: error === "Unauthorized" ? 401 : 502 });
+  if (error || !job) {
+    return NextResponse.json(
+      {
+        tasks: [],
+        stats: { dueToday: 0, completedToday: 0, highPriorityPending: 0, topPriority: null },
+        error: error ?? "Unable to queue AI task generation",
+      },
+      { status: error === "Unauthorized" ? 401 : 502 }
+    );
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({ job, duplicate: Boolean(duplicate) });
 }
 
 export async function PATCH(request: Request) {

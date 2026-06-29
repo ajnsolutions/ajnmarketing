@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { draftGoogleReviewReplyForCurrentUser } from "@/lib/google-business/service";
+import { queueBackgroundJobForCurrentUser } from "@/lib/background-jobs/service";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { reviewId?: string };
@@ -8,14 +9,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Review id is required" }, { status: 400 });
   }
 
-  const { review, error } = await draftGoogleReviewReplyForCurrentUser(body.reviewId);
+  const { job, duplicate, error } = await queueBackgroundJobForCurrentUser({
+    jobType: BackgroundJobTypes.REVIEW_REPLY_GENERATION,
+    priority: "normal",
+    payload: { reviewId: body.reviewId },
+  });
 
-  if (error || !review) {
+  if (error || !job) {
     return NextResponse.json(
-      { error: error ?? "Unable to draft review reply" },
+      { error: error ?? "Unable to queue review reply generation" },
       { status: error === "Unauthorized" ? 401 : 502 }
     );
   }
 
-  return NextResponse.json({ review });
+  return NextResponse.json({ job, duplicate: Boolean(duplicate) });
 }

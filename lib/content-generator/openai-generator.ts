@@ -2,6 +2,7 @@ import "server-only";
 
 import OpenAI from "openai";
 import { buildContentGenerationPrompt, buildMarketingPlanItemContentPrompt } from "@/lib/content-generator/prompt-builder";
+import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import type {
   ContentGenerationContext,
   ContentGenerationRequest,
@@ -282,18 +283,16 @@ export class OpenAIContentGenerator implements ContentGenerator {
 }
 
 export function formatOpenAiContentError(error: unknown): string {
+  const fallback = "Content generation is temporarily unavailable. Please try again later.";
+
   if (error instanceof OpenAI.APIError) {
-    if (error.status === 401) return "Content generation failed: OpenAI authentication error.";
-    if (error.status === 429) return "Content generation failed: OpenAI rate limit reached. Try again shortly.";
-    if (error.status === 503) return "Content generation failed: OpenAI is temporarily unavailable.";
-    return error.message || "Content generation failed due to an OpenAI error.";
+    if (error.status === 401) return fallback;
+    if (error.status === 429) return "Content generation is busy right now. Try again shortly.";
+    if (error.status === 503) return "Content generation is temporarily unavailable. Please try again later.";
+    return toSafeUserErrorMessage(error, fallback);
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Content generation failed due to an unexpected error.";
+  return toSafeUserErrorMessage(error, fallback);
 }
 
 export function isOpenAiContentGeneratorConfigured(): boolean {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { generateContentForCurrentUser } from "@/lib/content-generator/service";
+import { queueBackgroundJobForCurrentUser } from "@/lib/background-jobs/service";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 import type { ContentGenerationRequest } from "@/lib/content-generator/types";
 
 export async function POST(request: Request) {
@@ -9,14 +10,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Content type is required" }, { status: 400 });
   }
 
-  const { result, error } = await generateContentForCurrentUser(body);
+  const { job, duplicate, error } = await queueBackgroundJobForCurrentUser({
+    jobType: BackgroundJobTypes.AI_CONTENT_GENERATION,
+    priority: "normal",
+    payload: body as unknown as Record<string, unknown>,
+  });
 
-  if (error || !result) {
+  if (error || !job) {
     return NextResponse.json(
-      { error: error ?? "Content generation failed" },
+      { error: error ?? "Unable to queue content generation" },
       { status: error === "Unauthorized" ? 401 : 502 }
     );
   }
 
-  return NextResponse.json({ result });
+  return NextResponse.json({ job, duplicate: Boolean(duplicate) });
 }

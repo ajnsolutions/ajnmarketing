@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import {
-  generateMarketingPlanForCurrentUser,
   getLatestMarketingPlanForCurrentUser,
 } from "@/lib/marketing-planner/service";
+import { queueBackgroundJobForCurrentUser } from "@/lib/background-jobs/service";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -29,14 +30,17 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { plan, error } = await generateMarketingPlanForCurrentUser();
+  const { job, duplicate, error } = await queueBackgroundJobForCurrentUser({
+    jobType: BackgroundJobTypes.MARKETING_PLAN_GENERATION,
+    priority: "high",
+  });
 
-  if (error || !plan) {
+  if (error || !job) {
     return NextResponse.json(
-      { error: error ?? "Marketing plan generation failed" },
+      { error: error ?? "Unable to queue marketing plan generation" },
       { status: error === "Unauthorized" ? 401 : 502 }
     );
   }
 
-  return NextResponse.json({ plan });
+  return NextResponse.json({ job, duplicate: Boolean(duplicate) });
 }

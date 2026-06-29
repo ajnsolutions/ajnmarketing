@@ -11,6 +11,7 @@ import {
 import { syncGoogleBusinessReviews } from "@/lib/google-business/reviews";
 import type { GoogleBusinessSyncResult } from "@/lib/google-business/types";
 import { getGoogleAccessContextForUser } from "@/lib/google-business/auth";
+import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 
 /** Google Business is the first implementation of the shared marketing channel sync architecture. */
@@ -24,6 +25,15 @@ export async function runGoogleBusinessSyncForUser(input: {
   try {
     accessContext = await getGoogleAccessContextForUser(supabase, input.userId);
   } catch (error) {
+    await logAuditEvent(supabase, {
+      userId: input.userId,
+      businessProfileId: input.businessProfileId,
+      action: AuditActions.GOOGLE_BUSINESS_SYNC_FAILED,
+      entityType: "google_business_connection",
+      status: "failure",
+      metadata: auditErrorMetadata(error, "Unable to authenticate with Google"),
+    });
+
     return {
       success: false,
       syncLog: null,
@@ -52,6 +62,16 @@ export async function runGoogleBusinessSyncForUser(input: {
       error: "Unable to start Google Business sync.",
     };
   }
+
+  await logAuditEvent(supabase, {
+    userId: input.userId,
+    businessProfileId: input.businessProfileId,
+    action: AuditActions.GOOGLE_BUSINESS_SYNC_STARTED,
+    entityType: "google_business_sync_log",
+    entityId: syncLog.id,
+    status: "started",
+    metadata: { connectionId: accessContext.connection.id },
+  });
 
   const errors: string[] = [];
   let locationsSynced = 0;
@@ -131,6 +151,28 @@ export async function runGoogleBusinessSyncForUser(input: {
     postsSynced,
     insightsSynced,
     errorMessage: errors.length > 0 ? errors.join(" | ") : null,
+  });
+
+  await logAuditEvent(supabase, {
+    userId: input.userId,
+    businessProfileId: input.businessProfileId,
+    action:
+      syncStatus === "failed"
+        ? AuditActions.GOOGLE_BUSINESS_SYNC_FAILED
+        : AuditActions.GOOGLE_BUSINESS_SYNC_COMPLETED,
+    entityType: "google_business_sync_log",
+    entityId: completedLog?.id ?? syncLog.id,
+    status: syncStatus === "failed" ? "failure" : "success",
+    metadata: {
+      syncStatus,
+      locationsSynced,
+      reviewsSynced,
+      postsSynced,
+      insightsSynced,
+      ...(errors.length > 0
+        ? auditErrorMetadata(errors.join(" | "), "Google Business sync encountered errors")
+        : {}),
+    },
   });
 
   return {

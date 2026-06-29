@@ -3,6 +3,11 @@ import type {
   MarketingAgentTaskPatchInput,
   MarketingAgentTasksPageData,
 } from "@/lib/marketing-agent/types";
+import {
+  pollBackgroundJobUntilSettled,
+  queueBackgroundJob,
+} from "@/lib/background-jobs/client";
+import { BackgroundJobTypes } from "@/lib/background-jobs/types";
 
 export async function fetchMarketingAgentTasks(): Promise<{
   data: MarketingAgentTasksPageData;
@@ -26,22 +31,41 @@ export async function fetchMarketingAgentTasks(): Promise<{
 
 export async function refreshMarketingAgentTasks(): Promise<{
   data: MarketingAgentTasksPageData;
+  jobId?: string;
   error?: string;
 }> {
-  const response = await fetch("/api/marketing-agent/tasks", { method: "POST" });
-  const payload = (await response.json()) as MarketingAgentTasksPageData & { error?: string };
+  const { job, error } = await queueBackgroundJob({
+    jobType: BackgroundJobTypes.AI_TASK_GENERATION,
+    priority: "normal",
+  });
 
-  if (!response.ok) {
+  if (error || !job) {
     return {
       data: {
         tasks: [],
         stats: { dueToday: 0, completedToday: 0, highPriorityPending: 0, topPriority: null },
       },
-      error: payload.error ?? "Unable to refresh marketing tasks",
+      error: error ?? "Unable to refresh marketing tasks",
     };
   }
 
-  return { data: payload };
+  const { error: pollError } = await pollBackgroundJobUntilSettled(job.id, {
+    timeoutMs: 120000,
+  });
+
+  if (pollError) {
+    return {
+      data: {
+        tasks: [],
+        stats: { dueToday: 0, completedToday: 0, highPriorityPending: 0, topPriority: null },
+      },
+      jobId: job.id,
+      error: pollError,
+    };
+  }
+
+  const refreshed = await fetchMarketingAgentTasks();
+  return { ...refreshed, jobId: job.id };
 }
 
 export async function patchMarketingAgentTask(

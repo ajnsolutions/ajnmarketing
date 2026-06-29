@@ -1,3 +1,5 @@
+import type { BackgroundJobDashboardData } from "@/lib/background-jobs/types";
+
 export type CommandCenterPriority = "high" | "medium" | "low";
 
 export type CommandCenterMomentumTrend = "up" | "stable" | "down";
@@ -74,7 +76,10 @@ export type CommandCenterPageData = {
   calendar: CommandCenterCalendarItem[];
   weeklyWins: CommandCenterWeeklyWins;
   competitorWatchMessage: string;
+  backgroundJobs: BackgroundJobDashboardData;
 };
+
+export type { BackgroundJobDashboardData } from "@/lib/background-jobs/types";
 
 export type CommandCenterGeneratedInsights = {
   executiveSummary: string;

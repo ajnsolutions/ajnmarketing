@@ -333,6 +333,34 @@ export async function syncGoogleBusinessForCurrentUser(): Promise<GoogleBusiness
   });
 }
 
+export async function draftGoogleReviewReplyForUser(
+  userId: string,
+  reviewId: string
+): Promise<GoogleBusinessReviewReplyDraftResult> {
+  const supabase = await createClient();
+
+  const review = await getGoogleBusinessReviewById(supabase, userId, reviewId);
+  if (!review) {
+    return { review: null, error: "Review not found." };
+  }
+
+  try {
+    const draft = await generateGoogleReviewReplyDraft({ userId, review });
+    const updated = await updateGoogleBusinessReviewDraftReply(
+      supabase,
+      userId,
+      reviewId,
+      draft
+    );
+    return { review: updated };
+  } catch (error) {
+    return {
+      review: null,
+      error: error instanceof Error ? error.message : "Unable to draft review reply",
+    };
+  }
+}
+
 export async function draftGoogleReviewReplyForCurrentUser(
   reviewId: string
 ): Promise<GoogleBusinessReviewReplyDraftResult> {
@@ -345,26 +373,7 @@ export async function draftGoogleReviewReplyForCurrentUser(
     return { review: null, error: "Unauthorized" };
   }
 
-  const review = await getGoogleBusinessReviewById(supabase, user.id, reviewId);
-  if (!review) {
-    return { review: null, error: "Review not found." };
-  }
-
-  try {
-    const draft = await generateGoogleReviewReplyDraft({ userId: user.id, review });
-    const updated = await updateGoogleBusinessReviewDraftReply(
-      supabase,
-      user.id,
-      reviewId,
-      draft
-    );
-    return { review: updated };
-  } catch (error) {
-    return {
-      review: null,
-      error: error instanceof Error ? error.message : "Unable to draft review reply",
-    };
-  }
+  return draftGoogleReviewReplyForUser(user.id, reviewId);
 }
 
 export async function markGoogleReviewRespondedForCurrentUser(

@@ -24,17 +24,11 @@ export function isGoogleBusinessOAuthConfigured(): boolean {
 }
 
 export function getGoogleBusinessOAuthSetupMessage(): string {
-  const missing: string[] = [];
-
-  if (!process.env.GOOGLE_CLIENT_ID?.trim()) missing.push("GOOGLE_CLIENT_ID");
-  if (!process.env.GOOGLE_CLIENT_SECRET?.trim()) missing.push("GOOGLE_CLIENT_SECRET");
-  if (!process.env.GOOGLE_REDIRECT_URI?.trim()) missing.push("GOOGLE_REDIRECT_URI");
-
-  if (missing.length === 0) {
+  if (isGoogleBusinessOAuthConfigured()) {
     return "Google OAuth is not configured.";
   }
 
-  return `Google connection setup required. Add ${missing.join(", ")} to your server environment.`;
+  return "Google OAuth is not configured on the server. Contact your workspace administrator.";
 }
 
 export function buildGoogleBusinessOAuthUrl(state: string): string {

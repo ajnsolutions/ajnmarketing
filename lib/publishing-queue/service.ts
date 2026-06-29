@@ -14,6 +14,7 @@ import type {
   PublishingQueuePatchInput,
   PublishingQueueStats,
 } from "@/lib/publishing-queue/types";
+import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getPublishingQueueForCurrentUser(): Promise<PublishingQueueItem[]> {
@@ -73,6 +74,20 @@ export async function createPublishingQueueItemForUser(
   if (!item) {
     return { item: null, error: "Unable to add content to the publishing queue" };
   }
+
+  await logAuditEvent(supabase, {
+    userId,
+    businessProfileId: approval.business_profile_id,
+    action: AuditActions.CONTENT_ADDED_TO_PUBLISHING_QUEUE,
+    entityType: "publishing_queue",
+    entityId: item.id,
+    status: "success",
+    metadata: {
+      platform: item.platform,
+      contentApprovalId: approval.id,
+      contentType: approval.content_type,
+    },
+  });
 
   return { item };
 }

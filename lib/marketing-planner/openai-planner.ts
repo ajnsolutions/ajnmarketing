@@ -1,6 +1,7 @@
 import "server-only";
 
 import OpenAI from "openai";
+import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { buildMarketingPlannerPrompt } from "@/lib/marketing-planner/planner";
 import type {
   MarketingPlanJson,
@@ -463,16 +464,14 @@ export function isOpenAiMarketingPlannerConfigured(): boolean {
 }
 
 export function formatOpenAiMarketingPlannerError(error: unknown): string {
+  const fallback = "Marketing plan generation is temporarily unavailable. Please try again later.";
+
   if (error instanceof OpenAI.APIError) {
-    if (error.status === 401) return "Marketing plan generation failed: OpenAI authentication error.";
-    if (error.status === 429) return "Marketing plan generation failed: OpenAI rate limit reached. Try again shortly.";
-    if (error.status === 503) return "Marketing plan generation failed: OpenAI is temporarily unavailable.";
-    return error.message || "Marketing plan generation failed due to an OpenAI error.";
+    if (error.status === 401) return fallback;
+    if (error.status === 429) return "Marketing plan generation is busy right now. Try again shortly.";
+    if (error.status === 503) return fallback;
+    return toSafeUserErrorMessage(error, fallback);
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Marketing plan generation failed due to an unexpected error.";
+  return toSafeUserErrorMessage(error, fallback);
 }

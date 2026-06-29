@@ -19,6 +19,7 @@ import type {
   MarketingPlanPageData,
   MarketingPlannerContext,
 } from "@/lib/marketing-planner/types";
+import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import { createClient } from "@/lib/supabase/server";
 
@@ -103,6 +104,70 @@ export async function getLatestMarketingPlanForCurrentUser(): Promise<MarketingP
   return currentMonthPlan ?? (await getLatestMarketingPlanForUser(supabase, user.id));
 }
 
+export async function generateMarketingPlanForUser(userId: string): Promise<{
+  plan: MarketingPlan | null;
+  error?: string;
+}> {
+  const supabase = await createClient();
+
+  const context = await loadPlannerContext(userId);
+  if (!context) {
+    return { plan: null, error: "Business profile not found. Complete onboarding first." };
+  }
+
+  await upsertMarketingPlanGenerating(supabase, {
+    userId,
+    businessProfileId: context.businessProfile.id,
+    month: context.month,
+    year: context.year,
+  });
+
+  try {
+    const planner = createMarketingPlanner();
+    const planJson = await planner.generate(context);
+
+    const plan = await saveMarketingPlanResult(supabase, {
+      userId,
+      month: context.month,
+      year: context.year,
+      planJson,
+    });
+
+    if (!plan) {
+      return { plan: null, error: "Unable to save marketing plan" };
+    }
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: context.businessProfile.id,
+      action: AuditActions.MARKETING_PLAN_GENERATED,
+      entityType: "marketing_plan",
+      entityId: plan.id,
+      status: "success",
+      metadata: {
+        month: context.month,
+        year: context.year,
+        itemCount: plan.plan_json?.thirtyDayCalendar?.length ?? null,
+      },
+    });
+
+    return { plan };
+  } catch (error) {
+    await markMarketingPlanFailed(supabase, userId, context.month, context.year);
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: context.businessProfile.id,
+      action: AuditActions.MARKETING_PLAN_GENERATED,
+      entityType: "marketing_plan",
+      status: "failure",
+      metadata: auditErrorMetadata(error, "Marketing plan generation failed"),
+    });
+
+    return { plan: null, error: formatOpenAiMarketingPlannerError(error) };
+  }
+}
+
 export async function generateMarketingPlanForCurrentUser(): Promise<{
   plan: MarketingPlan | null;
   error?: string;
@@ -116,36 +181,5 @@ export async function generateMarketingPlanForCurrentUser(): Promise<{
     return { plan: null, error: "Unauthorized" };
   }
 
-  const context = await loadPlannerContext(user.id);
-  if (!context) {
-    return { plan: null, error: "Business profile not found. Complete onboarding first." };
-  }
-
-  await upsertMarketingPlanGenerating(supabase, {
-    userId: user.id,
-    businessProfileId: context.businessProfile.id,
-    month: context.month,
-    year: context.year,
-  });
-
-  try {
-    const planner = createMarketingPlanner();
-    const planJson = await planner.generate(context);
-
-    const plan = await saveMarketingPlanResult(supabase, {
-      userId: user.id,
-      month: context.month,
-      year: context.year,
-      planJson,
-    });
-
-    if (!plan) {
-      return { plan: null, error: "Unable to save marketing plan" };
-    }
-
-    return { plan };
-  } catch (error) {
-    await markMarketingPlanFailed(supabase, user.id, context.month, context.year);
-    return { plan: null, error: formatOpenAiMarketingPlannerError(error) };
-  }
+  return generateMarketingPlanForUser(user.id);
 }

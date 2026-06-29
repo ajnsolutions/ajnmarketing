@@ -18,16 +18,15 @@ export function GoogleBusinessReviewCard({ review }: { review: GoogleBusinessRev
     setBusy("draft");
     setError(null);
 
-    const { review: updated, error: draftError } = await draftGoogleReviewReplyClient(review.id);
+    const { error: draftError } = await draftGoogleReviewReplyClient(review.id);
 
     setBusy(null);
 
-    if (draftError || !updated) {
-      setError(draftError ?? "Unable to draft reply");
+    if (draftError) {
+      setError(draftError);
       return;
     }
 
-    setDraftReply(updated.ai_draft_reply);
     router.refresh();
   }
 
