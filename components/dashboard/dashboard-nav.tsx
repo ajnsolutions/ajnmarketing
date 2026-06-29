@@ -8,8 +8,8 @@ export type DashboardNavItem = {
 
 export const dashboardNavItems: DashboardNavItem[] = [
   {
-    label: "Dashboard",
-    href: "/dashboard",
+    label: "Command Center",
+    href: "/dashboard/command-center",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 11.5 12 4l8 7.5M6 10.5V20h4v-5h4v5h4V10.5" />
