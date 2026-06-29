@@ -1,11 +1,10 @@
-import { AnalyticsPage } from "@/components/dashboard/analytics-page";
+import { DashboardFeaturePlaceholder } from "@/components/dashboard/dashboard-feature-placeholder";
 
 export const metadata = {
   title: "Analytics",
-  description:
-    "Track your business growth and marketing performance over time.",
+  description: "Track your business growth and marketing performance over time.",
 };
 
 export default function AnalyticsRoute() {
-  return <AnalyticsPage />;
+  return <DashboardFeaturePlaceholder title="Analytics" />;
 }

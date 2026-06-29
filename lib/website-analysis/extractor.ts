@@ -225,14 +225,9 @@ export class PlaceholderWebsiteExtractor implements WebsiteExtractor {
 }
 
 export function createWebsiteExtractor(): WebsiteExtractor {
-  const hasOpenAiKey = isOpenAiConfigured();
-  console.log("[WebsiteAnalysis] OPENAI_API_KEY present:", hasOpenAiKey);
-
-  if (hasOpenAiKey) {
-    console.log("[WebsiteAnalysis] Selected extractor: OpenAIWebsiteExtractor");
+  if (isOpenAiConfigured()) {
     return new OpenAIWebsiteExtractor();
   }
 
-  console.log("[WebsiteAnalysis] Selected extractor: PlaceholderWebsiteExtractor");
   return new PlaceholderWebsiteExtractor();
 }

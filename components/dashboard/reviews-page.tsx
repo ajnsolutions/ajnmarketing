@@ -208,7 +208,7 @@ export function ReviewsPage() {
   ];
 
   const aiReply =
-    "Thank you for sharing your experience with Riverside Plumbing Co. We appreciate your kind words and are glad our team could help quickly and professionally. We look forward to serving you again anytime you need reliable local service.";
+    "Thank you for sharing your experience. We appreciate your kind words and are glad our team could help. We look forward to serving you again.";
 
   return (
     <div className="space-y-8">

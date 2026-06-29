@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { getDashboardSessionContext } from "@/lib/dashboard/session-context";
 import { isOnboardingCompleteForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,5 +29,15 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  const session = await getDashboardSessionContext();
+
+  return (
+    <DashboardShell
+      businessName={session.businessName}
+      userName={session.userName}
+      userInitials={session.userInitials}
+    >
+      {children}
+    </DashboardShell>
+  );
 }

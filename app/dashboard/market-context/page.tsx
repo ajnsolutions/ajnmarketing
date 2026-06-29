@@ -1,11 +1,10 @@
-import { MarketContextPage } from "@/components/dashboard/market-context-page";
+import { DashboardFeaturePlaceholder } from "@/components/dashboard/dashboard-feature-placeholder";
 
 export const metadata = {
   title: "Market Context",
-  description:
-    "AI monitors your local market and competitors to uncover opportunities for growth.",
+  description: "Understand your local market and competitive landscape.",
 };
 
 export default function MarketContextRoute() {
-  return <MarketContextPage />;
+  return <DashboardFeaturePlaceholder title="Market Context" />;
 }

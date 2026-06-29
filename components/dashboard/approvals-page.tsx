@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ApprovalQueue } from "@/components/dashboard/approval-queue";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import type { ContentApproval, ContentApprovalStats } from "@/lib/content-approval/types";
 
 function SectionCard({
@@ -186,92 +187,68 @@ function BulkActionBar() {
   );
 }
 
-function ApprovalCalendar() {
-  const days = [
-    {
-      label: "Monday",
-      date: "Jun 16",
-      blocks: [
-        { title: "GBP: Spring maintenance", tone: "blue" as const },
-        { title: "Review reply batch", tone: "green" as const },
-      ],
-    },
-    {
-      label: "Tuesday",
-      date: "Jun 17",
-      blocks: [{ title: "Facebook: Customer story", tone: "blue" as const }],
-    },
-    {
-      label: "Wednesday",
-      date: "Jun 18",
-      blocks: [
-        { title: "Blog: Water heater tips", tone: "amber" as const },
-        { title: "LinkedIn update", tone: "blue" as const },
-      ],
-    },
-    {
-      label: "Thursday",
-      date: "Jun 19",
-      blocks: [{ title: "Email: Weekly promo", tone: "green" as const }],
-    },
-    {
-      label: "Friday",
-      date: "Jun 20",
-      blocks: [
-        { title: "GBP: Emergency services", tone: "amber" as const },
-        { title: "Review replies (3)", tone: "blue" as const },
-      ],
-    },
-  ];
+function formatActivityTime(value: string): string {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
-  const toneStyles = {
-    blue: "border-l-brand-600 bg-brand-50 text-brand-700",
-    green: "border-l-growth-500 bg-growth-50 text-growth-600",
-    amber: "border-l-amber-500 bg-amber-50 text-amber-700",
+function activityTone(status: ContentApproval["status"]): "blue" | "green" | "amber" {
+  if (status === "approved" || status === "published") return "green";
+  if (status === "pending") return "amber";
+  return "blue";
+}
+
+function activityLabel(item: ContentApproval): string {
+  const statusLabels: Record<ContentApproval["status"], string> = {
+    pending: "Awaiting approval",
+    approved: "Approved",
+    rejected: "Rejected",
+    published: "Published",
   };
+  return `${item.title} — ${statusLabels[item.status]}`;
+}
+
+function ApprovalCalendar({ items }: { items: ContentApproval[] }) {
+  if (items.length === 0) {
+    return (
+      <DashboardEmptyState
+        title="No items scheduled this week"
+        description="Generate content and send items to the Approval Center to see them here."
+        actionLabel="Generate content"
+        actionHref="/dashboard/content/generator"
+      />
+    );
+  }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-navy-900">Week of June 16, 2026</p>
-        <div className="flex flex-wrap gap-3 text-xs font-medium text-text-muted">
-          <span className="inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-brand-600" />
-            Scheduled
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-growth-500" />
-            Published
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            Awaiting Approval
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {days.map((day) => (
-          <div
-            key={day.label}
-            className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-3 ring-1 ring-slate-200/60"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{day.label}</p>
-            <p className="mt-0.5 text-sm font-bold text-navy-900">{day.date}</p>
-            <div className="mt-3 space-y-2">
-              {day.blocks.map((block) => (
-                <div
-                  key={block.title}
-                  className={`rounded-lg border-l-4 px-2.5 py-2 text-xs font-medium ${toneStyles[block.tone]}`}
-                >
-                  {block.title}
-                </div>
-              ))}
-            </div>
+    <ul className="space-y-3">
+      {items.slice(0, 8).map((item) => (
+        <li
+          key={item.id}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-200/60"
+        >
+          <div>
+            <p className="text-sm font-semibold text-navy-900">{item.title}</p>
+            <p className="mt-1 text-xs text-text-muted">{item.content_type}</p>
           </div>
-        ))}
-      </div>
-    </div>
+          <StatusBadge
+            status={
+              item.status === "pending"
+                ? "Awaiting Approval"
+                : item.status === "approved"
+                  ? "Approved"
+                  : item.status === "published"
+                    ? "Published"
+                    : "AI Draft"
+            }
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -346,46 +323,28 @@ export function ApprovalsPage({
   approvals: ContentApproval[];
   stats: ContentApprovalStats;
 }) {
-  const aiPriorities = [
-    {
-      title: "Respond to 3 new reviews today",
-      priority: "High" as const,
-      impact: "Protects reputation",
-      action: "Review Now",
-    },
-    {
-      title: "Publish seasonal plumbing tips",
-      priority: "High" as const,
-      impact: "Boosts local visibility",
-      action: "Approve Post",
-    },
-    {
-      title: "Update Google Business Profile photos",
-      priority: "Medium" as const,
-      impact: "Improves click-through rate",
-      action: "View Photos",
-    },
-    {
-      title: "Share customer testimonial",
-      priority: "Medium" as const,
-      impact: "Builds trust",
-      action: "Preview",
-    },
-    {
-      title: "Promote emergency service",
-      priority: "Low" as const,
-      impact: "Captures urgent demand",
-      action: "Approve",
-    },
-  ];
+  const pendingItems = approvals.filter((item) => item.status === "pending");
 
-  const recentActivity = [
-    { text: "AI generated Google Post", tone: "blue" as const, time: "2 hours ago" },
-    { text: "Customer approved Review Reply", tone: "green" as const, time: "4 hours ago" },
-    { text: "Blog scheduled for Wednesday", tone: "blue" as const, time: "Yesterday" },
-    { text: "Google Business Profile updated", tone: "green" as const, time: "Yesterday" },
-    { text: "Weekly report sent", tone: "amber" as const, time: "2 days ago" },
-  ];
+  const aiPriorities = pendingItems.slice(0, 5).map((item) => ({
+    title: item.title,
+    priority: "Medium" as const,
+    impact: "Moves approved content toward publishing",
+    action: "Review",
+  }));
+
+  const recentActivity = [...approvals]
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 5)
+    .map((item) => ({
+      text: activityLabel(item),
+      tone: activityTone(item.status),
+      time: formatActivityTime(item.updated_at),
+    }));
+
+  const previewItems =
+    pendingItems.length > 0
+      ? pendingItems.slice(0, 4)
+      : approvals.slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -468,8 +427,16 @@ export function ApprovalsPage({
         </div>
 
         <SectionCard title="AI Priorities" subtitle="What needs attention first">
-          <div className="space-y-3">
-            {aiPriorities.map((item) => (
+          {aiPriorities.length === 0 ? (
+            <DashboardEmptyState
+              title="No pending approvals"
+              description="Generate content to send items to the Approval Center."
+              actionLabel="Generate content"
+              actionHref="/dashboard/content/generator"
+            />
+          ) : (
+            <div className="space-y-3">
+              {aiPriorities.map((item) => (
               <article
                 key={item.title}
                 className="rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60"
@@ -487,18 +454,27 @@ export function ApprovalsPage({
                 </button>
               </article>
             ))}
-          </div>
+            </div>
+          )}
         </SectionCard>
       </div>
 
-      <SectionCard title="Approval Calendar" subtitle="Scheduled content for this week">
-        <ApprovalCalendar />
+      <SectionCard title="Approval Calendar" subtitle="Items in your approval queue">
+        <ApprovalCalendar items={pendingItems.length > 0 ? pendingItems : approvals} />
       </SectionCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Recent Activity" subtitle="Latest actions across your account">
-          <ol className="relative space-y-0">
-            {recentActivity.map((item, index) => (
+          {recentActivity.length === 0 ? (
+            <DashboardEmptyState
+              title="No approval activity yet"
+              description="Activity will appear here once content is generated and reviewed."
+              actionLabel="Open Content Generator"
+              actionHref="/dashboard/content/generator"
+            />
+          ) : (
+            <ol className="relative space-y-0">
+              {recentActivity.map((item, index) => (
               <li key={item.text} className="relative flex gap-4 pb-6 last:pb-0">
                 {index < recentActivity.length - 1 && (
                   <span
@@ -521,7 +497,8 @@ export function ApprovalsPage({
                 </div>
               </li>
             ))}
-          </ol>
+            </ol>
+          )}
         </SectionCard>
 
         <SectionCard title="How It Works" subtitle="From AI draft to published — automatically">
@@ -542,20 +519,24 @@ export function ApprovalsPage({
             </div>
             <div className="space-y-4 px-4 py-5">
               <p className="text-sm leading-7 text-slate-600">
-                Hi Mike,
+                Hi there,
               </p>
               <p className="text-sm leading-7 text-slate-600">
-                Your AI marketing team has prepared 6 items for Riverside Plumbing Co. Review and
-                approve everything in one click — or approve each item individually.
+                Your AI marketing team has prepared {stats.pending} item
+                {stats.pending === 1 ? "" : "s"} for review. Approve everything in one click — or
+                approve each item individually in your dashboard.
               </p>
               <div className="rounded-lg border border-slate-100 bg-[#F8FAFC] p-3 text-sm text-slate-600">
                 <p className="font-semibold text-navy-900">This week&apos;s queue</p>
-                <ul className="mt-2 space-y-1 text-sm">
-                  <li>• Google Business Profile post</li>
-                  <li>• 3 review replies</li>
-                  <li>• Facebook before-and-after post</li>
-                  <li>• Blog article draft</li>
-                </ul>
+                {previewItems.length === 0 ? (
+                  <p className="mt-2 text-sm text-text-muted">No items in queue yet.</p>
+                ) : (
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {previewItems.map((item) => (
+                      <li key={item.id}>• {item.title}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 <button

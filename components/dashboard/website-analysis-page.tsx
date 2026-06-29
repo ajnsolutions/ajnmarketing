@@ -8,6 +8,7 @@ import {
   WebsiteAnalysisPoller,
   WebsiteAnalysisRefreshButton,
 } from "@/components/dashboard/website-analysis-actions";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import { getAnalysisDisplayMeta } from "@/lib/website-analysis-server";
 import { LOW_CONFIDENCE_CUSTOMER_PERSONA } from "@/lib/website-analysis/customer-persona";
 import { resolveContentOpportunities } from "@/lib/website-analysis/content-opportunities";
@@ -330,7 +331,14 @@ export function WebsiteAnalysisPage({
         </section>
       )}
 
-      {!isAnalyzing && (
+      {!isAnalyzing && !isComplete && !meta.isFailed && (
+        <DashboardEmptyState
+          title="No website analysis yet"
+          description="Click Refresh Analysis above to scan your website and generate marketing insights."
+        />
+      )}
+
+      {!isAnalyzing && isComplete && (
         <>
           <SectionCard
             title="Business Profile Learned"

@@ -181,7 +181,7 @@ export function BrandVoicePage() {
         "local experts",
         "trusted",
         "reliable",
-        "emergency help",
+        "dependable",
         "family-owned",
         "professional",
       ]);
@@ -235,7 +235,7 @@ export function BrandVoicePage() {
   const samples = [
     {
       type: "Google Business Profile post",
-      text: `Spring is a great time for a check-up. ${businessName} helps local homeowners catch small issues early. Call us today for same-day service.`,
+      text: `Spring is a great time for a check-up. ${businessName} helps customers catch small issues early. Contact us today to schedule service.`,
       match: 96,
     },
     {
@@ -245,12 +245,12 @@ export function BrandVoicePage() {
     },
     {
       type: "Facebook post",
-      text: `Same-day service matters when you need help fast. ${businessName} is ready to serve local families — fast, honest, and professional.`,
+      text: `Same-day service matters when you need help fast. ${businessName} is ready to serve your community with fast, honest, and professional support.`,
       match: 92,
     },
     {
       type: "Blog intro",
-      text: `Not sure if it's time for a replacement? Here are five signs local homeowners should watch for — and when to call ${businessName}.`,
+      text: `Not sure if it's time for a replacement? Here are five signs customers should watch for — and when to contact ${businessName}.`,
       match: 93,
     },
   ];

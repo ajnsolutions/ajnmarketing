@@ -276,7 +276,7 @@ export function OnboardingWizard() {
                 id="industry"
                 value={data.industry}
                 onChange={(value) => updateField("industry", value)}
-                placeholder="e.g. Plumbing & HVAC"
+                placeholder="e.g. Employee benefits consulting, professional services, marketing agency"
               />
               <Field
                 label="Website URL"
@@ -312,7 +312,7 @@ export function OnboardingWizard() {
                 id="primary-service-area"
                 value={data.primaryServiceArea}
                 onChange={(v) => updateField("primaryServiceArea", v)}
-                placeholder="e.g. Danville and surrounding East Bay"
+                placeholder="e.g. Denver metro area and nearby communities"
               />
               <Field
                 label="Nearby cities served"
@@ -382,7 +382,7 @@ export function OnboardingWizard() {
                 value={data.primaryServices}
                 onChange={(v) => updateField("primaryServices", v)}
                 multiline
-                placeholder="Drain cleaning, water heater repair, repiping..."
+                placeholder="Benefits consulting, compliance support, onboarding programs..."
               />
               <Field
                 label="Emergency services offered"
@@ -390,7 +390,7 @@ export function OnboardingWizard() {
                 value={data.emergencyServices}
                 onChange={(v) => updateField("emergencyServices", v)}
                 multiline
-                placeholder="24/7 emergency plumbing, burst pipe response..."
+                placeholder="Same-day consultations, urgent client support, after-hours availability..."
               />
               <Field
                 label="Seasonal services"
@@ -398,7 +398,7 @@ export function OnboardingWizard() {
                 value={data.seasonalServices}
                 onChange={(v) => updateField("seasonalServices", v)}
                 multiline
-                placeholder="Winter pipe freeze prevention, summer irrigation checks..."
+                placeholder="Year-end benefits enrollment, Q1 compliance updates, seasonal campaigns..."
               />
               <Field
                 label="Specialty services"
@@ -406,7 +406,7 @@ export function OnboardingWizard() {
                 value={data.specialtyServices}
                 onChange={(v) => updateField("specialtyServices", v)}
                 multiline
-                placeholder="Tankless installs, commercial plumbing, water filtration..."
+                placeholder="Executive coaching, compliance audits, small business advisory retainers..."
               />
             </div>
           )}
@@ -517,7 +517,7 @@ export function OnboardingWizard() {
                 value={data.exampleMessage}
                 onChange={(v) => updateField("exampleMessage", v)}
                 multiline
-                placeholder="We are a local plumbing team serving Danville families with honest service and fast emergency help."
+                placeholder="We help local businesses navigate employee benefits with clear guidance, responsive support, and practical recommendations."
               />
             </div>
           )}

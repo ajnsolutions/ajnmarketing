@@ -1,11 +1,10 @@
-import { SettingsPage } from "@/components/dashboard/settings-page";
+import { DashboardFeaturePlaceholder } from "@/components/dashboard/dashboard-feature-placeholder";
 
 export const metadata = {
   title: "Settings",
-  description:
-    "Manage your business profile, notifications, brand voice, and connected platforms.",
+  description: "Manage your AJN Marketing workspace settings.",
 };
 
 export default function SettingsRoute() {
-  return <SettingsPage />;
+  return <DashboardFeaturePlaceholder title="Settings" />;
 }

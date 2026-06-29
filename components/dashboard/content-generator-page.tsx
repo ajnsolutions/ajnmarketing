@@ -15,6 +15,7 @@ import {
 } from "@/lib/content-generator/types";
 import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
 import { fetchAiMarketingProfile } from "@/lib/ai-marketing-profile-client";
+import { DashboardLoadingSkeleton } from "@/components/dashboard/ui/dashboard-states";
 import { formatAnalysisStatus } from "@/lib/website-analysis/persistence";
 import { formatProfileStatus } from "@/lib/ai-marketing-profile/persistence";
 import type { ContentApproval } from "@/lib/content-approval/types";
@@ -59,14 +60,12 @@ const lengthOptions: ContentLength[] = ["Short", "Medium", "Long"];
 
 const toneOptions: ContentTone[] = ["Professional", "Friendly", "Educational", "Promotional"];
 
-const defaultAiInputs = [
-  { label: "Website Analysis", status: "Pending" },
-  { label: "Brand Voice", status: "Pending" },
-  { label: "AI Marketing Profile", status: "Pending" },
-  { label: "Market Context", status: "Updated today" },
-  { label: "Google Business Profile", status: "Connected" },
-  { label: "Review Data", status: "128 reviews analyzed" },
-];
+const aiInputLabels = [
+  "Website Analysis",
+  "Brand Voice",
+  "AI Marketing Profile",
+  "Google Business Profile",
+] as const;
 
 function mapToneToOption(rawTone: string | null | undefined): ContentTone {
   const normalized = rawTone?.trim().toLowerCase() ?? "";
@@ -116,9 +115,11 @@ export function ContentGeneratorPage() {
   const [approvalToast, setApprovalToast] = useState<string | null>(null);
   const [sendingApprovalIndex, setSendingApprovalIndex] = useState<number | null>(null);
   const [historyRows, setHistoryRows] = useState<ContentApproval[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
+      setDataLoading(true);
       const [{ analysis: savedAnalysis }, { profile: savedAiProfile }, { approvals }] =
         await Promise.all([
           fetchWebsiteAnalysis(),
@@ -160,15 +161,16 @@ export function ContentGeneratorPage() {
           .filter((item) => item.source === "content_generator")
           .slice(0, 8)
       );
+      setDataLoading(false);
     }
 
     void loadData();
   }, []);
 
-  const aiInputs = defaultAiInputs.map((item) => {
-    if (item.label === "Website Analysis") {
+  const aiInputs = aiInputLabels.map((label) => {
+    if (label === "Website Analysis") {
       return {
-        ...item,
+        label,
         status:
           analysis?.analysis_status === "completed"
             ? "Active"
@@ -176,16 +178,16 @@ export function ContentGeneratorPage() {
       };
     }
 
-    if (item.label === "Brand Voice") {
+    if (label === "Brand Voice") {
       return {
-        ...item,
+        label,
         status: analysis?.brand_voice || aiProfile?.brand_voice ? "Strong Match" : "Pending",
       };
     }
 
-    if (item.label === "AI Marketing Profile") {
+    if (label === "AI Marketing Profile") {
       return {
-        ...item,
+        label,
         status:
           aiProfile?.profile_status === "active"
             ? "Active"
@@ -193,7 +195,10 @@ export function ContentGeneratorPage() {
       };
     }
 
-    return item;
+    return {
+      label,
+      status: "Connect in Google Business Profile",
+    };
   });
 
   function toggleGoal(goal: string) {
@@ -222,8 +227,7 @@ export function ContentGeneratorPage() {
     if (error || !result?.variations?.length) {
       setVariations([]);
       setGenerationError(
-        error ??
-          "We couldn't generate content right now. Check your OpenAI configuration and try again."
+        error ?? "We couldn't generate content right now. Please try again in a moment."
       );
       return;
     }
@@ -264,6 +268,10 @@ export function ContentGeneratorPage() {
 
   return (
     <div className="space-y-8">
+      {dataLoading ? (
+        <DashboardLoadingSkeleton />
+      ) : (
+        <>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <Link
@@ -563,6 +571,8 @@ export function ContentGeneratorPage() {
           </div>
         )}
       </SectionCard>
+        </>
+      )}
     </div>
   );
 }

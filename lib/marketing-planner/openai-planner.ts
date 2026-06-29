@@ -451,7 +451,7 @@ export class OpenAiMarketingPlanner implements MarketingPlanner {
 export function createMarketingPlanner(): MarketingPlanner {
   if (!isOpenAiMarketingPlannerConfigured()) {
     throw new Error(
-      "Marketing plan generation requires OPENAI_API_KEY. Add it to your server environment and try again."
+      "Marketing plan generation is temporarily unavailable. Please try again later."
     );
   }
 

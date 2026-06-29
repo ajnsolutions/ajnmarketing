@@ -14,18 +14,12 @@ import type { WebsiteAnalysis, WebsiteExtractionResult } from "@/lib/website-ana
 import type { BusinessProfile } from "@/lib/business-profile";
 import { createClient } from "@/lib/supabase/server";
 
-function logAnalysisStatus(status: string, businessProfileId: string) {
-  console.log(`[WebsiteAnalysis] Status: ${status} (businessProfileId: ${businessProfileId})`);
-}
-
 export async function queueWebsiteAnalysisForProfile(
   profile: BusinessProfile
 ): Promise<WebsiteAnalysis | null> {
   if (!profile.website?.trim()) return null;
 
   const supabase = await createClient();
-
-  logAnalysisStatus("pending", profile.id);
 
   return upsertWebsiteAnalysisStatus(supabase, {
     userId: profile.user_id,
@@ -82,8 +76,6 @@ async function extractWithFallback(
 }
 
 export async function runWebsiteAnalysisForUser(userId: string): Promise<WebsiteAnalysis | null> {
-  console.log("[WebsiteAnalysis] Analysis run started");
-
   const supabase = await createClient();
 
   const { data: profile, error: profileError } = await supabase
@@ -97,8 +89,6 @@ export async function runWebsiteAnalysisForUser(userId: string): Promise<Website
   }
 
   const typedProfile = profile as BusinessProfile;
-
-  logAnalysisStatus("running", typedProfile.id);
 
   await upsertWebsiteAnalysisStatus(supabase, {
     userId,
@@ -118,10 +108,6 @@ export async function runWebsiteAnalysisForUser(userId: string): Promise<Website
       extraction = await extractor.extract(input);
     } catch (primaryError) {
       if (isOpenAiConfigured()) {
-        console.warn(
-          "[WebsiteAnalysis] OpenAI extraction failed; falling back to PlaceholderWebsiteExtractor:",
-          formatOpenAiError(primaryError)
-        );
         extraction = appendFallbackNote(
           await extractWithFallback(input, primaryError),
           "(OpenAI analysis was unavailable; basic website extraction was used.)"
@@ -139,10 +125,8 @@ export async function runWebsiteAnalysisForUser(userId: string): Promise<Website
     );
 
     const result = await saveWebsiteAnalysisResult(supabase, row);
-    logAnalysisStatus("completed", typedProfile.id);
     return result;
   } catch (error) {
-    logAnalysisStatus("failed", typedProfile.id);
     console.error("[WebsiteAnalysis] Analysis failed:", formatOpenAiError(error));
     await markWebsiteAnalysisFailed(
       supabase,

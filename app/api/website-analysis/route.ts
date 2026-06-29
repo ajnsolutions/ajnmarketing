@@ -42,11 +42,6 @@ export async function POST() {
     return NextResponse.json({ error: "No website configured" }, { status: 400 });
   }
 
-  console.log(
-    "[WebsiteAnalysis] POST /api/website-analysis received (businessProfileId:",
-    (profile as BusinessProfile).id + ")"
-  );
-
   const analysis = await runWebsiteAnalysisForUser(user.id);
   return NextResponse.json({ analysis });
 }

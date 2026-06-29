@@ -6,6 +6,7 @@ import {
 import type { MarketingPlanPageData } from "@/lib/marketing-planner/types";
 import { MarketingPlanRefreshButton } from "@/components/dashboard/marketing-plan-actions";
 import { MarketingPlanContent } from "@/components/dashboard/marketing-plan-content";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 
 function SectionCard({
   title,
@@ -105,15 +106,10 @@ export function MarketingPlanPage({
       )}
 
       {!plan && (
-        <SectionCard
-          title="No Plan Yet"
-          subtitle={`Create your ${monthName} ${currentYear} marketing strategy`}
-        >
-          <p className="text-sm leading-7 text-slate-600">
-            AJN will analyze your business profile, website analysis, AI Marketing Profile, brand
-            voice, services, keywords, and content opportunities to build a structured monthly plan.
-          </p>
-        </SectionCard>
+        <DashboardEmptyState
+          title="No marketing plan yet"
+          description={`Create your first Marketing Plan to see recommendations for ${monthName} ${currentYear}.`}
+        />
       )}
 
       {planJson && activePlan && (

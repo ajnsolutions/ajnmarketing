@@ -76,7 +76,7 @@ export function GbpConnectPage({
 
   const bannerMessage = useMemo(() => {
     if (searchParams.get("connected") === "1") {
-      return "Google Business Profile connected successfully. Location sync comes in the next phase.";
+      return "Google Business Profile connected successfully. Sync your location data from the Google Business Profile dashboard.";
     }
 
     const error = searchParams.get("error");
@@ -212,7 +212,7 @@ export function GbpConnectPage({
                 </p>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
                   {status.setupMessage ??
-                    "Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI to your server environment."}
+                    "Google OAuth is not configured on the server. Contact your workspace administrator."}
                 </p>
               </>
             ) : isConnected ? (

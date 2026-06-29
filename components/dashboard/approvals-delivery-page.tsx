@@ -56,12 +56,12 @@ export function ApprovalsDeliveryPage() {
   const [testSent, setTestSent] = useState(false);
 
   const approvalItems = [
-    { title: "Google Post: Spring maintenance reminder", type: "Google Post" },
-    { title: "Google Post: Emergency service availability", type: "Google Post" },
-    { title: "Reply to 5-star review from Sarah M.", type: "Review Reply" },
-    { title: "Reply to 4-star review from James T.", type: "Review Reply" },
-    { title: "Reply to 5-star review from Linda K.", type: "Review Reply" },
-    { title: "Blog draft: Signs your water heater needs replacing", type: "Blog Draft" },
+    { title: "Google Business Profile post: seasonal update", type: "Google Post" },
+    { title: "Google Business Profile post: service highlight", type: "Google Post" },
+    { title: "Reply to 5-star review", type: "Review Reply" },
+    { title: "Reply to 4-star review", type: "Review Reply" },
+    { title: "Social post: customer testimonial", type: "Social Post" },
+    { title: "Blog draft: helpful tips for customers", type: "Blog Draft" },
   ];
 
   const timeline = [
@@ -183,12 +183,11 @@ export function ApprovalsDeliveryPage() {
                 className="h-8 w-auto"
               />
               <p className="text-sm leading-7 text-slate-600">
-                Hi Mike,
+                Hi there,
               </p>
               <p className="text-sm leading-7 text-slate-600">
-                Your weekly content package for{" "}
-                <strong className="text-navy-900">Riverside Plumbing Co.</strong> is ready. Review
-                and approve everything in one click — or approve each item individually.
+                Your weekly content package is ready. Review and approve everything in one click —
+                or approve each item individually in your dashboard.
               </p>
               <div className="rounded-lg border border-slate-100 bg-[#F8FAFC] p-4">
                 <p className="text-sm font-semibold text-navy-900">Approval summary</p>

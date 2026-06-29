@@ -1,10 +1,10 @@
-import { BillingPage } from "@/components/dashboard/billing-page";
+import { DashboardFeaturePlaceholder } from "@/components/dashboard/dashboard-feature-placeholder";
 
 export const metadata = {
   title: "Billing",
-  description: "Manage your plan, payment method, and billing history.",
+  description: "Manage your AJN Marketing subscription and billing.",
 };
 
 export default function BillingRoute() {
-  return <BillingPage />;
+  return <DashboardFeaturePlaceholder title="Billing" />;
 }

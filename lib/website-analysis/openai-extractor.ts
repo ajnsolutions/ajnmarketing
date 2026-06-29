@@ -282,9 +282,6 @@ export class OpenAIWebsiteExtractor implements WebsiteExtractor {
   }
 
   async extract(input: Parameters<WebsiteExtractor["extract"]>[0]): Promise<WebsiteExtractionResult> {
-    console.log("[WebsiteAnalysis] OpenAI extraction started");
-    console.log("[WebsiteAnalysis] OpenAI model:", OPENAI_WEBSITE_ANALYSIS_MODEL);
-
     const prompt = buildAnalysisPrompt(input);
 
     let response: OpenAI.Responses.Response;
@@ -363,14 +360,13 @@ export class OpenAIWebsiteExtractor implements WebsiteExtractor {
       }
     }
 
-    console.log("[WebsiteAnalysis] OpenAI extraction completed");
     return extraction;
   }
 }
 
 export function formatOpenAiError(error: unknown): string {
   if (error instanceof OpenAI.APIError) {
-    if (error.status === 401) return "OpenAI authentication failed. Check OPENAI_API_KEY.";
+    if (error.status === 401) return "AI service authentication failed. Please try again later.";
     if (error.status === 429) return "OpenAI rate limit reached. Try again shortly.";
     if (error.status === 503) return "OpenAI service is temporarily unavailable.";
     return error.message || "OpenAI request failed";

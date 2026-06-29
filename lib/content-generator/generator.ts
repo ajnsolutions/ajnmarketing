@@ -7,7 +7,7 @@ import type { ContentGenerator } from "@/lib/content-generator/types";
 export function createContentGenerator(): ContentGenerator {
   if (!isOpenAiContentGeneratorConfigured()) {
     throw new Error(
-      "Content generation requires OPENAI_API_KEY. Add it to your server environment and try again."
+      "Content generation is temporarily unavailable. Please try again later."
     );
   }
 

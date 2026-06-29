@@ -22,8 +22,8 @@ export function DashboardSidebar({
       <nav className="flex flex-col gap-2">
         {dashboardNavItems.map((item) => {
           const active =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
+            item.href === "/dashboard/command-center"
+              ? pathname === "/dashboard" || pathname.startsWith("/dashboard/command-center")
               : pathname.startsWith(item.href);
 
           return (
@@ -52,7 +52,7 @@ export function DashboardSidebar({
     <>
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-[#081426] lg:flex">
         <div className="border-b border-white/10 px-4 py-5">
-          <Link href="/dashboard" className="inline-flex transition-opacity hover:opacity-90">
+          <Link href="/dashboard/command-center" className="inline-flex transition-opacity hover:opacity-90">
             <Image
               src="/images/AJN_marketing_logo_BLACK.png"
               alt="AJN Marketing"
@@ -67,7 +67,7 @@ export function DashboardSidebar({
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
             Customer workspace
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-300">Demo preview mode</p>
+          <p className="mt-1 text-sm font-medium text-slate-300">AJN Marketing workspace</p>
         </div>
       </aside>
 

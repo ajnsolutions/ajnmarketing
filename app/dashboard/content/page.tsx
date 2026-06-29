@@ -1,4 +1,5 @@
 import { ContentPage } from "@/components/dashboard/content-page";
+import { getApprovalDashboardData } from "@/lib/content-approval-server";
 import { getPublishingDashboardData } from "@/lib/publishing-queue-server";
 
 export const metadata = {
@@ -8,7 +9,17 @@ export const metadata = {
 };
 
 export default async function ContentRoute() {
-  const { items, stats } = await getPublishingDashboardData();
+  const [{ items, stats }, approvalData] = await Promise.all([
+    getPublishingDashboardData(),
+    getApprovalDashboardData(),
+  ]);
 
-  return <ContentPage publishingItems={items} publishingStats={stats} />;
+  return (
+    <ContentPage
+      publishingItems={items}
+      publishingStats={stats}
+      approvalStats={approvalData.stats}
+      pendingApprovals={approvalData.approvals.filter((item) => item.status === "pending")}
+    />
+  );
 }
