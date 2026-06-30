@@ -1,5 +1,6 @@
 import type { AiMarketingProfile } from "@/lib/ai-marketing-profile/types";
 import type { BusinessProfile } from "@/lib/business-profile";
+import type { MarketContextPromptSummary } from "@/lib/market-context/types";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 
 export type ContentLength = "Short" | "Medium" | "Long";
@@ -58,6 +59,7 @@ export type ContentGenerationContext = {
   businessProfile: BusinessProfile;
   aiMarketingProfile: AiMarketingProfile | null;
   websiteAnalysis: WebsiteAnalysis | null;
+  marketContextSummary: MarketContextPromptSummary | null;
 };
 
 export interface ContentGenerator {

@@ -11,6 +11,7 @@ export const AuditActions = {
   CONTENT_REJECTED: "content.rejected",
   CONTENT_ADDED_TO_PUBLISHING_QUEUE: "content.added_to_publishing_queue",
   MARKETING_PLAN_GENERATED: "marketing_plan.generated",
+  MARKET_CONTEXT_BRIEF_GENERATED: "market_context.brief_generated",
   MARKETING_AGENT_TASKS_GENERATED: "marketing_agent.tasks_generated",
   GOOGLE_OAUTH_CONNECTED: "google_oauth.connected",
   BACKGROUND_JOB_QUEUED: "background_job.queued",

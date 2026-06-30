@@ -20,6 +20,8 @@ import type { BusinessProfile } from "@/lib/business-profile";
 import type { AiMarketingProfile } from "@/lib/ai-marketing-profile/types";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
+import { buildMarketContextPromptSummary } from "@/lib/market-context/prompt-context";
+import { getLatestMarketContextBriefForUser } from "@/lib/market-context/marketContextService";
 import { createClient } from "@/lib/supabase/server";
 
 async function loadGenerationContext(userId: string): Promise<ContentGenerationContext | null> {
@@ -33,15 +35,17 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
 
   if (error || !profile) return null;
 
-  const [aiMarketingProfile, websiteAnalysis] = await Promise.all([
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief] = await Promise.all([
     getAiMarketingProfileForUser(supabase, userId),
     getWebsiteAnalysisForUser(supabase, userId),
+    getLatestMarketContextBriefForUser(userId),
   ]);
 
   return {
     businessProfile: profile as BusinessProfile,
     aiMarketingProfile: aiMarketingProfile as AiMarketingProfile | null,
     websiteAnalysis: websiteAnalysis as WebsiteAnalysis | null,
+    marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
   };
 }
 
@@ -149,15 +153,17 @@ export async function getContentGenerationContextForCurrentUser(): Promise<Conte
   const profile = await getBusinessProfileForUser();
   if (!profile) return null;
 
-  const [aiMarketingProfile, websiteAnalysis] = await Promise.all([
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief] = await Promise.all([
     getAiMarketingProfileForUser(supabase, user.id),
     getWebsiteAnalysisForUser(supabase, user.id),
+    getLatestMarketContextBriefForUser(user.id),
   ]);
 
   return {
     businessProfile: profile,
     aiMarketingProfile,
     websiteAnalysis,
+    marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
   };
 }
 

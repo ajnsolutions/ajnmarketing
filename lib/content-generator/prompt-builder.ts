@@ -1,4 +1,5 @@
 import { resolveContentOpportunities } from "@/lib/website-analysis/content-opportunities";
+import { formatMarketContextPromptSummary } from "@/lib/market-context/prompt-context";
 import type {
   ContentGenerationBusinessIntel,
   ContentGenerationContext,
@@ -121,6 +122,7 @@ export function buildContentGenerationPrompt(
   request: ContentGenerationRequest
 ): { system: string; user: string } {
   const intel = buildBusinessIntel(context);
+  const marketContextBlock = formatMarketContextPromptSummary(context.marketContextSummary);
 
   const system = [
     "You are AJN Marketing's AI content engine.",
@@ -162,6 +164,9 @@ export function buildContentGenerationPrompt(
       2
     ),
     "",
+    ...(marketContextBlock
+      ? ["MARKET CONTEXT", marketContextBlock, ""]
+      : []),
     "CONTENT REQUEST",
     JSON.stringify(
       {
@@ -214,6 +219,7 @@ export function buildMarketingPlanItemContentPrompt(
   request: MarketingPlanContentRequest
 ): { system: string; user: string } {
   const intel = buildBusinessIntel(context);
+  const marketContextBlock = formatMarketContextPromptSummary(context.marketContextSummary);
   const contentType = mapMarketingPlanChannelToContentType(
     request.recommendedChannel,
     request.planItemType
@@ -259,6 +265,9 @@ export function buildMarketingPlanItemContentPrompt(
       2
     ),
     "",
+    ...(marketContextBlock
+      ? ["MARKET CONTEXT", marketContextBlock, ""]
+      : []),
     "MARKETING PLAN CONTEXT",
     JSON.stringify(
       {

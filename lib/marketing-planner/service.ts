@@ -20,6 +20,8 @@ import type {
   MarketingPlannerContext,
 } from "@/lib/marketing-planner/types";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
+import { buildMarketContextPromptSummary } from "@/lib/market-context/prompt-context";
+import { getLatestMarketContextBriefForUser } from "@/lib/market-context/marketContextService";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,9 +36,10 @@ async function loadPlannerContext(userId: string): Promise<MarketingPlannerConte
 
   if (error || !profile) return null;
 
-  const [aiMarketingProfile, websiteAnalysis] = await Promise.all([
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief] = await Promise.all([
     getAiMarketingProfileForUser(supabase, userId),
     getWebsiteAnalysisForUser(supabase, userId),
+    getLatestMarketContextBriefForUser(userId),
   ]);
 
   const period = getCurrentPlanPeriod();
@@ -45,6 +48,7 @@ async function loadPlannerContext(userId: string): Promise<MarketingPlannerConte
     businessProfile: profile as BusinessProfile,
     aiMarketingProfile,
     websiteAnalysis,
+    marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
     month: period.month,
     year: period.year,
     monthName: period.monthName,

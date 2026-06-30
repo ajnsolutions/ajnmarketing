@@ -1,5 +1,6 @@
 import type { AiMarketingProfile } from "@/lib/ai-marketing-profile/types";
 import type { BusinessProfile } from "@/lib/business-profile";
+import type { MarketContextPromptSummary } from "@/lib/market-context/types";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 
 export type MarketingPlanStatus = "generating" | "active" | "failed";
@@ -117,6 +118,7 @@ export type MarketingPlannerContext = {
   businessProfile: BusinessProfile;
   aiMarketingProfile: AiMarketingProfile | null;
   websiteAnalysis: WebsiteAnalysis | null;
+  marketContextSummary: MarketContextPromptSummary | null;
   month: number;
   year: number;
   monthName: string;

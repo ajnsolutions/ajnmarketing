@@ -1,5 +1,6 @@
 import { buildBusinessIntel } from "@/lib/content-generator/prompt-builder";
 import type { ContentGenerationContext } from "@/lib/content-generator/types";
+import { formatMarketContextPromptSummary } from "@/lib/market-context/prompt-context";
 import type { MarketingPlannerContext } from "@/lib/marketing-planner/types";
 
 const MONTH_NAMES = [
@@ -49,9 +50,11 @@ export function buildMarketingPlannerPrompt(context: MarketingPlannerContext): {
     businessProfile: context.businessProfile,
     aiMarketingProfile: context.aiMarketingProfile,
     websiteAnalysis: context.websiteAnalysis,
+    marketContextSummary: context.marketContextSummary,
   };
 
   const intel = buildBusinessIntel(generationContext);
+  const marketContextBlock = formatMarketContextPromptSummary(context.marketContextSummary);
 
   const system = [
     "You are AJN Marketing's AI Marketing Planner.",
@@ -116,6 +119,9 @@ export function buildMarketingPlannerPrompt(context: MarketingPlannerContext): {
       2
     ),
     "",
+    ...(marketContextBlock
+      ? ["MARKET CONTEXT", marketContextBlock, ""]
+      : []),
     "Create a full monthly marketing plan with executive summary, goals, themes, weekly focus, a 30-day calendar, posting schedule, content mix, GBP cadence, blog ideas, email ideas, seasonal campaigns, promotions, video ideas, social platform recommendations, and KPIs.",
   ].join("\n");
 
