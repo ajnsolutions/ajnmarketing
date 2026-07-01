@@ -7,7 +7,9 @@ import {
 } from "@/lib/google-business-profile/oauth";
 import {
   createGoogleBusinessOAuthState,
+  getGoogleConnectionStorageSetupMessage,
   GBP_OAUTH_STATE_COOKIE,
+  isGoogleConnectionStorageConfigured,
 } from "@/lib/google-business-profile/service";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,6 +26,13 @@ export async function GET() {
   if (!isGoogleBusinessOAuthConfigured()) {
     return NextResponse.json(
       { error: getGoogleBusinessOAuthSetupMessage() },
+      { status: 503 }
+    );
+  }
+
+  if (!isGoogleConnectionStorageConfigured()) {
+    return NextResponse.json(
+      { error: getGoogleConnectionStorageSetupMessage() },
       { status: 503 }
     );
   }

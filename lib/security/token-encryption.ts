@@ -30,6 +30,17 @@ export class TokenEncryptionError extends Error {
 export const TOKEN_ENCRYPTION_KEY_HELP =
   "Set TOKEN_ENCRYPTION_KEY in your server environment. Generate one with: openssl rand -hex 32";
 
+export function isTokenEncryptionConfigured(): boolean {
+  const raw = process.env.TOKEN_ENCRYPTION_KEY?.trim();
+  if (!raw) return false;
+
+  if (/^[0-9a-fA-F]{64}$/.test(raw)) {
+    return true;
+  }
+
+  return Buffer.from(raw, "base64").length === 32;
+}
+
 function resolveEncryptionKey(): Buffer {
   const raw = process.env.TOKEN_ENCRYPTION_KEY?.trim();
 

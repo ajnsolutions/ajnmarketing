@@ -4,7 +4,7 @@ export async function fetchPublishingJobs(): Promise<{
   jobs: PublishingJob[];
   error?: string;
 }> {
-  const response = await fetch("/api/publishing", { method: "GET" });
+  const response = await fetch("/api/publishing", { method: "GET", cache: "no-store" });
   const payload = (await response.json()) as { jobs?: PublishingJob[]; error?: string };
 
   if (!response.ok) {

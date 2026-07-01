@@ -17,7 +17,7 @@ import {
 } from "@/lib/google-business-profile/persistence";
 import type { GoogleBusinessProfileConnectionStatus } from "@/lib/google-business-profile/types";
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
-import { encryptToken, TokenEncryptionError } from "@/lib/security/token-encryption";
+import { encryptToken, isTokenEncryptionConfigured, TokenEncryptionError } from "@/lib/security/token-encryption";
 import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
@@ -33,11 +33,28 @@ export function parseGoogleBusinessOAuthState(state: string): string | null {
   return userId?.trim() || null;
 }
 
+export function getGoogleConnectionStorageSetupMessage(): string {
+  return "Google connection storage is not configured. Set TOKEN_ENCRYPTION_KEY in your server environment.";
+}
+
+export function isGoogleConnectionStorageConfigured(): boolean {
+  return isTokenEncryptionConfigured();
+}
+
 export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): Promise<GoogleBusinessProfileConnectionStatus> {
   if (!isGoogleBusinessOAuthConfigured()) {
     return {
       setupRequired: true,
       setupMessage: getGoogleBusinessOAuthSetupMessage(),
+      connected: false,
+      connection: null,
+    };
+  }
+
+  if (!isGoogleConnectionStorageConfigured()) {
+    return {
+      setupRequired: true,
+      setupMessage: getGoogleConnectionStorageSetupMessage(),
       connected: false,
       connection: null,
     };
@@ -83,6 +100,10 @@ export async function completeGoogleBusinessOAuthCallback(
 ): Promise<{ success: boolean; error?: string }> {
   if (!isGoogleBusinessOAuthConfigured()) {
     return { success: false, error: getGoogleBusinessOAuthSetupMessage() };
+  }
+
+  if (!isGoogleConnectionStorageConfigured()) {
+    return { success: false, error: getGoogleConnectionStorageSetupMessage() };
   }
 
   const profile = await getBusinessProfileForUser();

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   cancelPublishRequest,
   fetchPublishingHistory,
+  fetchPublishingJobs,
   retryPublishRequest,
 } from "@/lib/publishing-client";
 import {
@@ -171,11 +172,33 @@ export function PublishingJobsPanel({
 }) {
   const [jobs, setJobs] = useState(initialJobs);
   const [historyJob, setHistoryJob] = useState<PublishingJob | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    setJobs(initialJobs);
+  }, [initialJobs]);
 
   async function refreshJobs() {
-    const response = await fetch("/api/publishing");
-    const payload = (await response.json()) as { jobs?: PublishingJob[] };
-    setJobs(payload.jobs ?? []);
+    setRefreshing(true);
+    setRefreshError(null);
+
+    try {
+      const { jobs: nextJobs, error } = await fetchPublishingJobs();
+
+      if (error) {
+        setRefreshError(error);
+        return;
+      }
+
+      setJobs(nextJobs);
+      setLastRefreshedAt(new Date().toISOString());
+    } catch {
+      setRefreshError("Unable to refresh publishing jobs. Please try again.");
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   const grouped = {
@@ -233,15 +256,36 @@ export function PublishingJobsPanel({
             Autonomous publishing jobs with retries, verification, and audit history. Google
             Business Profile is supported today.
           </p>
+          {lastRefreshedAt && !refreshError && (
+            <p className="mt-2 text-xs font-medium text-growth-500">
+              Refreshed {formatPublishingHistoryDate(lastRefreshedAt)}
+            </p>
+          )}
         </div>
         <button
           type="button"
+          disabled={refreshing}
           onClick={() => void refreshJobs()}
-          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Refresh Jobs
+          {refreshing && (
+            <span
+              aria-hidden="true"
+              className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600"
+            />
+          )}
+          {refreshing ? "Refreshing..." : "Refresh Jobs"}
         </button>
       </div>
+
+      {refreshError && (
+        <p
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+        >
+          {refreshError}
+        </p>
+      )}
 
       {jobs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-8 text-center">
@@ -249,6 +293,9 @@ export function PublishingJobsPanel({
             No publishing engine jobs yet. Use Publish Now on a queue item to start autonomous
             publishing.
           </p>
+          {refreshing && (
+            <p className="mt-3 text-sm font-medium text-brand-600">Refreshing jobs...</p>
+          )}
         </div>
       ) : (
         <div className="space-y-8">
