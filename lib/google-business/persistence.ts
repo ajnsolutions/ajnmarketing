@@ -163,6 +163,9 @@ export async function upsertGoogleBusinessPost(
     publishTime: string | null;
     scheduledTime: string | null;
     rawJson: Record<string, unknown>;
+    publishingQueueId?: string | null;
+    contentApprovalId?: string | null;
+    source?: GoogleBusinessPost["source"];
   }
 ): Promise<GoogleBusinessPost | null> {
   const { data, error } = await supabase
@@ -181,7 +184,9 @@ export async function upsertGoogleBusinessPost(
         media_json: input.mediaJson,
         publish_time: input.publishTime,
         scheduled_time: input.scheduledTime,
-        source: "google",
+        source: input.source ?? "google",
+        publishing_queue_id: input.publishingQueueId ?? null,
+        content_approval_id: input.contentApprovalId ?? null,
         raw_json: input.rawJson,
       },
       { onConflict: "user_id,google_post_id" }

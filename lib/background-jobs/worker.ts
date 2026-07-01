@@ -4,6 +4,8 @@ import { generateContentForUser } from "@/lib/content-generator/service";
 import type { ContentGenerationRequest } from "@/lib/content-generator/types";
 import { draftGoogleReviewReplyForUser } from "@/lib/google-business/service";
 import { runGoogleBusinessSyncForUser } from "@/lib/google-business/sync";
+import { executePublishingJobById } from "@/lib/publishing/publishingEngine";
+import { runAnalyticsFeedbackLoopForUser } from "@/lib/analytics/analyticsEngine";
 import { regenerateMarketingAgentTasksForUser } from "@/lib/marketing-agent/service";
 import { generateMarketingPlanForUser } from "@/lib/marketing-planner/service";
 import type { BackgroundJob } from "@/lib/background-jobs/types";
@@ -110,6 +112,38 @@ export async function executeBackgroundJob(job: BackgroundJob): Promise<Record<s
       return {
         reviewId: review.id,
         replyStatus: review.reply_status,
+      };
+    }
+
+    case BackgroundJobTypes.PUBLISHING_EXECUTE: {
+      const publishingJobId =
+        typeof job.payload.publishingJobId === "string" ? job.payload.publishingJobId : "";
+      if (!publishingJobId) {
+        throw new Error("Publishing job id is required.");
+      }
+
+      const { job: publishingJob, error } = await executePublishingJobById(
+        publishingJobId,
+        job.user_id
+      );
+
+      if (error || !publishingJob) {
+        throw new Error(error ?? "Publishing execution failed.");
+      }
+
+      return {
+        publishingJobId: publishingJob.id,
+        publishingStatus: publishingJob.status,
+        providerPostId: publishingJob.provider_post_id,
+      };
+    }
+
+    case BackgroundJobTypes.ANALYTICS_CAPTURE: {
+      const feedback = await runAnalyticsFeedbackLoopForUser(job.user_id);
+      return {
+        opportunityScore: feedback.opportunityScore,
+        recommendationCount: feedback.recommendations.length,
+        snapshotDate: feedback.latestSnapshot?.snapshot_date ?? null,
       };
     }
 

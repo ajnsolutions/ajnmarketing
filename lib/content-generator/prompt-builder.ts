@@ -1,4 +1,5 @@
 import { resolveContentOpportunities } from "@/lib/website-analysis/content-opportunities";
+import { formatAnalyticsFeedbackForPrompt } from "@/lib/analytics/feedbackLoop";
 import { formatMarketContextPromptSummary } from "@/lib/market-context/prompt-context";
 import type {
   ContentGenerationBusinessIntel,
@@ -123,6 +124,7 @@ export function buildContentGenerationPrompt(
 ): { system: string; user: string } {
   const intel = buildBusinessIntel(context);
   const marketContextBlock = formatMarketContextPromptSummary(context.marketContextSummary);
+  const analyticsFeedbackBlock = formatAnalyticsFeedbackForPrompt(context.analyticsFeedback);
 
   const system = [
     "You are AJN Marketing's AI content engine.",
@@ -166,6 +168,9 @@ export function buildContentGenerationPrompt(
     "",
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]
+      : []),
+    ...(analyticsFeedbackBlock
+      ? ["ANALYTICS FEEDBACK", analyticsFeedbackBlock, ""]
       : []),
     "CONTENT REQUEST",
     JSON.stringify(
@@ -220,6 +225,7 @@ export function buildMarketingPlanItemContentPrompt(
 ): { system: string; user: string } {
   const intel = buildBusinessIntel(context);
   const marketContextBlock = formatMarketContextPromptSummary(context.marketContextSummary);
+  const analyticsFeedbackBlock = formatAnalyticsFeedbackForPrompt(context.analyticsFeedback);
   const contentType = mapMarketingPlanChannelToContentType(
     request.recommendedChannel,
     request.planItemType
@@ -267,6 +273,9 @@ export function buildMarketingPlanItemContentPrompt(
     "",
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]
+      : []),
+    ...(analyticsFeedbackBlock
+      ? ["ANALYTICS FEEDBACK", analyticsFeedbackBlock, ""]
       : []),
     "MARKETING PLAN CONTEXT",
     JSON.stringify(

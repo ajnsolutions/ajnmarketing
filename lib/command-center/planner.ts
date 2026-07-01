@@ -2,6 +2,7 @@ import "server-only";
 
 import OpenAI from "openai";
 import { buildBusinessIntel } from "@/lib/content-generator/prompt-builder";
+import { formatAnalyticsFeedbackForPrompt } from "@/lib/analytics/feedbackLoop";
 import type { loadCommandCenterContext } from "@/lib/command-center/context";
 import type {
   CommandCenterBusinessHealth,
@@ -96,6 +97,9 @@ export function buildCommandCenterPrompt(input: {
   const businessIntel = context.generationContext
     ? buildBusinessIntel(context.generationContext)
     : null;
+  const analyticsFeedbackBlock = formatAnalyticsFeedbackForPrompt(
+    context.generationContext?.analyticsFeedback ?? null
+  );
 
   const system = [
     "You are AJN Marketing's AI Chief Marketing Officer.",
@@ -179,6 +183,9 @@ export function buildCommandCenterPrompt(input: {
     "BRAND INTELLIGENCE",
     JSON.stringify(businessIntel, null, 2),
     "",
+    ...(analyticsFeedbackBlock
+      ? ["ANALYTICS FEEDBACK", analyticsFeedbackBlock, ""]
+      : []),
     "Generate an executive summary, business health explanation, marketing momentum assessment, and 3 to 6 recommendations.",
     "Use recommendedAction values: generate_content, open_approval, open_publishing, open_marketing_plan, open_website_analysis, refresh_marketing_plan, refresh_website_analysis, sync_google_business, open_tasks, open_google_business.",
   ].join("\n");

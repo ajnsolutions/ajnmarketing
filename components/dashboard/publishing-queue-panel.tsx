@@ -9,6 +9,7 @@ import {
 import {
   patchPublishingQueueRequest,
 } from "@/lib/publishing-queue-client";
+import { publishNowRequest, schedulePublishRequest } from "@/lib/publishing-client";
 import type {
   PublishingPlatform,
   PublishingQueueItem,
@@ -55,7 +56,7 @@ function QueueItemCard({
   const [scheduleOpen, setScheduleOpen] = useState(false);
 
   async function runAction(
-    action: "schedule" | "mark_published" | "remove",
+    action: "schedule" | "mark_published" | "remove" | "publish_now",
     scheduledFor?: string
   ) {
     setBusy(action);
@@ -63,11 +64,9 @@ function QueueItemCard({
     if (action === "remove") {
       await patchPublishingQueueRequest({ id: item.id, action: "remove" });
     } else if (action === "schedule" && scheduledFor) {
-      await patchPublishingQueueRequest({
-        id: item.id,
-        action: "schedule",
-        scheduled_for: scheduledFor,
-      });
+      await schedulePublishRequest(item.id, scheduledFor);
+    } else if (action === "publish_now") {
+      await publishNowRequest(item.id);
     } else if (action === "mark_published") {
       await patchPublishingQueueRequest({ id: item.id, action: "mark_published" });
     }
@@ -109,6 +108,16 @@ function QueueItemCard({
               <button
                 type="button"
                 disabled={!!busy}
+                onClick={() => void runAction("publish_now")}
+                className="rounded-full bg-[#081426] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0B1426] disabled:opacity-60"
+              >
+                {busy === "publish_now" ? "Publishing..." : "Publish Now"}
+              </button>
+            )}
+            {(item.status === "ready" || item.status === "failed") && (
+              <button
+                type="button"
+                disabled={!!busy}
                 onClick={() => setScheduleOpen(true)}
                 className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
               >
@@ -120,7 +129,7 @@ function QueueItemCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => void runAction("mark_published")}
-                className="rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
+                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
               >
                 {busy === "mark_published" ? "Updating..." : "Mark Published"}
               </button>

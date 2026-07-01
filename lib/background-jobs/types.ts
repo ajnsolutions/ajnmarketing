@@ -8,6 +8,8 @@ export const BackgroundJobTypes = {
   FACEBOOK_SYNC: "facebook_sync",
   INSTAGRAM_SYNC: "instagram_sync",
   LINKEDIN_SYNC: "linkedin_sync",
+  PUBLISHING_EXECUTE: "publishing_execute",
+  ANALYTICS_CAPTURE: "analytics_capture",
 } as const;
 
 export type BackgroundJobType = (typeof BackgroundJobTypes)[keyof typeof BackgroundJobTypes];
@@ -104,4 +106,6 @@ export const BACKGROUND_JOB_TYPE_LABELS: Record<string, string> = {
   facebook_sync: "Facebook Sync",
   instagram_sync: "Instagram Sync",
   linkedin_sync: "LinkedIn Sync",
+  publishing_execute: "Publishing",
+  analytics_capture: "Analytics Capture",
 };

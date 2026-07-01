@@ -175,6 +175,11 @@ export async function runGoogleBusinessSyncForUser(input: {
     },
   });
 
+  if (syncStatus === "success" || syncStatus === "partial") {
+    const { queueAnalyticsCaptureForUser } = await import("@/lib/analytics/analyticsEngine");
+    await queueAnalyticsCaptureForUser(input.userId, input.businessProfileId).catch(() => undefined);
+  }
+
   return {
     success: syncStatus === "success" || syncStatus === "partial",
     syncLog: completedLog,

@@ -1,13 +1,17 @@
 import Link from "next/link";
+import { PublishingJobsPanel } from "@/components/dashboard/publishing-jobs-panel";
 import { PublishingQueuePanel } from "@/components/dashboard/publishing-queue-panel";
+import type { PublishingJob } from "@/lib/publishing/publishingTypes";
 import type { PublishingQueueItem, PublishingQueueStats } from "@/lib/publishing-queue/types";
 
 export function PublishingPage({
   items,
   stats,
+  jobs,
 }: {
   items: PublishingQueueItem[];
   stats: PublishingQueueStats;
+  jobs: PublishingJob[];
 }) {
   return (
     <div className="space-y-8">
@@ -17,8 +21,9 @@ export function PublishingPage({
             Publishing Queue
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Organize approved content for Google Business Profile and other channels. Scheduling and
-            status updates are workflow-only — real publishing comes in the next phase.
+            Organize approved content and publish autonomously to Google Business Profile. The
+            publishing engine handles async execution, retries, verification, and history while
+            preserving the existing approval queue workflow.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -37,6 +42,7 @@ export function PublishingPage({
         </div>
       </div>
 
+      <PublishingJobsPanel initialJobs={jobs} />
       <PublishingQueuePanel initialItems={items} initialStats={stats} />
     </div>
   );
