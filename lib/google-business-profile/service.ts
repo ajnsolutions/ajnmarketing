@@ -9,6 +9,7 @@ import {
   isGoogleBusinessOAuthConfigured,
   parseGoogleOAuthScopes,
 } from "@/lib/google-business-profile/oauth";
+import { logGoogleBusinessServerConfig } from "@/lib/google-business-profile/config";
 import {
   getGoogleBusinessProfileConnectionForUser,
   markGoogleBusinessProfileConnectionStatus,
@@ -43,6 +44,7 @@ export function isGoogleConnectionStorageConfigured(): boolean {
 
 export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): Promise<GoogleBusinessProfileConnectionStatus> {
   if (!isGoogleBusinessOAuthConfigured()) {
+    logGoogleBusinessServerConfig("connection_status.oauth_missing");
     return {
       setupRequired: true,
       setupMessage: getGoogleBusinessOAuthSetupMessage(),
@@ -52,6 +54,7 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
   }
 
   if (!isGoogleConnectionStorageConfigured()) {
+    logGoogleBusinessServerConfig("connection_status.storage_missing");
     return {
       setupRequired: true,
       setupMessage: getGoogleConnectionStorageSetupMessage(),

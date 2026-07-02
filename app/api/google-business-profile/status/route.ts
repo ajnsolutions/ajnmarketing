@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { inspectGoogleBusinessServerConfig } from "@/lib/google-business-profile/config";
 import { getGoogleBusinessProfileConnectionStatusForCurrentUser } from "@/lib/google-business-profile/service";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,5 +14,16 @@ export async function GET() {
   }
 
   const status = await getGoogleBusinessProfileConnectionStatusForCurrentUser();
-  return NextResponse.json({ status });
+  const serverConfig = inspectGoogleBusinessServerConfig();
+
+  return NextResponse.json({
+    status,
+    serverConfig: {
+      oauthConfigured: serverConfig.oauthConfigured,
+      connectionStorageConfigured: serverConfig.connectionStorageConfigured,
+      present: serverConfig.present,
+      missing: serverConfig.missing,
+      invalid: serverConfig.invalid,
+    },
+  });
 }

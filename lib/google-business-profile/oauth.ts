@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  inspectGoogleBusinessServerConfig,
+  logGoogleBusinessServerConfig,
+} from "@/lib/google-business-profile/config";
 import type {
   GoogleOAuthTokenResponse,
   GoogleOAuthUserInfo,
@@ -16,16 +20,19 @@ export const GOOGLE_BUSINESS_OAUTH_SCOPES = [
 ];
 
 export function isGoogleBusinessOAuthConfigured(): boolean {
-  return Boolean(
-    process.env.GOOGLE_CLIENT_ID?.trim() &&
-      process.env.GOOGLE_CLIENT_SECRET?.trim() &&
-      process.env.GOOGLE_REDIRECT_URI?.trim()
-  );
+  return inspectGoogleBusinessServerConfig().oauthConfigured;
 }
 
 export function getGoogleBusinessOAuthSetupMessage(): string {
   if (isGoogleBusinessOAuthConfigured()) {
     return "Google OAuth is not configured.";
+  }
+
+  const { oauthMissing } = inspectGoogleBusinessServerConfig();
+  logGoogleBusinessServerConfig("oauth_setup_check");
+
+  if (oauthMissing.length > 0) {
+    return "Google OAuth is not configured on the server. Contact your workspace administrator.";
   }
 
   return "Google OAuth is not configured on the server. Contact your workspace administrator.";

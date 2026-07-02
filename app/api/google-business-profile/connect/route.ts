@@ -11,6 +11,7 @@ import {
   GBP_OAUTH_STATE_COOKIE,
   isGoogleConnectionStorageConfigured,
 } from "@/lib/google-business-profile/service";
+import { logGoogleBusinessServerConfig } from "@/lib/google-business-profile/config";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -24,6 +25,7 @@ export async function GET() {
   }
 
   if (!isGoogleBusinessOAuthConfigured()) {
+    logGoogleBusinessServerConfig("connect_route.oauth_missing");
     return NextResponse.json(
       { error: getGoogleBusinessOAuthSetupMessage() },
       { status: 503 }
@@ -31,6 +33,7 @@ export async function GET() {
   }
 
   if (!isGoogleConnectionStorageConfigured()) {
+    logGoogleBusinessServerConfig("connect_route.storage_missing");
     return NextResponse.json(
       { error: getGoogleConnectionStorageSetupMessage() },
       { status: 503 }
