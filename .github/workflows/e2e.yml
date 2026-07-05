@@ -12,6 +12,10 @@ jobs:
     name: Playwright
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CI: true
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout
@@ -31,5 +35,3 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run test:e2e
-        env:
-          CI: true
