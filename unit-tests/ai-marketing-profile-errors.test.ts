@@ -4,7 +4,7 @@ import { APIError } from "openai";
 import {
   AiMarketingProfileGenerationError,
   buildOpenAiFailureDetails,
-} from "../../lib/ai-marketing-profile/errors.ts";
+} from "../lib/ai-marketing-profile/errors.ts";
 
 test("AiMarketingProfileGenerationError carries structured details as the error message and details payload", () => {
   const error = new AiMarketingProfileGenerationError({

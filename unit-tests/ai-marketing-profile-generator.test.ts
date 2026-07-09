@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AiMarketingProfileGenerationError } from "../../lib/ai-marketing-profile/errors.ts";
-import { createAiMarketingProfileGenerator } from "../../lib/ai-marketing-profile/generator.ts";
-import { OpenAiMarketingProfileGenerator } from "../../lib/ai-marketing-profile/openai-generator.ts";
+import { AiMarketingProfileGenerationError } from "../lib/ai-marketing-profile/errors.ts";
+import { createAiMarketingProfileGenerator } from "../lib/ai-marketing-profile/generator.ts";
+import { OpenAiMarketingProfileGenerator } from "../lib/ai-marketing-profile/openai-generator.ts";
 
 test("createAiMarketingProfileGenerator throws instead of silently using placeholder content when OpenAI is not configured", () => {
   const original = process.env.OPENAI_API_KEY;

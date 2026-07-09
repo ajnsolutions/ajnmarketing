@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatAiMarketingProfileFailure } from "../../lib/ai-marketing-profile/persistence.ts";
+import { formatAiMarketingProfileFailure } from "../lib/ai-marketing-profile/persistence.ts";
 
 test("formatAiMarketingProfileFailure returns null when there is no recorded failure", () => {
   assert.equal(formatAiMarketingProfileFailure(null), null);

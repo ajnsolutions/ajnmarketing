@@ -6,7 +6,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const PROJECT_ROOT = new URL("../../../", import.meta.url);
+const PROJECT_ROOT = new URL("../../", import.meta.url);
 const CANDIDATE_SUFFIXES = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
 
 export async function resolve(specifier, context, nextResolve) {

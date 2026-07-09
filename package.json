@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:unit": "node --import ./tests/unit/support/register.mjs --test tests/unit/*.test.ts"
+    "test:unit": "node --import ./unit-tests/support/register.mjs --test unit-tests/*.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
