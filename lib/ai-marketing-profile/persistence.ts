@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AiMarketingProfile,
+  AiMarketingProfileFailureRecord,
   AiMarketingProfileGenerated,
   AiMarketingProfileStatus,
 } from "@/lib/ai-marketing-profile/types";
@@ -31,6 +32,18 @@ export function formatRelativeTime(isoDate: string | null | undefined): string {
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   const days = Math.floor(hours / 24);
   return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+/** Short, user-safe summary of the last failure — never includes raw stack traces or secrets. */
+export function formatAiMarketingProfileFailure(
+  lastError: AiMarketingProfileFailureRecord | null | undefined
+): string | null {
+  if (!lastError?.message) return null;
+
+  const parts = [lastError.message];
+  if (lastError.status) parts.push(`(status ${lastError.status})`);
+
+  return parts.join(" ");
 }
 
 export async function getAiMarketingProfileForUser(
@@ -115,6 +128,9 @@ export async function saveAiMarketingProfileResult(
         google_business_strategy: input.generated.google_business_strategy,
         monthly_themes: input.generated.monthly_themes,
         quarterly_campaigns: input.generated.quarterly_campaigns,
+        // A successful generation supersedes any previous failure record.
+        last_error: null,
+        last_error_at: null,
       },
       { onConflict: "user_id" }
     )
@@ -129,7 +145,8 @@ export async function markAiMarketingProfileFailed(
   supabase: SupabaseClient,
   userId: string,
   businessProfileId: string,
-  websiteAnalysisId: string | null
+  websiteAnalysisId: string | null,
+  failure: AiMarketingProfileFailureRecord
 ) {
   await supabase.from("ai_marketing_profiles").upsert(
     {
@@ -137,6 +154,8 @@ export async function markAiMarketingProfileFailed(
       business_profile_id: businessProfileId,
       website_analysis_id: websiteAnalysisId,
       profile_status: "failed",
+      last_error: failure,
+      last_error_at: new Date().toISOString(),
     },
     { onConflict: "user_id" }
   );
