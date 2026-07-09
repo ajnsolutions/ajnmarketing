@@ -11,6 +11,7 @@ import {
 import { syncGoogleBusinessReviews } from "@/lib/google-business/reviews";
 import type { GoogleBusinessSyncResult } from "@/lib/google-business/types";
 import { getGoogleAccessContextForUser } from "@/lib/google-business/auth";
+import { recordGoogleConnectionFailureIfUnrecoverable } from "@/lib/google-business-profile/persistence";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -79,6 +80,15 @@ export async function runGoogleBusinessSyncForUser(input: {
   let postsSynced = 0;
   let insightsSynced = 0;
 
+  // Records the failure onto the connection itself (not just this sync log row) when it's an
+  // unrecoverable auth failure (revoked token, insufficient scope), so `connection_status`
+  // reflects reality. Transient failures (rate limits, Google 5xxs) intentionally don't
+  // change connection status here to avoid flapping it on every hiccup.
+  async function collectSyncError(error: unknown, fallbackMessage: string): Promise<void> {
+    errors.push(error instanceof Error ? error.message : fallbackMessage);
+    await recordGoogleConnectionFailureIfUnrecoverable(supabase, input.userId, error);
+  }
+
   try {
     const locationResult = await syncGoogleBusinessLocations(supabase, {
       userId: input.userId,
@@ -106,7 +116,7 @@ export async function runGoogleBusinessSyncForUser(input: {
         });
         reviewsSynced = reviewResult.reviewsSynced;
       } catch (error) {
-        errors.push(error instanceof Error ? error.message : "Reviews sync failed");
+        await collectSyncError(error, "Reviews sync failed");
       }
 
       try {
@@ -117,7 +127,7 @@ export async function runGoogleBusinessSyncForUser(input: {
           location: primaryLocation,
         });
       } catch (error) {
-        errors.push(error instanceof Error ? error.message : "Posts sync failed");
+        await collectSyncError(error, "Posts sync failed");
       }
 
       try {
@@ -128,13 +138,13 @@ export async function runGoogleBusinessSyncForUser(input: {
           location: primaryLocation,
         });
       } catch (error) {
-        errors.push(error instanceof Error ? error.message : "Insights sync failed");
+        await collectSyncError(error, "Insights sync failed");
       }
     } else {
       errors.push("No Google Business locations were found to sync.");
     }
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Google Business sync failed");
+    await collectSyncError(error, "Google Business sync failed");
   }
 
   const syncStatus =

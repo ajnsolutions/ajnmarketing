@@ -84,8 +84,16 @@ export function GbpConnectPage({
       return `Google connection failed: ${decodeURIComponent(error).replace(/_/g, " ")}`;
     }
 
+    if (!status.scopesValid && connection) {
+      return "Google Business Profile is missing required permissions and needs to be reconnected. Click Connect Google Business Profile to grant access again.";
+    }
+
+    if (connection?.connection_status === "revoked") {
+      return "Google Business Profile access was revoked or the connection is no longer valid. Reconnect to restore syncing.";
+    }
+
     return null;
-  }, [searchParams]);
+  }, [searchParams, status.scopesValid, connection]);
 
   const accessItems = [
     "Profile details",
@@ -201,7 +209,9 @@ export function GbpConnectPage({
               >
                 {status.setupRequired
                   ? "Setup Required"
-                  : formatGbpConnectionStatus(connection?.connection_status ?? "not_connected")}
+                  : !status.scopesValid && connection
+                    ? "Missing Permissions"
+                    : formatGbpConnectionStatus(connection?.connection_status ?? "not_connected")}
               </span>
             </div>
 
@@ -279,7 +289,10 @@ export function GbpConnectPage({
             {(bannerMessage || disconnectMessage) && (
               <p
                 className={`mt-5 rounded-xl border px-4 py-3 text-sm font-medium ${
-                  bannerMessage?.includes("failed") || searchParams.get("error")
+                  bannerMessage?.includes("failed") ||
+                  bannerMessage?.includes("revoked") ||
+                  bannerMessage?.includes("missing required permissions") ||
+                  searchParams.get("error")
                     ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
                     : "border-amber-400/30 bg-amber-500/10 text-amber-100"
                 }`}

@@ -19,6 +19,18 @@ export const GOOGLE_BUSINESS_OAUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
 
+/** The only scope that actually gates Business Profile API access; identity scopes are not required for sync/publish. */
+export const REQUIRED_GOOGLE_BUSINESS_SCOPE = "https://www.googleapis.com/auth/business.manage";
+
+export function findMissingRequiredGoogleScopes(scopes: string[] | null | undefined): string[] {
+  const granted = new Set(scopes ?? []);
+  return [REQUIRED_GOOGLE_BUSINESS_SCOPE].filter((scope) => !granted.has(scope));
+}
+
+export function hasRequiredGoogleScopes(scopes: string[] | null | undefined): boolean {
+  return findMissingRequiredGoogleScopes(scopes).length === 0;
+}
+
 export function isGoogleBusinessOAuthConfigured(): boolean {
   return inspectGoogleBusinessServerConfig().oauthConfigured;
 }
