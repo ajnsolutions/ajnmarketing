@@ -1,15 +1,42 @@
 import type { BusinessProfile } from "@/lib/business-profile";
 import { createAiMarketingProfileGenerator } from "@/lib/ai-marketing-profile/generator";
+import { AiMarketingProfileGenerationError } from "@/lib/ai-marketing-profile/errors";
 import {
   getAiMarketingProfileForUser,
   markAiMarketingProfileFailed,
   saveAiMarketingProfileResult,
   upsertAiMarketingProfileStatus,
 } from "@/lib/ai-marketing-profile/persistence";
-import type { AiMarketingProfile, AiMarketingProfileSourceData } from "@/lib/ai-marketing-profile/types";
+import type {
+  AiMarketingProfile,
+  AiMarketingProfileFailureRecord,
+  AiMarketingProfileSourceData,
+} from "@/lib/ai-marketing-profile/types";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
+import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
+import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
+
+const GENERATION_FAILURE_FALLBACK_MESSAGE =
+  "AI marketing profile generation failed. Please try again.";
+
+function buildFailureRecord(error: unknown): AiMarketingProfileFailureRecord {
+  if (error instanceof AiMarketingProfileGenerationError) {
+    return {
+      ...error.details,
+      message: sanitizeUserErrorMessage(error.details.message, GENERATION_FAILURE_FALLBACK_MESSAGE),
+    };
+  }
+
+  return {
+    provider: "unknown",
+    message: sanitizeUserErrorMessage(
+      error instanceof Error ? error.message : String(error),
+      GENERATION_FAILURE_FALLBACK_MESSAGE
+    ),
+  };
+}
 
 function buildSourceData(
   profile: BusinessProfile,
@@ -62,7 +89,14 @@ export async function getAiMarketingProfileForCurrentUser(): Promise<AiMarketing
   return getAiMarketingProfileForUser(supabase, user.id);
 }
 
-export async function generateAiMarketingProfileForUser(userId: string): Promise<AiMarketingProfile | null> {
+export type GenerateAiMarketingProfileResult = {
+  profile: AiMarketingProfile | null;
+  error?: string;
+};
+
+export async function generateAiMarketingProfileForUser(
+  userId: string
+): Promise<GenerateAiMarketingProfileResult> {
   const supabase = await createClient();
 
   const { data: profile, error: profileError } = await supabase
@@ -72,7 +106,7 @@ export async function generateAiMarketingProfileForUser(userId: string): Promise
     .maybeSingle();
 
   if (profileError || !profile) {
-    return null;
+    return { profile: null, error: "Business profile not found." };
   }
 
   const typedProfile = profile as BusinessProfile;
@@ -85,23 +119,63 @@ export async function generateAiMarketingProfileForUser(userId: string): Promise
     status: "generating",
   });
 
+  await logAuditEvent(supabase, {
+    userId,
+    businessProfileId: typedProfile.id,
+    action: AuditActions.AI_MARKETING_PROFILE_GENERATION_STARTED,
+    entityType: "ai_marketing_profile",
+    status: "started",
+  });
+
   try {
     const generator = createAiMarketingProfileGenerator();
     const generated = await generator.generate(buildSourceData(typedProfile, analysis));
 
-    return saveAiMarketingProfileResult(supabase, {
+    const result = await saveAiMarketingProfileResult(supabase, {
       userId,
       businessProfileId: typedProfile.id,
       websiteAnalysisId: analysis?.id ?? null,
       generated,
     });
-  } catch {
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: typedProfile.id,
+      action: AuditActions.AI_MARKETING_PROFILE_GENERATION_COMPLETED,
+      entityType: "ai_marketing_profile",
+      entityId: result?.id ?? null,
+      status: "success",
+    });
+
+    return { profile: result };
+  } catch (error) {
+    // Never save the generator's output here — on any failure (OpenAI error, malformed
+    // response, missing config), the profile stays at its last-known-good state with
+    // profile_status "failed" and structured failure details for troubleshooting/retry.
+    const failure = buildFailureRecord(error);
+
+    console.error("[AiMarketingProfile] Generation failed:", failure);
+
     await markAiMarketingProfileFailed(
       supabase,
       userId,
       typedProfile.id,
-      analysis?.id ?? null
+      analysis?.id ?? null,
+      failure
     );
-    return null;
+
+    await logAuditEvent(supabase, {
+      userId,
+      businessProfileId: typedProfile.id,
+      action: AuditActions.AI_MARKETING_PROFILE_GENERATION_FAILED,
+      entityType: "ai_marketing_profile",
+      status: "failure",
+      metadata: {
+        ...failure,
+        ...auditErrorMetadata(error, GENERATION_FAILURE_FALLBACK_MESSAGE),
+      },
+    });
+
+    return { profile: null, error: failure.message };
   }
 }

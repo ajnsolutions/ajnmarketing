@@ -6,7 +6,7 @@ import type {
   AiMarketingProfileGenerator,
   AiMarketingProfileSourceData,
 } from "@/lib/ai-marketing-profile/types";
-import { PlaceholderAiMarketingProfileGenerator } from "@/lib/ai-marketing-profile/placeholder-generator";
+import { AiMarketingProfileGenerationError, buildOpenAiFailureDetails } from "@/lib/ai-marketing-profile/errors";
 
 /** Update this constant to change the OpenAI model used for AI marketing profile generation. */
 export const OPENAI_MARKETING_PROFILE_MODEL = "gpt-4.1-mini";
@@ -194,17 +194,22 @@ function buildPrompt(source: AiMarketingProfileSourceData): string {
 
 export class OpenAiMarketingProfileGenerator implements AiMarketingProfileGenerator {
   private client: OpenAI;
-  private fallback = new PlaceholderAiMarketingProfileGenerator();
 
   constructor(apiKey = process.env.OPENAI_API_KEY) {
     if (!apiKey?.trim()) {
-      throw new Error("OPENAI_API_KEY is not configured");
+      throw new AiMarketingProfileGenerationError({
+        provider: "openai",
+        model: OPENAI_MARKETING_PROFILE_MODEL,
+        message: "OPENAI_API_KEY is not configured",
+      });
     }
 
     this.client = new OpenAI({ apiKey });
   }
 
   async generate(source: AiMarketingProfileSourceData): Promise<AiMarketingProfileGenerated> {
+    let outputText: string | undefined;
+
     try {
       const response = await this.client.responses.create({
         model: OPENAI_MARKETING_PROFILE_MODEL,
@@ -229,16 +234,39 @@ export class OpenAiMarketingProfileGenerator implements AiMarketingProfileGenera
         },
       });
 
-      const outputText = response.output_text?.trim();
-      if (!outputText) {
-        throw new Error("OpenAI returned an empty marketing profile response");
-      }
-
-      const parsed = JSON.parse(outputText) as Record<string, unknown>;
-      return normalizeGenerated(parsed);
-    } catch {
-      return this.fallback.generate(source);
+      outputText = response.output_text?.trim();
+    } catch (error) {
+      // Never swallow this and fall back to fake content — surface a structured error so the
+      // caller can log it, store it for troubleshooting, and show a real failure state.
+      throw new AiMarketingProfileGenerationError(
+        buildOpenAiFailureDetails(error, OPENAI_MARKETING_PROFILE_MODEL),
+        { cause: error }
+      );
     }
+
+    if (!outputText) {
+      throw new AiMarketingProfileGenerationError({
+        provider: "openai",
+        model: OPENAI_MARKETING_PROFILE_MODEL,
+        message: "OpenAI returned an empty marketing profile response",
+      });
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(outputText) as Record<string, unknown>;
+    } catch (error) {
+      throw new AiMarketingProfileGenerationError(
+        {
+          provider: "openai",
+          model: OPENAI_MARKETING_PROFILE_MODEL,
+          message: "OpenAI returned a marketing profile response that was not valid JSON",
+        },
+        { cause: error }
+      );
+    }
+
+    return normalizeGenerated(parsed);
   }
 }
 

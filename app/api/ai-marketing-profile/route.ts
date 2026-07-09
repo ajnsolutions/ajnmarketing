@@ -32,6 +32,11 @@ export async function POST() {
     return NextResponse.json({ error: "Business profile not found" }, { status: 404 });
   }
 
-  const profile = await generateAiMarketingProfileForUser(user.id);
+  const { profile, error } = await generateAiMarketingProfileForUser(user.id);
+
+  if (error) {
+    return NextResponse.json({ profile, error }, { status: 502 });
+  }
+
   return NextResponse.json({ profile });
 }

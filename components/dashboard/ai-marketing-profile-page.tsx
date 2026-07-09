@@ -1,4 +1,5 @@
 import {
+  formatAiMarketingProfileFailure,
   formatProfileStatus,
   formatRelativeTime,
 } from "@/lib/ai-marketing-profile/persistence";
@@ -122,7 +123,13 @@ function displayList(values: string[] | null | undefined) {
 }
 
 export function AiMarketingProfilePage({ profile }: { profile: AiMarketingProfile | null }) {
-  const isEmpty = !profile || profile.profile_status === "pending";
+  // Also empty when a failed attempt never produced any prior successful content (e.g. the
+  // first-ever generation failed) — distinct from a failed *refresh* of an already-populated
+  // profile, where the last successful content should keep showing untouched below the banner.
+  const isEmpty =
+    !profile ||
+    profile.profile_status === "pending" ||
+    (profile.profile_status === "failed" && !profile.business_summary);
   const services = displayList(profile?.services);
   const serviceAreas = displayList(profile?.service_areas);
   const keywords = displayList(profile?.keywords);
@@ -154,12 +161,22 @@ export function AiMarketingProfilePage({ profile }: { profile: AiMarketingProfil
       {profile?.profile_status === "failed" && (
         <section className="rounded-2xl border border-rose-100 bg-rose-50/50 p-6 ring-1 ring-rose-100">
           <p className="text-sm font-semibold text-rose-700">
-            AI profile generation failed. Try refreshing your profile.
+            AI profile generation failed. Click <strong>Refresh AI Profile</strong> to try again.
+          </p>
+          {formatAiMarketingProfileFailure(profile.last_error) && (
+            <p className="mt-2 text-sm text-rose-600">
+              Last error: {formatAiMarketingProfileFailure(profile.last_error)}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-rose-500">
+            {isEmpty
+              ? "No AI-generated content is shown below because generation has not succeeded yet — nothing here is placeholder or fake content."
+              : "The information below is from the last successful generation and was not overwritten by this failed attempt."}
           </p>
         </section>
       )}
 
-      {isEmpty && profile?.profile_status !== "generating" && (
+      {isEmpty && profile?.profile_status !== "generating" && profile?.profile_status !== "failed" && (
         <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-6 ring-1 ring-amber-100">
           <p className="text-sm leading-7 text-slate-600">
             Your AI marketing profile has not been generated yet. Click <strong>Refresh AI Profile</strong> to build it from your business profile and website analysis.

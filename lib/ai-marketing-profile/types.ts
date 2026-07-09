@@ -73,8 +73,21 @@ export type AiMarketingProfile = {
   google_business_strategy: string | null;
   monthly_themes: AiMarketingProfileTheme[] | null;
   quarterly_campaigns: AiMarketingProfileCampaign[] | null;
+  /** Structured details from the most recent failed generation attempt, if any. Never used to render fake profile content. */
+  last_error: AiMarketingProfileFailureRecord | null;
+  last_error_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type AiMarketingProfileFailureRecord = {
+  provider: string;
+  model?: string;
+  status?: number;
+  code?: string | null;
+  type?: string | null;
+  requestId?: string | null;
+  message: string;
 };
 
 export type AiMarketingProfileSourceData = {
