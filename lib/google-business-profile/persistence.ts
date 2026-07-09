@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { GoogleApiError } from "@/lib/google-business/googleApiError";
 import type {
   GbpConnectionStatus,
   GoogleBusinessProfileConnectionPublic,
@@ -6,7 +7,35 @@ import type {
 } from "@/lib/google-business-profile/types";
 
 const PUBLIC_CONNECTION_COLUMNS =
-  "id, user_id, business_profile_id, google_account_email, google_account_name, google_account_id, gbp_account_id, gbp_location_id, gbp_location_name, token_expires_at, scopes, connection_status, last_synced_at, created_at, updated_at";
+  "id, user_id, business_profile_id, google_account_email, google_account_name, google_account_id, gbp_account_id, gbp_location_id, gbp_location_name, token_expires_at, scopes, connection_status, last_synced_at, last_verified_at, created_at, updated_at";
+
+/** Messages Google's OAuth token endpoint returns when a refresh token is no longer usable. */
+const UNRECOVERABLE_AUTH_MESSAGE_FRAGMENTS = [
+  "invalid_grant",
+  "unauthorized_client",
+  "token has been expired or revoked",
+];
+
+/**
+ * Decides whether an error from a Google API call or token refresh indicates the
+ * connection itself is broken (and the DB status should change) versus a transient
+ * failure (rate limiting, a 5xx from Google, a network blip) that shouldn't cause the
+ * connection status to flap.
+ */
+export function classifyGoogleConnectionFailure(error: unknown): GbpConnectionStatus | null {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+  if (UNRECOVERABLE_AUTH_MESSAGE_FRAGMENTS.some((fragment) => message.includes(fragment))) {
+    return "revoked";
+  }
+
+  if (error instanceof GoogleApiError) {
+    if (error.status === 401) return "revoked";
+    if (error.status === 403) return "error";
+  }
+
+  return null;
+}
 
 export function formatGbpConnectionStatus(
   status: GbpConnectionStatus | null | undefined
@@ -129,6 +158,34 @@ export async function markGoogleBusinessProfileConnectionStatus(
 
   if (error || !data) return null;
   return data as GoogleBusinessProfileConnectionPublic;
+}
+
+/**
+ * Classifies a Google API/refresh failure and, if it's an unrecoverable auth failure,
+ * writes the corresponding status onto the connection record itself — not just a sync log
+ * row — so `connection_status` reflects reality instead of staying "connected" forever.
+ * Returns the status it wrote, or null if the error wasn't classified as connection-breaking.
+ */
+export async function recordGoogleConnectionFailureIfUnrecoverable(
+  supabase: SupabaseClient,
+  userId: string,
+  error: unknown
+): Promise<GbpConnectionStatus | null> {
+  const status = classifyGoogleConnectionFailure(error);
+  if (!status) return null;
+
+  await markGoogleBusinessProfileConnectionStatus(supabase, userId, status);
+  return status;
+}
+
+export async function markGoogleBusinessProfileConnectionVerified(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<void> {
+  await supabase
+    .from("google_business_profile_connections")
+    .update({ last_verified_at: new Date().toISOString(), connection_status: "connected" })
+    .eq("user_id", userId);
 }
 
 export function resolveEffectiveConnectionStatus(

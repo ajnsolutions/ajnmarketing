@@ -3,12 +3,15 @@ import "server-only";
 import {
   computeGoogleTokenExpiry,
   GOOGLE_OAUTH_TOKEN_URL,
+  hasRequiredGoogleScopes,
   isGoogleBusinessOAuthConfigured,
 } from "@/lib/google-business-profile/oauth";
 import {
   getGoogleBusinessProfileConnectionWithTokensForUser,
+  recordGoogleConnectionFailureIfUnrecoverable,
 } from "@/lib/google-business-profile/persistence";
 import type { GoogleBusinessProfileConnectionRecord } from "@/lib/google-business-profile/types";
+import { GoogleApiError } from "@/lib/google-business/google-api";
 import { decryptToken, encryptToken, TokenEncryptionError } from "@/lib/security/token-encryption";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -43,7 +46,12 @@ async function refreshGoogleAccessToken(
   };
 
   if (!response.ok || !payload.access_token || !payload.expires_in) {
-    throw new Error(payload.error ?? "Unable to refresh Google access token");
+    // Google's token endpoint returns e.g. `invalid_grant` in the body (not a distinctive
+    // HTTP status) when a refresh token has been revoked, so callers classify on message text.
+    throw new GoogleApiError(
+      payload.error ?? "Unable to refresh Google access token",
+      response.status
+    );
   }
 
   return {
@@ -81,6 +89,14 @@ export async function getGoogleAccessContextForUser(
 
   if (!connection?.access_token_encrypted || connection.connection_status === "revoked") {
     return null;
+  }
+
+  if (!hasRequiredGoogleScopes(connection.scopes)) {
+    // Fail fast with a clear message rather than letting every downstream API call 403 —
+    // stored scopes no longer cover what AJN needs, so this connection can't be used as-is.
+    throw new Error(
+      "Google Business Profile connection is missing required permissions. Reconnect Google Business Profile to grant access."
+    );
   }
 
   const expiresAt = connection.token_expires_at
@@ -124,7 +140,16 @@ export async function getGoogleAccessContextForUser(
     throw error;
   }
 
-  const refreshed = await refreshGoogleAccessToken(refreshToken);
+  let refreshed: Awaited<ReturnType<typeof refreshGoogleAccessToken>>;
+  try {
+    refreshed = await refreshGoogleAccessToken(refreshToken);
+  } catch (error) {
+    // e.g. invalid_grant because the user revoked access on Google's side — write that back
+    // onto the connection record itself, not just wherever this error message ends up logged,
+    // so `connection_status` reflects reality instead of staying "connected" indefinitely.
+    await recordGoogleConnectionFailureIfUnrecoverable(supabase, userId, error);
+    throw error;
+  }
 
   await persistRefreshedTokens(
     supabase,

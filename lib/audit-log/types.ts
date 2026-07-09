@@ -27,6 +27,7 @@ export const AuditActions = {
   MARKET_CONTEXT_BRIEF_GENERATED: "market_context.brief_generated",
   MARKETING_AGENT_TASKS_GENERATED: "marketing_agent.tasks_generated",
   GOOGLE_OAUTH_CONNECTED: "google_oauth.connected",
+  GOOGLE_BUSINESS_CONNECTION_VERIFICATION_FAILED: "google_business.connection.verification_failed",
   BACKGROUND_JOB_QUEUED: "background_job.queued",
   BACKGROUND_JOB_STARTED: "background_job.started",
   BACKGROUND_JOB_COMPLETED: "background_job.completed",

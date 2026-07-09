@@ -21,6 +21,7 @@ export type GoogleBusinessProfileConnectionRecord = {
   scopes: string[] | null;
   connection_status: GbpConnectionStatus;
   last_synced_at: string | null;
+  last_verified_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +36,9 @@ export type GoogleBusinessProfileConnectionStatus = {
   setupMessage?: string;
   connected: boolean;
   connection: GoogleBusinessProfileConnectionPublic | null;
+  /** False when the connection's stored scopes no longer cover what AJN needs (e.g. business.manage was revoked). */
+  scopesValid: boolean;
+  missingScopes: string[];
 };
 
 export type GoogleOAuthTokenResponse = {

@@ -1,5 +1,9 @@
 import "server-only";
 
+import { GoogleApiError } from "@/lib/google-business/googleApiError";
+
+export { GoogleApiError };
+
 export async function googleApiFetch<T>(
   url: string,
   accessToken: string,
@@ -20,7 +24,7 @@ export async function googleApiFetch<T>(
     const message =
       payload.error?.message ??
       `Google API request failed (${response.status}) for ${url}`;
-    throw new Error(message);
+    throw new GoogleApiError(message, response.status, payload.error?.status);
   }
 
   return payload;

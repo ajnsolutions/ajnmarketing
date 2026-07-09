@@ -5,6 +5,7 @@ import {
   computeGoogleTokenExpiry,
   exchangeGoogleOAuthCode,
   fetchGoogleOAuthUserInfo,
+  findMissingRequiredGoogleScopes,
   getGoogleBusinessOAuthSetupMessage,
   isGoogleBusinessOAuthConfigured,
   parseGoogleOAuthScopes,
@@ -13,10 +14,14 @@ import { logGoogleBusinessServerConfig } from "@/lib/google-business-profile/con
 import {
   getGoogleBusinessProfileConnectionForUser,
   markGoogleBusinessProfileConnectionStatus,
+  markGoogleBusinessProfileConnectionVerified,
+  recordGoogleConnectionFailureIfUnrecoverable,
   resolveEffectiveConnectionStatus,
   upsertGoogleBusinessProfileConnection,
 } from "@/lib/google-business-profile/persistence";
 import type { GoogleBusinessProfileConnectionStatus } from "@/lib/google-business-profile/types";
+import { isVerificationStale, verifyGoogleAccessTokenLive } from "@/lib/google-business-profile/verification";
+import { getGoogleAccessContextForUser } from "@/lib/google-business/auth";
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { encryptToken, isTokenEncryptionConfigured, TokenEncryptionError } from "@/lib/security/token-encryption";
 import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
@@ -50,6 +55,8 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
       setupMessage: getGoogleBusinessOAuthSetupMessage(),
       connected: false,
       connection: null,
+      scopesValid: true,
+      missingScopes: [],
     };
   }
 
@@ -60,6 +67,8 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
       setupMessage: getGoogleConnectionStorageSetupMessage(),
       connected: false,
       connection: null,
+      scopesValid: true,
+      missingScopes: [],
     };
   }
 
@@ -73,27 +82,136 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
       setupRequired: false,
       connected: false,
       connection: null,
+      scopesValid: true,
+      missingScopes: [],
     };
   }
 
   const connection = await getGoogleBusinessProfileConnectionForUser(supabase, user.id);
   const effectiveStatus = resolveEffectiveConnectionStatus(connection);
 
-  if (connection && effectiveStatus === "expired" && connection.connection_status === "connected") {
-    await markGoogleBusinessProfileConnectionStatus(supabase, user.id, "expired");
+  if (!connection || connection.connection_status === "revoked" || connection.connection_status === "not_connected") {
+    // Already confirmed broken (or never connected) — no point spending a Google call on it.
     return {
       setupRequired: false,
       connected: false,
-      connection: { ...connection, connection_status: "expired" },
+      connection: connection ? { ...connection, connection_status: effectiveStatus } : null,
+      scopesValid: connection ? findMissingRequiredGoogleScopes(connection.scopes).length === 0 : true,
+      missingScopes: connection ? findMissingRequiredGoogleScopes(connection.scopes) : [],
+    };
+  }
+
+  // Stored scopes are checked locally first (cheap, no network call) before ever touching Google.
+  const staticMissingScopes = findMissingRequiredGoogleScopes(connection.scopes);
+  if (staticMissingScopes.length > 0) {
+    return {
+      setupRequired: false,
+      connected: false,
+      connection: { ...connection, connection_status: effectiveStatus },
+      scopesValid: false,
+      missingScopes: staticMissingScopes,
+    };
+  }
+
+  // Trust a recent live verification only if the token also hasn't crossed its expiry since
+  // then — an expired token still needs a refresh attempt regardless of TTL.
+  if (effectiveStatus === "connected" && !isVerificationStale(connection.last_verified_at)) {
+    return {
+      setupRequired: false,
+      connected: true,
+      connection: { ...connection, connection_status: effectiveStatus },
+      scopesValid: true,
+      missingScopes: [],
+    };
+  }
+
+  // Otherwise, actually try to get a usable token. This is the single source of truth for
+  // refresh-if-needed / revoked detection — whether the DB row currently says "connected"
+  // (expiry not yet reached, but never live-verified or TTL stale) or "expired" (DB expiry
+  // math already tripped), attempting this distinguishes "was fine, refreshed fine" from
+  // "genuinely revoked" instead of leaving everything expired-per-timestamp lumped together.
+  let accessContext;
+  try {
+    accessContext = await getGoogleAccessContextForUser(supabase, user.id);
+  } catch (error) {
+    // getGoogleAccessContextForUser already records unrecoverable failures (revoked, etc.)
+    // onto the connection record — re-read it so this response reflects that write.
+    await recordGoogleConnectionFailureIfUnrecoverable(supabase, user.id, error);
+    const updatedConnection = await getGoogleBusinessProfileConnectionForUser(supabase, user.id);
+    return {
+      setupRequired: false,
+      connected: false,
+      connection: updatedConnection,
+      scopesValid: updatedConnection ? findMissingRequiredGoogleScopes(updatedConnection.scopes).length === 0 : true,
+      missingScopes: updatedConnection ? findMissingRequiredGoogleScopes(updatedConnection.scopes) : [],
+    };
+  }
+
+  if (!accessContext) {
+    return {
+      setupRequired: false,
+      connected: false,
+      connection: null,
+      scopesValid: true,
+      missingScopes: [],
+    };
+  }
+
+  const verification = await verifyGoogleAccessTokenLive(accessContext.accessToken);
+
+  if (verification.outcome === "invalid") {
+    await markGoogleBusinessProfileConnectionStatus(supabase, user.id, "revoked");
+    await logAuditEvent(supabase, {
+      userId: user.id,
+      businessProfileId: connection.business_profile_id,
+      action: AuditActions.GOOGLE_BUSINESS_CONNECTION_VERIFICATION_FAILED,
+      entityType: "google_business_profile_connection",
+      entityId: connection.id,
+      status: "failure",
+      metadata: { reason: verification.reason, check: "live_token_verification" },
+    });
+    return {
+      setupRequired: false,
+      connected: false,
+      connection: { ...connection, connection_status: "revoked" },
+      scopesValid: true,
+      missingScopes: [],
+    };
+  }
+
+  if (verification.outcome === "unknown") {
+    // Couldn't reach Google to verify — fail open on our own DB/expiry read rather than
+    // punishing the user for a transient issue on our side, and don't cache this outcome.
+    return {
+      setupRequired: false,
+      connected: true,
+      connection: { ...connection, connection_status: effectiveStatus },
+      scopesValid: true,
+      missingScopes: [],
+    };
+  }
+
+  // verification.outcome === "valid" — prefer the live scope grant Google just reported
+  // over our locally stored copy, since it reflects the token's actual current permissions.
+  const liveMissingScopes = findMissingRequiredGoogleScopes(verification.scopes);
+  await markGoogleBusinessProfileConnectionVerified(supabase, user.id);
+
+  if (liveMissingScopes.length > 0) {
+    return {
+      setupRequired: false,
+      connected: false,
+      connection: { ...connection, connection_status: "connected" },
+      scopesValid: false,
+      missingScopes: liveMissingScopes,
     };
   }
 
   return {
     setupRequired: false,
-    connected: effectiveStatus === "connected",
-    connection: connection
-      ? { ...connection, connection_status: effectiveStatus }
-      : null,
+    connected: true,
+    connection: { ...connection, connection_status: "connected", last_verified_at: new Date().toISOString() },
+    scopesValid: true,
+    missingScopes: [],
   };
 }
 
