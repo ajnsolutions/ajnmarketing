@@ -33,6 +33,7 @@ import type {
 } from "@/lib/market-context/types";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MARKET_CONTEXT_PROVIDERS = [
   new WeatherProvider(),
@@ -121,8 +122,17 @@ export async function generateWeeklyMarketContextBrief(input: {
   userId: string;
   businessProfileId: string;
   referenceDate?: Date;
+  /**
+   * Optional injected Supabase client. Defaults to the request-scoped cookie client
+   * (`lib/supabase/server.ts`), preserving today's behavior for every existing caller
+   * (the current-user API route and `refreshMarketContextBriefForCurrentUser`).
+   * Pass a privileged client (`lib/supabase/service.ts`) here to run this for a business
+   * that isn't the current request's signed-in user — e.g. from scheduled/background
+   * execution. See the trust-boundary note on `createServiceRoleClient`.
+   */
+  supabaseClient?: SupabaseClient;
 }): Promise<{ briefWithItems: MarketContextBriefWithItems | null; error?: string }> {
-  const supabase = await createClient();
+  const supabase = input.supabaseClient ?? (await createClient());
   const referenceDate = input.referenceDate ?? new Date();
   const { start, end, weekLabel } = getWeekBounds(referenceDate);
 
