@@ -26,6 +26,7 @@ import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { encryptToken, isTokenEncryptionConfigured, TokenEncryptionError } from "@/lib/security/token-encryption";
 import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
 export const GBP_OAUTH_STATE_COOKIE = "gbp_oauth_state";
@@ -47,7 +48,13 @@ export function isGoogleConnectionStorageConfigured(): boolean {
   return isTokenEncryptionConfigured();
 }
 
-export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): Promise<GoogleBusinessProfileConnectionStatus> {
+/**
+ * Config-only guard shared by both the userId-explicit and current-user variants,
+ * so the "is OAuth/storage configured at all" check happens in the same order for
+ * both regardless of whether a signed-in user can be resolved. Returns the
+ * early-response payload when setup is incomplete, or null when configured.
+ */
+function checkGoogleBusinessProfileSetup(): GoogleBusinessProfileConnectionStatus | null {
   if (!isGoogleBusinessOAuthConfigured()) {
     logGoogleBusinessServerConfig("connection_status.oauth_missing");
     return {
@@ -72,22 +79,24 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  return null;
+}
 
-  if (!user) {
-    return {
-      setupRequired: false,
-      connected: false,
-      connection: null,
-      scopesValid: true,
-      missingScopes: [],
-    };
-  }
+/**
+ * Explicit userId + injected-client variant of the connection-status check.
+ * Contains all the real logic; the `*ForCurrentUser` wrapper below only adds
+ * "resolve who's asking" on top. Does not read cookies, next/headers, or
+ * infer the current authenticated user — safe to call from privileged/
+ * scheduled execution with a service-role client for any userId.
+ */
+export async function getGoogleBusinessProfileConnectionStatusForUser(
+  userId: string,
+  supabase: SupabaseClient
+): Promise<GoogleBusinessProfileConnectionStatus> {
+  const setupStatus = checkGoogleBusinessProfileSetup();
+  if (setupStatus) return setupStatus;
 
-  const connection = await getGoogleBusinessProfileConnectionForUser(supabase, user.id);
+  const connection = await getGoogleBusinessProfileConnectionForUser(supabase, userId);
   const effectiveStatus = resolveEffectiveConnectionStatus(connection);
 
   if (!connection || connection.connection_status === "revoked" || connection.connection_status === "not_connected") {
@@ -132,12 +141,12 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
   // "genuinely revoked" instead of leaving everything expired-per-timestamp lumped together.
   let accessContext;
   try {
-    accessContext = await getGoogleAccessContextForUser(supabase, user.id);
+    accessContext = await getGoogleAccessContextForUser(supabase, userId);
   } catch (error) {
     // getGoogleAccessContextForUser already records unrecoverable failures (revoked, etc.)
     // onto the connection record — re-read it so this response reflects that write.
-    await recordGoogleConnectionFailureIfUnrecoverable(supabase, user.id, error);
-    const updatedConnection = await getGoogleBusinessProfileConnectionForUser(supabase, user.id);
+    await recordGoogleConnectionFailureIfUnrecoverable(supabase, userId, error);
+    const updatedConnection = await getGoogleBusinessProfileConnectionForUser(supabase, userId);
     return {
       setupRequired: false,
       connected: false,
@@ -160,9 +169,9 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
   const verification = await verifyGoogleAccessTokenLive(accessContext.accessToken);
 
   if (verification.outcome === "invalid") {
-    await markGoogleBusinessProfileConnectionStatus(supabase, user.id, "revoked");
+    await markGoogleBusinessProfileConnectionStatus(supabase, userId, "revoked");
     await logAuditEvent(supabase, {
-      userId: user.id,
+      userId,
       businessProfileId: connection.business_profile_id,
       action: AuditActions.GOOGLE_BUSINESS_CONNECTION_VERIFICATION_FAILED,
       entityType: "google_business_profile_connection",
@@ -194,7 +203,7 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
   // verification.outcome === "valid" — prefer the live scope grant Google just reported
   // over our locally stored copy, since it reflects the token's actual current permissions.
   const liveMissingScopes = findMissingRequiredGoogleScopes(verification.scopes);
-  await markGoogleBusinessProfileConnectionVerified(supabase, user.id);
+  await markGoogleBusinessProfileConnectionVerified(supabase, userId);
 
   if (liveMissingScopes.length > 0) {
     return {
@@ -213,6 +222,30 @@ export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): 
     scopesValid: true,
     missingScopes: [],
   };
+}
+
+export async function getGoogleBusinessProfileConnectionStatusForCurrentUser(): Promise<GoogleBusinessProfileConnectionStatus> {
+  // Preserves the original check order (config before auth) exactly, so behavior for
+  // "not configured AND not signed in" is unchanged from before this function was split.
+  const setupStatus = checkGoogleBusinessProfileSetup();
+  if (setupStatus) return setupStatus;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      setupRequired: false,
+      connected: false,
+      connection: null,
+      scopesValid: true,
+      missingScopes: [],
+    };
+  }
+
+  return getGoogleBusinessProfileConnectionStatusForUser(user.id, supabase);
 }
 
 export async function completeGoogleBusinessOAuthCallback(

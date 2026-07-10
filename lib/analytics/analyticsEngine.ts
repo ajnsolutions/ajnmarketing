@@ -29,10 +29,12 @@ import type {
   CaptureSnapshotResult,
 } from "@/lib/analytics/analyticsTypes";
 import { getGoogleBusinessDashboardData } from "@/lib/google-business/server";
+import { getGoogleBusinessDashboardDataForUser } from "@/lib/google-business/service";
 import { getPublishingJobsForUser } from "@/lib/publishing/publishingHistory";
 import { getPublishingQueueItemById } from "@/lib/publishing-queue/persistence";
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -43,8 +45,10 @@ function splitCompetitors(raw: string | null | undefined): string[] {
   return raw.split(/[\n,;|•]/).map((item) => item.trim()).filter(Boolean);
 }
 
-async function resolveBusinessProfileId(userId: string): Promise<string | null> {
-  const supabase = await createClient();
+async function resolveBusinessProfileId(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<string | null> {
   const { data } = await supabase
     .from("business_profiles")
     .select("id, competitors")
@@ -132,16 +136,29 @@ async function syncContentPerformanceRecords(
   return saved;
 }
 
-export async function captureSnapshotForUser(userId: string): Promise<CaptureSnapshotResult> {
-  const supabase = await createClient();
-  const businessProfileId = await resolveBusinessProfileId(userId);
+/**
+ * Captures one analytics snapshot for a business. Accepts an optional injected Supabase
+ * client — when omitted, defaults to the request-scoped cookie client exactly as before,
+ * so every existing caller (queueAnalyticsCaptureForUser via the background job worker)
+ * is unchanged. Pass a privileged client here to run this for any tenant from
+ * scheduled/background execution with no cookies or authenticated browser session.
+ * Every database access in this function, including the Google Business Profile data
+ * fetch, is threaded through the same client — there is no internal fallback that
+ * silently constructs its own request-scoped client.
+ */
+export async function captureSnapshotForUser(
+  userId: string,
+  supabaseClient?: SupabaseClient
+): Promise<CaptureSnapshotResult> {
+  const supabase = supabaseClient ?? (await createClient());
+  const businessProfileId = await resolveBusinessProfileId(supabase, userId);
 
   if (!businessProfileId) {
     return { snapshot: null, contentPerformanceCount: 0 };
   }
 
   const [gbpData, publishingJobs] = await Promise.all([
-    getGoogleBusinessDashboardData(),
+    getGoogleBusinessDashboardDataForUser(userId, supabase),
     getPublishingJobsForUser(supabase, userId),
   ]);
 

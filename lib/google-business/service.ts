@@ -1,8 +1,8 @@
 import "server-only";
 
-import { getBusinessProfileForUser } from "@/lib/business-profile-server";
+import { getBusinessProfileForUser, getBusinessProfileForUserId } from "@/lib/business-profile-server";
 import {
-  getGoogleBusinessProfileConnectionStatusForCurrentUser,
+  getGoogleBusinessProfileConnectionStatusForUser,
 } from "@/lib/google-business-profile/service";
 import { formatGbpConnectionStatus } from "@/lib/google-business-profile/persistence";
 import {
@@ -32,6 +32,7 @@ import type {
 } from "@/lib/google-business/types";
 import { getPublishingQueueForUser } from "@/lib/publishing-queue/persistence";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function startOfMonth(date = new Date()): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -157,10 +158,10 @@ function buildInsightSummary(
 }
 
 async function buildLocalPublishingPosts(
+  supabase: SupabaseClient,
   userId: string,
   businessProfileId: string
 ): Promise<GoogleBusinessPost[]> {
-  const supabase = await createClient();
   const queue = await getPublishingQueueForUser(supabase, userId);
 
   return queue
@@ -237,8 +238,18 @@ function buildEmptyDashboard(
   };
 }
 
-export async function getGoogleBusinessDashboardDataForCurrentUser(): Promise<GoogleBusinessDashboardData> {
-  const connectionStatus = await getGoogleBusinessProfileConnectionStatusForCurrentUser();
+/**
+ * Explicit userId + injected-client variant. Does not read cookies, next/headers, or
+ * infer the current authenticated user — every downstream call is threaded through with
+ * the given `supabase` client and `userId` explicitly, so this is safe to call from
+ * privileged/scheduled execution (e.g. a service-role client, any tenant) as well as from
+ * the current-user wrapper below.
+ */
+export async function getGoogleBusinessDashboardDataForUser(
+  userId: string,
+  supabase: SupabaseClient
+): Promise<GoogleBusinessDashboardData> {
+  const connectionStatus = await getGoogleBusinessProfileConnectionStatusForUser(userId, supabase);
 
   if (connectionStatus.setupRequired || !connectionStatus.connected) {
     return buildEmptyDashboard({
@@ -252,29 +263,20 @@ export async function getGoogleBusinessDashboardDataForCurrentUser(): Promise<Go
     });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return buildEmptyDashboard({});
-  }
-
-  const profile = await getBusinessProfileForUser();
-  const location = await getPrimaryGoogleBusinessLocationForUser(supabase, user.id);
-  const reviews = await getGoogleBusinessReviewsForUser(supabase, user.id, 50);
-  const unansweredReviews = await getUnansweredGoogleBusinessReviews(supabase, user.id);
-  const googlePosts = await getGoogleBusinessPostsForUser(supabase, user.id);
+  const profile = await getBusinessProfileForUserId(supabase, userId);
+  const location = await getPrimaryGoogleBusinessLocationForUser(supabase, userId);
+  const reviews = await getGoogleBusinessReviewsForUser(supabase, userId, 50);
+  const unansweredReviews = await getUnansweredGoogleBusinessReviews(supabase, userId);
+  const googlePosts = await getGoogleBusinessPostsForUser(supabase, userId);
   const insightDays = await getGoogleBusinessInsightsForUser(
     supabase,
-    user.id,
+    userId,
     location?.id
   );
-  const latestSync = await getLatestGoogleBusinessSyncLog(supabase, user.id);
-  const syncHistory = await getGoogleBusinessSyncHistory(supabase, user.id, 10);
+  const latestSync = await getLatestGoogleBusinessSyncLog(supabase, userId);
+  const syncHistory = await getGoogleBusinessSyncHistory(supabase, userId, 10);
   const localPosts = profile
-    ? await buildLocalPublishingPosts(user.id, profile.id)
+    ? await buildLocalPublishingPosts(supabase, userId, profile.id)
     : [];
 
   return {
@@ -295,6 +297,19 @@ export async function getGoogleBusinessDashboardDataForCurrentUser(): Promise<Go
     posts: buildPostsSummary(googlePosts, localPosts),
     insights: buildInsightSummary(insightDays),
   };
+}
+
+export async function getGoogleBusinessDashboardDataForCurrentUser(): Promise<GoogleBusinessDashboardData> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return buildEmptyDashboard({});
+  }
+
+  return getGoogleBusinessDashboardDataForUser(user.id, supabase);
 }
 
 export async function getGoogleBusinessHomeStatsForCurrentUser(): Promise<GoogleBusinessHomeStats> {
