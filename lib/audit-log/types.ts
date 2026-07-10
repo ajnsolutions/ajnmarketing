@@ -21,6 +21,7 @@ export const AuditActions = {
   PUBLISHING_CANCELLED: "publishing.cancelled",
   PUBLISHING_VERIFIED: "publishing.verified",
   ANALYTICS_SNAPSHOT_CAPTURED: "analytics.snapshot_captured",
+  ANALYTICS_SNAPSHOT_CAPTURE_FAILED: "analytics.snapshot_capture_failed",
   ANALYTICS_CONTENT_PERFORMANCE_CAPTURED: "analytics.content_performance_captured",
   ANALYTICS_RECOMMENDATIONS_GENERATED: "analytics.recommendations_generated",
   ANALYTICS_RECOMMENDATION_APPLIED: "analytics.recommendation_applied",
