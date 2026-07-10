@@ -28,7 +28,6 @@ import type {
   AnalyticsPageData,
   CaptureSnapshotResult,
 } from "@/lib/analytics/analyticsTypes";
-import { getGoogleBusinessDashboardData } from "@/lib/google-business/server";
 import { getGoogleBusinessDashboardDataForUser } from "@/lib/google-business/service";
 import { getPublishingJobsForUser } from "@/lib/publishing/publishingHistory";
 import { getPublishingQueueItemById } from "@/lib/publishing-queue/persistence";
@@ -226,8 +225,13 @@ export async function captureSnapshotForUser(
   return { snapshot, contentPerformanceCount };
 }
 
-export async function analyzePerformanceForUser(userId: string) {
-  const supabase = await createClient();
+/**
+ * Accepts an optional injected client — defaults to the request-scoped cookie client
+ * exactly as before, preserving current callers (generateRecommendationsForUser,
+ * getAnalyticsFeedbackForUser) unchanged.
+ */
+export async function analyzePerformanceForUser(userId: string, supabaseClient?: SupabaseClient) {
+  const supabase = supabaseClient ?? (await createClient());
   const [snapshots, contentPerformance, jobs] = await Promise.all([
     getAnalyticsSnapshotsForUser(supabase, userId, 8),
     getContentPerformanceForUser(supabase, userId),
@@ -242,8 +246,9 @@ export async function analyzePerformanceForUser(userId: string) {
   });
 }
 
-export async function detectTrendsForUser(userId: string) {
-  const supabase = await createClient();
+/** Same injectable-client contract as analyzePerformanceForUser above. */
+export async function detectTrendsForUser(userId: string, supabaseClient?: SupabaseClient) {
+  const supabase = supabaseClient ?? (await createClient());
   const { data: profile } = await supabase
     .from("business_profiles")
     .select("competitors")
@@ -268,8 +273,17 @@ export async function detectTrendsForUser(userId: string) {
   });
 }
 
-export async function generateRecommendationsForUser(userId: string) {
-  const supabase = await createClient();
+/**
+ * Generates and replaces active recommendations for a business. Accepts an optional
+ * injected Supabase client, threaded through this function's own queries and through
+ * analyzePerformanceForUser/detectTrendsForUser/getGoogleBusinessDashboardDataForUser —
+ * every database access in this path uses the same client. When omitted, defaults to
+ * the request-scoped cookie client exactly as before, so existing callers (the analytics
+ * API route, runAnalyticsFeedbackLoopForUser) are unchanged. Recommendation logic and
+ * output are unchanged — only how the underlying data is fetched.
+ */
+export async function generateRecommendationsForUser(userId: string, supabaseClient?: SupabaseClient) {
+  const supabase = supabaseClient ?? (await createClient());
   const { data: profile } = await supabase
     .from("business_profiles")
     .select("id, competitors")
@@ -279,10 +293,10 @@ export async function generateRecommendationsForUser(userId: string) {
   const businessProfileId = profile?.id;
   if (!businessProfileId) return [];
 
-  const gbpData = await getGoogleBusinessDashboardData();
+  const gbpData = await getGoogleBusinessDashboardDataForUser(userId, supabase);
   const [performance, trends] = await Promise.all([
-    analyzePerformanceForUser(userId),
-    detectTrendsForUser(userId),
+    analyzePerformanceForUser(userId, supabase),
+    detectTrendsForUser(userId, supabase),
   ]);
 
   const drafts = generateRecommendations({

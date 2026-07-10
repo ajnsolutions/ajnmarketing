@@ -35,6 +35,14 @@ export function createFakeSupabaseClient(tableResponses: Record<string, FakeTabl
         calls.push({ table, op: "in", args });
         return builder;
       },
+      gte(...args: unknown[]) {
+        calls.push({ table, op: "gte", args });
+        return builder;
+      },
+      lte(...args: unknown[]) {
+        calls.push({ table, op: "lte", args });
+        return builder;
+      },
       order(...args: unknown[]) {
         calls.push({ table, op: "order", args });
         return builder;
