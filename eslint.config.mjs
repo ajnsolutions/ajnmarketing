@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Trigger.dev's local dev/build cache (gitignored, but ESLint's flat config
+    // doesn't inherit .gitignore) — contains generated/bundled output, not source.
+    ".trigger/**",
   ]),
 ]);
 
