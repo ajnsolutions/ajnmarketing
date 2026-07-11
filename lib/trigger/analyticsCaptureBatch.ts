@@ -12,7 +12,12 @@ import type { AnalyticsEligibleTenant } from "@/lib/analytics/analyticsEligibili
 export type AnalyticsCaptureTaskPayload = {
   userId: string;
   businessProfileId: string;
-  reason: AnalyticsEligibleTenant["reason"];
+  /**
+   * "manual_trigger" is used only by the admin debugging endpoint
+   * (app/api/admin/trigger-analytics-capture) — not a due-query outcome, so it lives
+   * here rather than widening AnalyticsEligibleTenant["reason"] itself.
+   */
+  reason: AnalyticsEligibleTenant["reason"] | "manual_trigger";
 };
 
 /**
