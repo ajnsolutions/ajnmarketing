@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateContentDraftForRecommendation } from "../lib/marketing-decisions/create-content.ts";
+import {
+  generateContentDraftForRecommendation,
+  generateContentDraftForRecommendationForCurrentUser,
+} from "../lib/marketing-decisions/create-content.ts";
 import { buildRecommendationContentPrompt } from "../lib/marketing-decisions/content-prompt.ts";
 import {
   isContentSupportedActionType,
@@ -379,7 +382,11 @@ test("generation failure leaves open recommendation open", async () => {
   });
 
   assert.equal(result, null);
-  assert.match(error ?? "", /OpenAI exploded/);
+  // The raw thrown message ("OpenAI exploded") must never reach the caller -- only
+  // the fixed, generic fallback. See the error-sanitization test block below for
+  // dedicated coverage of this guarantee.
+  assert.doesNotMatch(error ?? "", /OpenAI exploded/);
+  assert.match(error ?? "", /Unable to generate content for this recommendation/);
   assert.equal(calls.some((c) => c.table === "marketing_recommendations" && c.op === "update"), false);
   assert.equal(
     calls.some(
@@ -485,4 +492,151 @@ test("in_progress recommendation can still reuse an existing draft", async () =>
   assert.equal(error, undefined);
   assert.equal(result?.reused, true);
   assert.equal(result?.contentApproval.status, "approved");
+});
+
+// --- error sanitization ---
+
+test("error sanitization: a non-23505 insert failure never returns the raw Postgres/Supabase message", async () => {
+  const rawMessage =
+    'permission denied for table content_approvals, column business_profile_id violates row-level security policy';
+  const { client } = createHappyPathClient({
+    insertError: { code: "42501", message: rawMessage },
+  });
+
+  const { result, error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: stubGenerateDraft(),
+  });
+
+  assert.equal(result, null);
+  assert.ok(error);
+  assert.doesNotMatch(error!, /permission denied/);
+  assert.doesNotMatch(error!, /row-level security/);
+  assert.doesNotMatch(error!, /content_approvals/);
+  assert.match(error!, /Unable to save content to Approval Center/);
+});
+
+test("error sanitization: a raw persistence-layer error from a lower-level call is replaced with the generic fallback, not echoed", async () => {
+  const rawMessage = 'relation "public.marketing_opportunities" does not exist';
+  const { client } = createFakeSupabaseClient({
+    marketing_recommendations: { data: recommendation(), error: null },
+    business_profiles: { data: businessProfileRow(), error: null },
+    content_approvals: { data: null, error: null },
+    ai_marketing_profiles: { data: null, error: null },
+    website_analysis: { data: null, error: null },
+    market_context_briefs: { data: null, error: null },
+    market_context_items: { data: [], error: null },
+    marketing_opportunities: { data: null, error: { message: rawMessage } },
+    audit_logs: { data: { id: "audit-1" }, error: null },
+  });
+
+  const { result, error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: stubGenerateDraft(),
+  });
+
+  assert.equal(result, null);
+  assert.ok(error);
+  assert.doesNotMatch(error!, /relation/);
+  assert.doesNotMatch(error!, /public\.marketing_opportunities/);
+  assert.match(error!, /Unable to generate content for this recommendation/);
+});
+
+test("error sanitization: a secret-shaped error message from draft generation is still caught by the existing sanitizer", async () => {
+  const { client } = createHappyPathClient();
+
+  const { result, error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: async () => {
+      throw new Error("Failed to connect: SUPABASE_SERVICE_ROLE_KEY is invalid");
+    },
+  });
+
+  assert.equal(result, null);
+  assert.ok(error);
+  assert.doesNotMatch(error!, /SUPABASE_SERVICE/);
+  assert.match(error!, /Unable to generate content for this recommendation/);
+});
+
+test("error sanitization: hand-authored safe messages still pass through unchanged", async () => {
+  const rec = recommendation({ status: "dismissed" });
+  const { client } = createFakeSupabaseClient({
+    marketing_recommendations: { data: rec, error: null },
+  });
+
+  const { error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: stubGenerateDraft(),
+  });
+
+  // This specific, hand-authored message should still reach the caller verbatim --
+  // sanitization must not make every error generic, only ones that could leak
+  // internal detail.
+  assert.match(error ?? "", /Recommendation is dismissed and cannot be drafted/);
+});
+
+// --- TOCTOU: status re-check immediately before insert ---
+
+test("TOCTOU: recommendation dismissed between initial load and draft insert aborts cleanly with no insert", async () => {
+  let recommendationReads = 0;
+  const { client, calls } = createFakeSupabaseClient({
+    marketing_recommendations: (op) => {
+      if (op === "maybeSingle" || op === "single") {
+        recommendationReads += 1;
+        if (recommendationReads === 1) {
+          return { data: recommendation({ status: "open" }), error: null };
+        }
+        // Simulates a concurrent dismiss happening during (slow) draft generation.
+        return { data: recommendation({ status: "dismissed" }), error: null };
+      }
+      return { data: null, error: null };
+    },
+    business_profiles: { data: businessProfileRow(), error: null },
+    content_approvals: { data: null, error: null },
+    ai_marketing_profiles: { data: null, error: null },
+    website_analysis: { data: null, error: null },
+    market_context_briefs: { data: null, error: null },
+    market_context_items: { data: [], error: null },
+    marketing_opportunities: { data: [], error: null },
+    audit_logs: { data: { id: "audit-1" }, error: null },
+  });
+
+  const { result, error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: stubGenerateDraft(),
+  });
+
+  assert.equal(result, null);
+  assert.match(error ?? "", /dismissed/);
+  assert.equal(calls.some((c) => c.table === "content_approvals" && c.op === "insert"), false);
+  assert.equal(recommendationReads, 2, "expected exactly the initial load plus one re-check, no more");
+});
+
+test("TOCTOU: recommendation still open at re-check proceeds normally (no false-positive abort)", async () => {
+  const { client, calls } = createHappyPathClient();
+
+  const { result, error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: stubGenerateDraft(),
+  });
+
+  assert.equal(error, undefined);
+  assert.equal(result?.reused, false);
+  assert.equal(calls.some((c) => c.table === "content_approvals" && c.op === "insert"), true);
+});
+
+test("TOCTOU: recommendation still in_progress at re-check proceeds normally", async () => {
+  const { client } = createHappyPathClient({
+    recommendation: recommendation({ status: "in_progress" }),
+  });
+
+  const { result, error } = await generateContentDraftForRecommendation(USER, REC_ID, client, {
+    generateDraft: stubGenerateDraft(),
+  });
+
+  assert.equal(error, undefined);
+  assert.equal(result?.reused, false);
+});
+
+// --- current-user wrapper ---
+
+test("generateContentDraftForRecommendationForCurrentUser: still requires cookies exactly as before (no injected client)", async () => {
+  await assert.rejects(
+    () => generateContentDraftForRecommendationForCurrentUser(REC_ID),
+    /next\/headers\.cookies\(\) called outside a Next\.js request context/
+  );
 });
