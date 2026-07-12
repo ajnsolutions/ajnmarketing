@@ -155,6 +155,11 @@ export async function createContentApprovalWithConflict(
   if (error) {
     const code = (error as { code?: string }).code;
     if (code === "23505") {
+      // content_approvals has exactly one other unique constraint besides this: the
+      // primary key (id, a gen_random_uuid()). A 23505 here is assumed to be the
+      // partial unique index on active marketing_recommendation_id (the only
+      // realistic source given normal insert volume) -- a PK collision would also
+      // raise 23505 but is astronomically unlikely and not specifically handled.
       return { approval: null, uniqueViolation: true, error };
     }
     return { approval: null, uniqueViolation: false, error };

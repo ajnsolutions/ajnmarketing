@@ -11,10 +11,7 @@ import type { ContentApproval } from "@/lib/content-approval/types";
 import {
   createContentGenerator,
 } from "@/lib/content-generator/generator";
-import {
-  formatOpenAiContentError,
-  OpenAIContentGenerator,
-} from "@/lib/content-generator/openai-generator";
+import { OpenAIContentGenerator } from "@/lib/content-generator/openai-generator";
 import type {
   ContentGenerationContext,
   GeneratedContentDraft,
@@ -35,6 +32,7 @@ import type { MarketingRecommendation } from "@/lib/marketing-decisions/types";
 import { getMarketingOpportunitiesByIdsForUser } from "@/lib/marketing-opportunities/persistence";
 import { auditErrorMetadata, logAuditEvent } from "@/lib/audit-log/service";
 import { AuditActions } from "@/lib/audit-log/types";
+import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
 
 export type RecommendationContentDraftResult = {
@@ -55,6 +53,35 @@ export type GenerateContentDraftDeps = {
 };
 
 const ACTIVE_RECOMMENDATION_STATUSES = new Set(["open", "in_progress"]);
+
+/**
+ * Fallback for any error whose message isn't known-safe by construction. Never
+ * interpolates the underlying error, so a raw Postgres/Supabase/internal message can
+ * never reach this string by accident -- see the outer catch block below.
+ */
+const CONTENT_DRAFT_GENERIC_FAILURE_MESSAGE =
+  "Unable to generate content for this recommendation right now. Please try again.";
+
+const CONTENT_DRAFT_SAVE_FAILURE_MESSAGE =
+  "Unable to save content to Approval Center. Please try again.";
+
+/**
+ * Marks an error message as deliberately safe to return to the caller verbatim. Every
+ * throw inside generateContentDraftForRecommendation's try block that is safe by
+ * construction (a fixed, hand-authored string that never interpolates a lower-level
+ * error) uses this class. The outer catch treats anything that ISN'T an instance of
+ * this class as unknown/potentially unsafe and always replaces it with a fixed generic
+ * fallback -- this is a stronger, unconditional guarantee than pattern-based
+ * sanitization alone, which can't recognize every shape a raw Postgres/Supabase/
+ * internal message might take (e.g. "relation ... does not exist" matches no known
+ * secret/config pattern but still shouldn't be echoed to the caller).
+ */
+class SafeContentDraftError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "SafeContentDraftError";
+  }
+}
 
 async function loadRecommendationGenerationContext(
   supabase: SupabaseClient,
@@ -86,7 +113,7 @@ async function defaultGenerateDraft(
 ): Promise<GeneratedContentDraft> {
   const generator = createContentGenerator();
   if (!(generator instanceof OpenAIContentGenerator)) {
-    throw new Error("Recommendation content generation requires OpenAI.");
+    throw new SafeContentDraftError("Recommendation content generation requires OpenAI.");
   }
   return generator.generateFromRecommendation(context, request);
 }
@@ -153,10 +180,9 @@ export async function generateContentDraftForRecommendation(
   );
 
   if (existingDraft) {
-    if (existingDraft.user_id !== userId) {
-      return { result: null, error: "Linked draft ownership mismatch." };
-    }
-
+    // No ownership re-check needed here: getActiveContentApprovalForRecommendation
+    // already filters by user_id in its query, so existingDraft can never belong to
+    // another tenant -- a redundant check here would be unreachable dead code.
     await logAuditEvent(supabase, {
       userId,
       businessProfileId: recommendation.business_profile_id,
@@ -193,7 +219,7 @@ export async function generateContentDraftForRecommendation(
   try {
     const context = await loadRecommendationGenerationContext(supabase, userId);
     if (!context) {
-      throw new Error("Business profile not found. Complete onboarding first.");
+      throw new SafeContentDraftError("Business profile not found. Complete onboarding first.");
     }
 
     const opportunities = await getMarketingOpportunitiesByIdsForUser(
@@ -211,6 +237,25 @@ export async function generateContentDraftForRecommendation(
 
     const draft = await generateDraft(context, contentRequest);
 
+    // Re-check status immediately before the write: draft generation can be slow
+    // (a real network call to OpenAI), and nothing between the initial check at the
+    // top of this function and this point re-validates that the recommendation is
+    // still open/in_progress. A concurrent dismiss/complete/supersede in that window
+    // must abort here, before any row is inserted -- not be discovered afterward.
+    const freshRecommendation = await getMarketingRecommendationByIdForUser(
+      supabase,
+      userId,
+      recommendationId
+    );
+
+    if (!freshRecommendation || !ACTIVE_RECOMMENDATION_STATUSES.has(freshRecommendation.status)) {
+      // freshRecommendation.status is one of this schema's own controlled enum
+      // values, not external/raw text -- safe to interpolate and return verbatim.
+      throw new SafeContentDraftError(
+        `Recommendation is ${freshRecommendation?.status ?? "no longer available"} and cannot be drafted.`
+      );
+    }
+
     const insertResult = await createContentApprovalWithConflict(supabase, {
       userId,
       businessProfileId: recommendation.business_profile_id,
@@ -220,7 +265,7 @@ export async function generateContentDraftForRecommendation(
         content: draft.content,
         source: "marketing_recommendation",
         ai_score: draft.voiceScore,
-        notes: `Created from marketing recommendation ${recommendationId} (${recommendation.recommended_action_type})`,
+        notes: `Drafted from marketing recommendation (${recommendation.recommended_action_type})`,
         marketing_recommendation_id: recommendationId,
       },
     });
@@ -233,7 +278,7 @@ export async function generateContentDraftForRecommendation(
       );
 
       if (!winningDraft || winningDraft.user_id !== userId) {
-        throw new Error("Concurrent draft creation conflict could not be resolved.");
+        throw new SafeContentDraftError("Concurrent draft creation conflict could not be resolved.");
       }
 
       await logAuditEvent(supabase, {
@@ -261,9 +306,12 @@ export async function generateContentDraftForRecommendation(
     }
 
     if (!insertResult.approval) {
-      throw new Error(
-        insertResult.error?.message ?? "Unable to save content to Approval Center"
-      );
+      // Never interpolate insertResult.error?.message into this thrown message --
+      // it's a raw Postgres/Supabase error that may reveal constraint, column, or
+      // table names. Use Error's standard `cause` option to carry the real detail
+      // through to the audit log below (see the outer catch), without exposing it
+      // in the message that becomes this function's returned `error` string.
+      throw new SafeContentDraftError(CONTENT_DRAFT_SAVE_FAILURE_MESSAGE, { cause: insertResult.error });
     }
 
     // Only after successful draft insert: open → in_progress.
@@ -309,6 +357,14 @@ export async function generateContentDraftForRecommendation(
       },
     };
   } catch (error) {
+    // Prefer the original cause (e.g. a raw Postgres/Supabase error attached via
+    // Error's `cause` option above) for the audit log's diagnostic detail, falling
+    // back to the caught error itself. auditErrorMetadata applies this codebase's
+    // standard server-side sanitization either way -- this is about giving the audit
+    // trail the most useful underlying detail available, not bypassing that.
+    const auditDetailSource =
+      error instanceof Error && error.cause !== undefined ? error.cause : error;
+
     await logAuditEvent(supabase, {
       userId,
       businessProfileId: recommendation.business_profile_id,
@@ -316,12 +372,47 @@ export async function generateContentDraftForRecommendation(
       entityType: "marketing_recommendation",
       entityId: recommendationId,
       status: "failure",
-      metadata: auditErrorMetadata(error, "Recommendation content drafting failed"),
+      metadata: auditErrorMetadata(auditDetailSource, "Recommendation content drafting failed"),
     });
 
-    return {
-      result: null,
-      error: error instanceof Error ? error.message : formatOpenAiContentError(error),
-    };
+    // Never return a raw error message here. Only this function's own deliberately-
+    // authored, fixed SafeContentDraftError messages are returned verbatim (still run
+    // through toSafeUserErrorMessage as a defensive extra layer, though none of them
+    // match its patterns). Everything else -- a raw Postgres/Supabase message bubbling
+    // up from a lower-level persistence call, an unexpected exception from draft
+    // generation, or anything not explicitly vouched for as safe -- is unconditionally
+    // replaced with the fixed generic fallback, regardless of what its message
+    // contains. This is a stronger guarantee than pattern-based sanitization alone.
+    if (error instanceof SafeContentDraftError) {
+      return {
+        result: null,
+        error: toSafeUserErrorMessage(error, CONTENT_DRAFT_GENERIC_FAILURE_MESSAGE),
+      };
+    }
+
+    return { result: null, error: CONTENT_DRAFT_GENERIC_FAILURE_MESSAGE };
   }
+}
+
+/**
+ * Current-user wrapper: resolves the session once, then delegates to the injectable
+ * core above. Unchanged cookie-bound contract -- mirrors
+ * evaluateOpportunitiesForCurrentUser / runMarketingDecisionEngineForCurrentUser. The
+ * core function itself has no current-user dependency; this wrapper is the only place
+ * that resolves a session.
+ */
+export async function generateContentDraftForRecommendationForCurrentUser(
+  recommendationId: string,
+  deps: GenerateContentDraftDeps = {}
+): Promise<{ result: RecommendationContentDraftResult | null; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { result: null, error: "Unauthorized" };
+  }
+
+  return generateContentDraftForRecommendation(user.id, recommendationId, supabase, deps);
 }
