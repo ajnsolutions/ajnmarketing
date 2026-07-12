@@ -5,11 +5,10 @@ import type { ContentApproval } from "@/lib/content-approval/types";
 import {
   buildRecommendationListItem,
   buildRecommendationsSummary,
-  isActiveRecommendationStatus,
   type MarketingRecommendationsPageData,
   type RecommendationListItem,
 } from "@/lib/marketing-decisions/ui";
-import { getMarketingRecommendationsForUser } from "@/lib/marketing-decisions/persistence";
+import { getActiveMarketingRecommendationsForUser } from "@/lib/marketing-decisions/persistence";
 import { getMarketingOpportunitiesByIdsForUser } from "@/lib/marketing-opportunities/persistence";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,13 +40,11 @@ export async function getMarketingRecommendationsPageDataForUser(
 ): Promise<MarketingRecommendationsPageData> {
   const supabase = supabaseClient ?? (await createClient());
 
-  const recommendations = await getMarketingRecommendationsForUser(supabase, userId, {
-    limit: 100,
-  });
-
-  const active = recommendations
-    .filter((row) => isActiveRecommendationStatus(row.status))
-    .sort((a, b) => b.priority_score - a.priority_score);
+  // Filtered to open/in_progress in SQL -- an active recommendation can never be
+  // pushed out by historical dismissed/completed/superseded rows the way a
+  // fetch-then-filter-in-JS approach could. Already ordered by priority_score desc,
+  // created_at desc, so no further JS sort is needed.
+  const active = await getActiveMarketingRecommendationsForUser(supabase, userId);
 
   const opportunityIds = [...new Set(active.flatMap((row) => row.related_opportunity_ids))];
   const opportunities = await getMarketingOpportunitiesByIdsForUser(

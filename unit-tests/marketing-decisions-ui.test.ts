@@ -10,6 +10,7 @@ import {
 } from "../lib/marketing-decisions/ui.ts";
 import { getMarketingRecommendationsPageDataForUser } from "../lib/marketing-decisions/page-data.ts";
 import { createFakeSupabaseClient, userIdsQueried } from "./support/fake-supabase-client.ts";
+import { readFileSync } from "node:fs";
 import type { MarketingRecommendation } from "../lib/marketing-decisions/types.ts";
 import type { MarketingOpportunity } from "../lib/marketing-opportunities/types.ts";
 import type { ContentApproval } from "../lib/content-approval/types.ts";
@@ -226,20 +227,24 @@ test("formatEvidenceEntries: human-readable, no raw JSON dump", () => {
   assert.equal(entries[1]!.value.includes("}"), false);
 });
 
-test("page data: orders by priority and excludes inactive statuses", async () => {
+test("page data: excludes inactive statuses by querying status in SQL, not by fetching then filtering", async () => {
+  // The fake client doesn't simulate real Postgrest filtering (see
+  // getActiveMarketingRecommendationsForUser's dedicated query-contract test below for
+  // that), so this fixture models what a REAL .in("status", ["open","in_progress"])
+  // query would already have excluded -- inactive rows are deliberately absent here,
+  // not present-but-expected-to-be-filtered-out. Fixture is already in the order a
+  // real .order("priority_score", desc) query would return, since page-data.ts no
+  // longer re-sorts in JS (the DB query is now the single source of ordering truth).
   const { client } = createFakeSupabaseClient({
     marketing_recommendations: {
       data: [
-        recommendation({ id: "rec-low", priority_score: 30, status: "open" }),
         recommendation({
           id: "rec-high",
           priority_score: 95,
           status: "open",
           related_opportunity_ids: ["opp-1"],
         }),
-        recommendation({ id: "rec-done", priority_score: 99, status: "completed" }),
-        recommendation({ id: "rec-gone", priority_score: 98, status: "superseded" }),
-        recommendation({ id: "rec-dismissed", priority_score: 97, status: "dismissed" }),
+        recommendation({ id: "rec-low", priority_score: 30, status: "open" }),
       ],
       error: null,
     },
@@ -305,6 +310,24 @@ test("page data: empty state contract", async () => {
   assert.deepEqual(data.items, []);
   assert.equal(data.summary.activeCount, 0);
   assert.equal(data.summary.highestPriorityTitle, null);
+});
+
+test("empty state: copy describes analysis honestly, without implying an active background process", () => {
+  // No React component-rendering infrastructure exists in this codebase (see PR #16's
+  // review), so this asserts directly on the component source rather than rendered
+  // output -- enough to guard against the exact regression this PR fixes: the previous
+  // copy ("When AJN spots timely opportunities...they'll show up here") implied a live,
+  // ongoing watcher, when nothing currently triggers detection or the decision engine
+  // automatically for any real user.
+  const source = readFileSync(
+    "components/dashboard/marketing-recommendations-page.tsx",
+    "utf-8"
+  );
+  assert.match(source, /No recommendations yet/);
+  assert.match(source, /analysis of your business signals/);
+  assert.match(source, /None have been generated for your account yet/);
+  assert.equal(source.includes("spots timely opportunities"), false);
+  assert.equal(source.includes("they'll show up here"), false);
 });
 
 test("linked draft navigation target is Approval Center path (contract)", () => {
