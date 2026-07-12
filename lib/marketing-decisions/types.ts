@@ -30,6 +30,8 @@ export type RecommendationEffort = (typeof RecommendationEfforts)[keyof typeof R
 
 export const RecommendationStatuses = {
   OPEN: "open",
+  // Draft content has been created and is awaiting approval; not yet completed.
+  IN_PROGRESS: "in_progress",
   DISMISSED: "dismissed",
   COMPLETED: "completed",
   // A recommendation whose underlying opportunity group no longer exists as detected

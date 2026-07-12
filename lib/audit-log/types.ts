@@ -43,6 +43,10 @@ export const AuditActions = {
   MARKETING_RECOMMENDATIONS_GENERATION_STARTED: "marketing_recommendations.generation_started",
   MARKETING_RECOMMENDATIONS_GENERATION_COMPLETED: "marketing_recommendations.generation_completed",
   MARKETING_RECOMMENDATIONS_GENERATION_FAILED: "marketing_recommendations.generation_failed",
+  MARKETING_RECOMMENDATION_CONTENT_DRAFT_STARTED: "marketing_recommendation.content_draft.started",
+  MARKETING_RECOMMENDATION_CONTENT_DRAFT_COMPLETED: "marketing_recommendation.content_draft.completed",
+  MARKETING_RECOMMENDATION_CONTENT_DRAFT_FAILED: "marketing_recommendation.content_draft.failed",
+  MARKETING_RECOMMENDATION_CONTENT_DRAFT_REUSED: "marketing_recommendation.content_draft.reused",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];

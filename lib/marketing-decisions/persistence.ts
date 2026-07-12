@@ -29,8 +29,9 @@ function mapRecommendation(row: Record<string, unknown>): MarketingRecommendatio
 
 /**
  * Statuses that represent "nobody has acted on this yet" — safe for re-generation to
- * overwrite with fresh scoring and reopen if it had been superseded. "dismissed" and
- * "completed" represent a user decision that regeneration must not silently undo.
+ * overwrite with fresh scoring and reopen if it had been superseded. "dismissed",
+ * "completed", and "in_progress" represent user/system progress that regeneration must
+ * not silently undo (in_progress means a draft already exists).
  */
 const REOPENABLE_STATUSES = new Set<RecommendationStatus>(["open", "superseded"]);
 
@@ -171,4 +172,69 @@ export async function getMarketingRecommendationsForUser(
   }
 
   return (data ?? []).map((row) => mapRecommendation(row as Record<string, unknown>));
+}
+
+export async function getMarketingRecommendationByIdForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  recommendationId: string
+): Promise<MarketingRecommendation | null> {
+  const { data, error } = await supabase
+    .from("marketing_recommendations")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", recommendationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `getMarketingRecommendationByIdForUser: failed to read recommendation (${error.message})`
+    );
+  }
+
+  if (!data) return null;
+  return mapRecommendation(data as Record<string, unknown>);
+}
+
+/**
+ * Moves open → in_progress after a draft is persisted. Never touches dismissed,
+ * completed, or superseded rows. Idempotent if already in_progress.
+ */
+export async function markMarketingRecommendationInProgress(
+  supabase: SupabaseClient,
+  userId: string,
+  recommendationId: string
+): Promise<MarketingRecommendation | null> {
+  const existing = await getMarketingRecommendationByIdForUser(supabase, userId, recommendationId);
+  if (!existing) return null;
+
+  if (existing.status === "in_progress") {
+    return existing;
+  }
+
+  if (existing.status !== "open") {
+    return existing;
+  }
+
+  const { data, error } = await supabase
+    .from("marketing_recommendations")
+    .update({ status: "in_progress" })
+    .eq("user_id", userId)
+    .eq("id", recommendationId)
+    .eq("status", "open")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `markMarketingRecommendationInProgress: failed to update status (${error.message})`
+    );
+  }
+
+  if (!data) {
+    // Race: another writer changed status; re-read and return current row.
+    return getMarketingRecommendationByIdForUser(supabase, userId, recommendationId);
+  }
+
+  return mapRecommendation(data as Record<string, unknown>);
 }
