@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   upsertMarketingOpportunity,
   closeExpiredMarketingOpportunities,
+  getActiveMarketingOpportunitiesForUser,
 } from "../lib/marketing-opportunities/persistence.ts";
 import { createFakeSupabaseClient } from "./support/fake-supabase-client.ts";
 import type { MarketingOpportunityDraft } from "../lib/marketing-opportunities/types.ts";
@@ -156,4 +157,27 @@ test("closeExpiredMarketingOpportunities: throws clearly on a query error", asyn
   });
 
   await assert.rejects(() => closeExpiredMarketingOpportunities(client, "user-1"), /failed to close expired rows/);
+});
+
+test("getActiveMarketingOpportunitiesForUser: queries only open and in_progress statuses", async () => {
+  const { client, calls } = createFakeSupabaseClient({
+    marketing_opportunities: { data: [], error: null },
+  });
+
+  await getActiveMarketingOpportunitiesForUser(client, "user-1");
+
+  const inFilter = calls.find((c) => c.op === "in" && c.args[0] === "status");
+  assert.ok(inFilter, "expected an in('status', [...]) filter");
+  assert.deepEqual(inFilter!.args[1], ["open", "in_progress"]);
+});
+
+test("getActiveMarketingOpportunitiesForUser: throws clearly on a query error rather than returning an empty list", async () => {
+  const { client } = createFakeSupabaseClient({
+    marketing_opportunities: { data: null, error: { message: "db down" } },
+  });
+
+  await assert.rejects(
+    () => getActiveMarketingOpportunitiesForUser(client, "user-1"),
+    /failed to read opportunities/
+  );
 });

@@ -127,6 +127,30 @@ export async function closeExpiredMarketingOpportunities(
   return data?.length ?? 0;
 }
 
+/**
+ * Opportunities eligible for the Marketing Decision Engine to act on: "open" or
+ * "in_progress" only. Explicitly excludes dismissed, resolved, and expired
+ * opportunities — the decision engine (lib/marketing-decisions/) must never generate a
+ * recommendation from an opportunity the user already dismissed/resolved or that's no
+ * longer relevant.
+ */
+export async function getActiveMarketingOpportunitiesForUser(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<MarketingOpportunity[]> {
+  const { data, error } = await supabase
+    .from("marketing_opportunities")
+    .select("*")
+    .eq("user_id", userId)
+    .in("status", ["open", "in_progress"]);
+
+  if (error) {
+    throw new Error(`getActiveMarketingOpportunitiesForUser: failed to read opportunities (${error.message})`);
+  }
+
+  return (data ?? []).map((row) => mapOpportunity(row as Record<string, unknown>));
+}
+
 export async function getMarketingOpportunitiesForUser(
   supabase: SupabaseClient,
   userId: string,
