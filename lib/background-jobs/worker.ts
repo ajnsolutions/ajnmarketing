@@ -6,6 +6,7 @@ import { draftGoogleReviewReplyForUser } from "@/lib/google-business/service";
 import { runGoogleBusinessSyncForUser } from "@/lib/google-business/sync";
 import { executePublishingJobById } from "@/lib/publishing/publishingEngine";
 import { runAnalyticsFeedbackLoopForUser } from "@/lib/analytics/analyticsEngine";
+import { evaluateOpportunitiesForUser } from "@/lib/marketing-opportunities/detectionEngine";
 import { regenerateMarketingAgentTasksForUser } from "@/lib/marketing-agent/service";
 import { generateMarketingPlanForUser } from "@/lib/marketing-planner/service";
 import type { BackgroundJob } from "@/lib/background-jobs/types";
@@ -144,6 +145,24 @@ export async function executeBackgroundJob(job: BackgroundJob): Promise<Record<s
         opportunityScore: feedback.opportunityScore,
         recommendationCount: feedback.recommendations.length,
         snapshotDate: feedback.latestSnapshot?.snapshot_date ?? null,
+      };
+    }
+
+    case BackgroundJobTypes.OPPORTUNITY_DETECTION: {
+      // No client injected here: like every other case in this switch, this job runs
+      // within an after() request context, so evaluateOpportunitiesForUser's default
+      // request-scoped client is correct. Service-role/Trigger.dev execution should
+      // call evaluateOpportunitiesForUser(userId, serviceRoleClient) directly instead
+      // of going through this worker.
+      const result = await evaluateOpportunitiesForUser(job.user_id);
+      if (!result) {
+        throw new Error("No business profile found for opportunity detection.");
+      }
+
+      return {
+        opportunityCount: result.opportunities.length,
+        expiredCount: result.expiredCount,
+        businessProfileId: result.businessProfileId,
       };
     }
 

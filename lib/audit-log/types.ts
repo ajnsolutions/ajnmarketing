@@ -37,6 +37,9 @@ export const AuditActions = {
   BACKGROUND_JOB_COMPLETED: "background_job.completed",
   BACKGROUND_JOB_FAILED: "background_job.failed",
   BACKGROUND_JOB_CANCELLED: "background_job.cancelled",
+  MARKETING_OPPORTUNITIES_DETECTION_STARTED: "marketing_opportunities.detection_started",
+  MARKETING_OPPORTUNITIES_DETECTION_COMPLETED: "marketing_opportunities.detection_completed",
+  MARKETING_OPPORTUNITIES_DETECTION_FAILED: "marketing_opportunities.detection_failed",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];

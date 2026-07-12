@@ -10,6 +10,7 @@ export const BackgroundJobTypes = {
   LINKEDIN_SYNC: "linkedin_sync",
   PUBLISHING_EXECUTE: "publishing_execute",
   ANALYTICS_CAPTURE: "analytics_capture",
+  OPPORTUNITY_DETECTION: "opportunity_detection",
 } as const;
 
 export type BackgroundJobType = (typeof BackgroundJobTypes)[keyof typeof BackgroundJobTypes];
