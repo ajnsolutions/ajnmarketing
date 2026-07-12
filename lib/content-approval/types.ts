@@ -12,6 +12,7 @@ export type ContentApproval = {
   version: number;
   ai_score: number | null;
   notes: string | null;
+  marketing_recommendation_id: string | null;
   approved_at: string | null;
   approved_by: string | null;
   rejected_reason: string | null;
@@ -26,6 +27,7 @@ export type ContentApprovalCreateInput = {
   source?: string;
   ai_score?: number | null;
   notes?: string | null;
+  marketing_recommendation_id?: string | null;
 };
 
 export type ContentApprovalPatchInput = {

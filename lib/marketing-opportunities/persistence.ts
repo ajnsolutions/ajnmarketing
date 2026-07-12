@@ -174,3 +174,25 @@ export async function getMarketingOpportunitiesForUser(
 
   return (data ?? []).map((row) => mapOpportunity(row as Record<string, unknown>));
 }
+
+export async function getMarketingOpportunitiesByIdsForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  opportunityIds: string[]
+): Promise<MarketingOpportunity[]> {
+  if (opportunityIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("marketing_opportunities")
+    .select("*")
+    .eq("user_id", userId)
+    .in("id", opportunityIds);
+
+  if (error) {
+    throw new Error(
+      `getMarketingOpportunitiesByIdsForUser: failed to read opportunities (${error.message})`
+    );
+  }
+
+  return (data ?? []).map((row) => mapOpportunity(row as Record<string, unknown>));
+}

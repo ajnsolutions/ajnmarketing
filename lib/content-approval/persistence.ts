@@ -83,12 +83,84 @@ export async function createContentApproval(
       version: input.version ?? 1,
       ai_score: input.data.ai_score ?? null,
       notes: input.data.notes ?? null,
+      marketing_recommendation_id: input.data.marketing_recommendation_id ?? null,
     })
     .select("*")
     .single();
 
   if (error) return null;
   return data as ContentApproval;
+}
+
+const ACTIVE_RECOMMENDATION_DRAFT_STATUSES = ["pending", "approved", "published"] as const;
+
+/**
+ * Returns the active (non-rejected) draft linked to a recommendation for this user.
+ * Ownership is enforced via user_id — never trust the FK alone.
+ */
+export async function getActiveContentApprovalForRecommendation(
+  supabase: SupabaseClient,
+  userId: string,
+  recommendationId: string
+): Promise<ContentApproval | null> {
+  const { data, error } = await supabase
+    .from("content_approvals")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("marketing_recommendation_id", recommendationId)
+    .in("status", [...ACTIVE_RECOMMENDATION_DRAFT_STATUSES])
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as ContentApproval;
+}
+
+export type CreateContentApprovalResult =
+  | { approval: ContentApproval; uniqueViolation: false }
+  | { approval: null; uniqueViolation: true; error: { code?: string; message?: string } }
+  | { approval: null; uniqueViolation: false; error: { code?: string; message?: string } };
+
+/**
+ * Insert path used by recommendation-to-content drafting. Surfaces unique-constraint
+ * races (partial unique index on active marketing_recommendation_id) so callers can
+ * re-query and return the winning draft.
+ */
+export async function createContentApprovalWithConflict(
+  supabase: SupabaseClient,
+  input: {
+    userId: string;
+    businessProfileId: string;
+    data: ContentApprovalCreateInput;
+    version?: number;
+  }
+): Promise<CreateContentApprovalResult> {
+  const { data, error } = await supabase
+    .from("content_approvals")
+    .insert({
+      user_id: input.userId,
+      business_profile_id: input.businessProfileId,
+      content_type: input.data.content_type,
+      title: input.data.title,
+      content: input.data.content,
+      status: "pending",
+      source: input.data.source ?? "content_generator",
+      version: input.version ?? 1,
+      ai_score: input.data.ai_score ?? null,
+      notes: input.data.notes ?? null,
+      marketing_recommendation_id: input.data.marketing_recommendation_id ?? null,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "23505") {
+      return { approval: null, uniqueViolation: true, error };
+    }
+    return { approval: null, uniqueViolation: false, error };
+  }
+
+  return { approval: data as ContentApproval, uniqueViolation: false };
 }
 
 export async function updateContentApproval(

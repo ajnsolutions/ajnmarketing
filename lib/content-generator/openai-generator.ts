@@ -2,6 +2,8 @@ import "server-only";
 
 import OpenAI from "openai";
 import { buildContentGenerationPrompt, buildMarketingPlanItemContentPrompt } from "@/lib/content-generator/prompt-builder";
+import { buildRecommendationContentPrompt } from "@/lib/marketing-decisions/content-prompt";
+import type { RecommendationContentRequest } from "@/lib/marketing-decisions/content-prompt";
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import type {
   ContentGenerationContext,
@@ -257,6 +259,50 @@ export class OpenAIContentGenerator implements ContentGenerator {
           format: {
             type: "json_schema",
             name: "marketing_plan_content_draft",
+            schema: SINGLE_DRAFT_JSON_SCHEMA,
+            strict: true,
+          },
+        },
+      });
+    } catch (error) {
+      throw new Error(formatOpenAiContentError(error));
+    }
+
+    const outputText = response.output_text?.trim();
+    if (!outputText) {
+      throw new Error("OpenAI returned an empty content draft response");
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(outputText);
+    } catch {
+      throw new Error("OpenAI returned invalid JSON for content draft");
+    }
+
+    return normalizeDraft(parsed);
+  }
+
+  async generateFromRecommendation(
+    context: ContentGenerationContext,
+    request: RecommendationContentRequest
+  ): Promise<GeneratedContentDraft> {
+    const { system, user } = buildRecommendationContentPrompt(context, request);
+
+    let response: OpenAI.Responses.Response;
+
+    try {
+      response = await this.client.responses.create({
+        model: OPENAI_CONTENT_GENERATOR_MODEL,
+        temperature: OPENAI_CONTENT_GENERATOR_TEMPERATURE,
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "recommendation_content_draft",
             schema: SINGLE_DRAFT_JSON_SCHEMA,
             strict: true,
           },
