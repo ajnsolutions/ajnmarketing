@@ -91,8 +91,8 @@ export function MarketingRecommendationsPage({
       >
         {data.items.length === 0 ? (
           <DashboardEmptyState
-            title="No active recommendations yet"
-            description="When AJN spots timely opportunities—like a quiet posting streak or a seasonal moment—they'll show up here with a clear next step."
+            title="No recommendations yet"
+            description="Recommendations are created from an analysis of your business signals — Google posting activity, reviews, seasonal timing, and more. None have been generated for your account yet. In the meantime, explore Market Context to see the signals AJN has gathered so far."
             actionLabel="Open Market Context"
             actionHref="/dashboard/market-context"
           />

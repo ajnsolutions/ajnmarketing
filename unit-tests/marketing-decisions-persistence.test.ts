@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   upsertMarketingRecommendation,
   closeSupersededMarketingRecommendations,
+  getActiveMarketingRecommendationsForUser,
 } from "../lib/marketing-decisions/persistence.ts";
 import { createFakeSupabaseClient } from "./support/fake-supabase-client.ts";
 import type { MarketingRecommendationDraft } from "../lib/marketing-decisions/types.ts";
@@ -150,5 +151,57 @@ test("closeSupersededMarketingRecommendations: throws clearly on a read error", 
   await assert.rejects(
     () => closeSupersededMarketingRecommendations(client, "user-1", "biz-1", []),
     /failed to read open recommendations/
+  );
+});
+
+// --- getActiveMarketingRecommendationsForUser ---
+
+test("getActiveMarketingRecommendationsForUser: filters status to exactly open and in_progress in the query itself", async () => {
+  const { client, calls } = createFakeSupabaseClient({
+    marketing_recommendations: { data: [], error: null },
+  });
+
+  await getActiveMarketingRecommendationsForUser(client, "user-1");
+
+  const inFilter = calls.find((c) => c.op === "in" && c.args[0] === "status");
+  assert.ok(inFilter, "expected an in('status', [...]) filter -- not a fetch-then-filter approach");
+  assert.deepEqual(inFilter!.args[1], ["open", "in_progress"]);
+  assert.ok(!(inFilter!.args[1] as string[]).includes("dismissed"));
+  assert.ok(!(inFilter!.args[1] as string[]).includes("completed"));
+  assert.ok(!(inFilter!.args[1] as string[]).includes("superseded"));
+});
+
+test("getActiveMarketingRecommendationsForUser: orders by priority_score desc, then created_at desc, in the query itself", async () => {
+  const { client, calls } = createFakeSupabaseClient({
+    marketing_recommendations: { data: [], error: null },
+  });
+
+  await getActiveMarketingRecommendationsForUser(client, "user-1");
+
+  const orderCalls = calls.filter((c) => c.op === "order");
+  assert.equal(orderCalls.length, 2);
+  assert.deepEqual(orderCalls[0]!.args, ["priority_score", { ascending: false }]);
+  assert.deepEqual(orderCalls[1]!.args, ["created_at", { ascending: false }]);
+});
+
+test("getActiveMarketingRecommendationsForUser: scopes to the given userId", async () => {
+  const { client, calls } = createFakeSupabaseClient({
+    marketing_recommendations: { data: [], error: null },
+  });
+
+  await getActiveMarketingRecommendationsForUser(client, "user-42");
+
+  const userFilter = calls.find((c) => c.op === "eq" && c.args[0] === "user_id");
+  assert.equal(userFilter!.args[1], "user-42");
+});
+
+test("getActiveMarketingRecommendationsForUser: throws clearly on a query error rather than returning an empty list", async () => {
+  const { client } = createFakeSupabaseClient({
+    marketing_recommendations: { data: null, error: { message: "db down" } },
+  });
+
+  await assert.rejects(
+    () => getActiveMarketingRecommendationsForUser(client, "user-1"),
+    /failed to read recommendations/
   );
 });

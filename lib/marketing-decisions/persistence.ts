@@ -174,6 +174,39 @@ export async function getMarketingRecommendationsForUser(
   return (data ?? []).map((row) => mapRecommendation(row as Record<string, unknown>));
 }
 
+/**
+ * Active (open / in_progress) recommendations for one user, filtered at the query
+ * level rather than fetched-then-filtered. This matters: getMarketingRecommendationsForUser
+ * caps at a row limit across ALL statuses, so a tenant with enough historical
+ * dismissed/completed/superseded rows could have genuinely-active recommendations
+ * pushed outside that cap before an in-memory filter ever saw them. Filtering status
+ * in SQL means the cap (if any is ever added here) only ever competes among active
+ * rows, so an active recommendation can never be silently hidden by inactive history.
+ * No limit is applied — at most one recommendation exists per action type per business
+ * (8 possible action types), so the active set is inherently small and bounded,
+ * mirroring getActiveMarketingOpportunitiesForUser's same no-limit precedent.
+ */
+export async function getActiveMarketingRecommendationsForUser(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<MarketingRecommendation[]> {
+  const { data, error } = await supabase
+    .from("marketing_recommendations")
+    .select("*")
+    .eq("user_id", userId)
+    .in("status", ["open", "in_progress"])
+    .order("priority_score", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      `getActiveMarketingRecommendationsForUser: failed to read recommendations (${error.message})`
+    );
+  }
+
+  return (data ?? []).map((row) => mapRecommendation(row as Record<string, unknown>));
+}
+
 export async function getMarketingRecommendationByIdForUser(
   supabase: SupabaseClient,
   userId: string,

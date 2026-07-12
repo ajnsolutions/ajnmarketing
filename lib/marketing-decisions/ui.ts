@@ -12,9 +12,24 @@ export type RecommendationDraftAction = "generate" | "view" | "regenerate" | "ma
 
 export type RecommendationListFilter = "all" | "ready" | "in_progress" | "manual";
 
+/**
+ * What the UI (and the server-side helpers below) actually read from an opportunity:
+ * id, title, description, expires_at, and evidence. user_id, business_profile_id,
+ * category, severity, confidence, recommended_action, status, created_at, and
+ * updated_at are never used by anything downstream of buildRecommendationListItem, so
+ * they're dropped here rather than serialized to the browser for no reason.
+ */
+export type RecommendationOpportunitySummary = {
+  id: string;
+  title: string;
+  description: string;
+  expires_at: string | null;
+  evidence: Record<string, unknown>;
+};
+
 export type RecommendationListItem = {
   recommendation: MarketingRecommendation;
-  opportunities: MarketingOpportunity[];
+  opportunities: RecommendationOpportunitySummary[];
   linkedDraft: ContentApproval | null;
   hasRejectedDraft: boolean;
   contentSupported: boolean;
@@ -145,7 +160,7 @@ export function getManualNextStep(actionType: RecommendedActionType): string {
 
 export function buildRecommendationTitle(
   recommendation: MarketingRecommendation,
-  opportunities: MarketingOpportunity[]
+  opportunities: RecommendationOpportunitySummary[]
 ): string {
   const primary = opportunities[0]?.title?.trim();
   if (primary) return primary;
@@ -154,7 +169,7 @@ export function buildRecommendationTitle(
 
 export function buildGroupingExplanation(
   recommendation: MarketingRecommendation,
-  opportunities: MarketingOpportunity[]
+  opportunities: RecommendationOpportunitySummary[]
 ): string {
   const actionLabel = formatRecommendedActionType(recommendation.recommended_action_type);
   if (opportunities.length <= 1) {
@@ -164,7 +179,7 @@ export function buildGroupingExplanation(
 }
 
 export function earliestOpportunityExpiration(
-  opportunities: MarketingOpportunity[]
+  opportunities: RecommendationOpportunitySummary[]
 ): string | null {
   const dates = opportunities
     .map((item) => item.expires_at)
@@ -207,16 +222,26 @@ export function buildRecommendationListItem(input: {
     hasRejectedDraft: input.hasRejectedDraft,
   });
 
+  // Narrow to only what the UI and the helpers above actually read, before this
+  // becomes part of what gets serialized to the browser.
+  const opportunities: RecommendationOpportunitySummary[] = input.opportunities.map((o) => ({
+    id: o.id,
+    title: o.title,
+    description: o.description,
+    expires_at: o.expires_at,
+    evidence: o.evidence,
+  }));
+
   return {
     recommendation: input.recommendation,
-    opportunities: input.opportunities,
+    opportunities,
     linkedDraft: input.linkedDraft,
     hasRejectedDraft: input.hasRejectedDraft,
     contentSupported,
     draftAction,
-    title: buildRecommendationTitle(input.recommendation, input.opportunities),
-    earliestExpiration: earliestOpportunityExpiration(input.opportunities),
-    groupingExplanation: buildGroupingExplanation(input.recommendation, input.opportunities),
+    title: buildRecommendationTitle(input.recommendation, opportunities),
+    earliestExpiration: earliestOpportunityExpiration(opportunities),
+    groupingExplanation: buildGroupingExplanation(input.recommendation, opportunities),
   };
 }
 
