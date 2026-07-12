@@ -2,23 +2,35 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type FakeTableResponse = { data: unknown; error: unknown };
 
+/**
+ * A table's fixture can be a plain canned response (the common case — every terminal
+ * call against that table resolves the same way), or a function of the terminal op name
+ * ("maybeSingle" | "single" | "then") for tests that need a lookup call (maybeSingle) to
+ * differ from a write's returned row (single) — e.g. an upsert that first SELECTs to
+ * check for an existing row (found: null) and then must still return a real row from
+ * the upsert itself. Real Supabase behaves this way; a single canned value per table
+ * can't model it.
+ */
+export type FakeTableResponseFixture = FakeTableResponse | ((op: string) => FakeTableResponse);
+
 export type RecordedCall = { table: string; op: string; args: unknown[] };
 
 /**
  * Minimal fake Supabase client for unit tests. Records every `.from(table)` call and
  * chained query-builder operation (`.select()`, `.eq()`, `.order()`, etc.) so tests can
  * assert exactly which table was touched, with which filters (e.g. which userId), without
- * any real network or database access. Configure one canned response per table; both
+ * any real network or database access. Configure one canned response per table (or a
+ * function for op-dependent responses — see FakeTableResponseFixture); both
  * `.maybeSingle()` and a plain `await` on the builder (array-style queries) resolve to
- * that same response — this fake does not model per-call-shape differences on a single
- * table, which is fine since these tests assert on call *inputs*, not on realistic
- * per-query-shape return values.
+ * that same response by default — this fake does not model per-call-shape differences on
+ * a single table beyond what a fixture function opts into.
  */
-export function createFakeSupabaseClient(tableResponses: Record<string, FakeTableResponse>) {
+export function createFakeSupabaseClient(tableResponses: Record<string, FakeTableResponseFixture>) {
   const calls: RecordedCall[] = [];
 
-  function response(table: string): FakeTableResponse {
-    return tableResponses[table] ?? { data: null, error: null };
+  function response(table: string, op: string): FakeTableResponse {
+    const fixture = tableResponses[table] ?? { data: null, error: null };
+    return typeof fixture === "function" ? fixture(op) : fixture;
   }
 
   function makeBuilder(table: string) {
@@ -43,6 +55,10 @@ export function createFakeSupabaseClient(tableResponses: Record<string, FakeTabl
         calls.push({ table, op: "lte", args });
         return builder;
       },
+      lt(...args: unknown[]) {
+        calls.push({ table, op: "lt", args });
+        return builder;
+      },
       order(...args: unknown[]) {
         calls.push({ table, op: "order", args });
         return builder;
@@ -65,17 +81,17 @@ export function createFakeSupabaseClient(tableResponses: Record<string, FakeTabl
       },
       maybeSingle: async () => {
         calls.push({ table, op: "maybeSingle", args: [] });
-        return response(table);
+        return response(table, "maybeSingle");
       },
       single: async () => {
         calls.push({ table, op: "single", args: [] });
-        return response(table);
+        return response(table, "single");
       },
       // Supabase's real query builder is "thenable" so `await query` works without an
       // explicit terminal method for array-returning queries — mirrored here.
       then(onFulfilled?: (value: FakeTableResponse) => unknown, onRejected?: (reason: unknown) => unknown) {
         calls.push({ table, op: "then", args: [] });
-        return Promise.resolve(response(table)).then(onFulfilled, onRejected);
+        return Promise.resolve(response(table, "then")).then(onFulfilled, onRejected);
       },
     };
 
