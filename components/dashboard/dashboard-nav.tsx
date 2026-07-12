@@ -97,6 +97,16 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Recommendations",
+    href: "/dashboard/marketing-recommendations",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l2.2 4.5L19 8.3l-3.5 3.4.8 4.8L12 14.8 7.7 16.5l.8-4.8L5 8.3l4.8-.8L12 3Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 20h14" />
+      </svg>
+    ),
+  },
+  {
     label: "Content",
     href: "/dashboard/content",
     icon: (
