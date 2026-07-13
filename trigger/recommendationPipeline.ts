@@ -12,6 +12,7 @@ import {
   RECOMMENDATION_PIPELINE_SWEEP_LIMIT,
   type RecommendationPipelineTaskPayload,
 } from "@/lib/trigger/recommendationPipelineKeys";
+import { declarativeProductionCron } from "@/lib/trigger/scheduleActivation";
 
 /**
  * Phase 2D — autonomous daily recommendation pipeline.
@@ -19,9 +20,10 @@ import {
  * Per-tenant execution reuses runRecommendationPipelineForUser (skip rules handle
  * freshness / OpenAI avoidance). The sweep fans out with concurrency + day idempotency.
  *
- * Schedule (declarative, PRODUCTION only until explicitly approved/deployed):
+ * Intended schedule (gated — see lib/trigger/scheduleActivation.ts):
  *   cron 0 14 * * *  timezone UTC  → 14:00 UTC daily
  * Staggered away from analytics (06:00 UTC) and publishing (:05 every hour).
+ * Declarative cron is omitted until ATTACH_DECLARATIVE_PRODUCTION_CRONS is flipped on.
  */
 
 const recommendationPipelineQueue = queue({
@@ -131,18 +133,8 @@ export const recommendationPipelineForTenantTask = task({
  */
 export const recommendationPipelineSweepTask = schedules.task({
   id: "recommendation-pipeline-sweep",
-  /**
-   * ACTIVATION GATE: declarative cron is present in source for review, but must only be
-   * deployed after explicit approval. Until then, keep PRODUCTION deploy on a version
-   * without an attached schedule (or deactivate in the dashboard).
-   *
-   * 0 14 * * * UTC = 14:00 UTC daily — staggered after analytics (06:00) and off the hour.
-   */
-  cron: {
-    pattern: "0 14 * * *",
-    timezone: "UTC",
-    environments: ["PRODUCTION"],
-  },
+  // No declarative cron unless scheduleActivation gate is open (manual Test still works).
+  ...declarativeProductionCron("recommendation-pipeline-sweep"),
   ttl: "6h",
   retry: {
     maxAttempts: 3,

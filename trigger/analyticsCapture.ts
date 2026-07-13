@@ -10,12 +10,15 @@ import {
   buildAnalyticsCaptureIdempotencyKeyParts,
   type AnalyticsCaptureTaskPayload,
 } from "@/lib/trigger/analyticsCaptureBatch";
+import { declarativeProductionCron } from "@/lib/trigger/scheduleActivation";
 
 /**
  * Analytics capture — per-tenant task + nightly scheduled sweep (Phase 2D).
  *
- * Schedule: cron 0 6 * * * timezone UTC (06:00 UTC nightly), PRODUCTION only.
+ * Intended schedule (gated — see lib/trigger/scheduleActivation.ts):
+ *   cron 0 6 * * * timezone UTC (06:00 UTC nightly), PRODUCTION only.
  * Staggered away from recommendation-pipeline-sweep (14:00 UTC) and publishing (:05).
+ * Declarative cron is omitted until ATTACH_DECLARATIVE_PRODUCTION_CRONS is flipped on.
  */
 
 function todayIsoDate(): string {
@@ -80,15 +83,8 @@ export const analyticsCaptureForTenantTask = task({
  */
 export const analyticsCaptureSweepTask = schedules.task({
   id: "analytics-capture-sweep",
-  /**
-   * ACTIVATION GATE: deploy only after explicit approval.
-   * 0 6 * * * UTC = 06:00 UTC nightly reconciliation.
-   */
-  cron: {
-    pattern: "0 6 * * *",
-    timezone: "UTC",
-    environments: ["PRODUCTION"],
-  },
+  // No declarative cron unless scheduleActivation gate is open (manual Test still works).
+  ...declarativeProductionCron("analytics-capture-sweep"),
   ttl: "6h",
   retry: {
     maxAttempts: 3,
