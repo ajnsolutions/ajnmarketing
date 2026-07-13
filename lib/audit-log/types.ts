@@ -47,6 +47,8 @@ export const AuditActions = {
   MARKETING_RECOMMENDATION_CONTENT_DRAFT_COMPLETED: "marketing_recommendation.content_draft.completed",
   MARKETING_RECOMMENDATION_CONTENT_DRAFT_FAILED: "marketing_recommendation.content_draft.failed",
   MARKETING_RECOMMENDATION_CONTENT_DRAFT_REUSED: "marketing_recommendation.content_draft.reused",
+  RECOMMENDATION_PIPELINE_STARTED: "recommendation_pipeline.started",
+  RECOMMENDATION_PIPELINE_COMPLETED: "recommendation_pipeline.completed",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];

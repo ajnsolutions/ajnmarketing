@@ -7,6 +7,7 @@ import { runGoogleBusinessSyncForUser } from "@/lib/google-business/sync";
 import { executePublishingJobById } from "@/lib/publishing/publishingEngine";
 import { runAnalyticsFeedbackLoopForUser } from "@/lib/analytics/analyticsEngine";
 import { evaluateOpportunitiesForUser } from "@/lib/marketing-opportunities/detectionEngine";
+import { runRecommendationPipelineForUser } from "@/lib/recommendation-pipeline/orchestrator";
 import { regenerateMarketingAgentTasksForUser } from "@/lib/marketing-agent/service";
 import { generateMarketingPlanForUser } from "@/lib/marketing-planner/service";
 import type { BackgroundJob } from "@/lib/background-jobs/types";
@@ -163,6 +164,19 @@ export async function executeBackgroundJob(job: BackgroundJob): Promise<Record<s
         opportunityCount: result.opportunities.length,
         expiredCount: result.expiredCount,
         businessProfileId: result.businessProfileId,
+      };
+    }
+
+    case BackgroundJobTypes.RECOMMENDATION_PIPELINE: {
+      // Same convention as OPPORTUNITY_DETECTION above: no client injected, this job
+      // runs within an after() request context. Service-role/Trigger.dev execution
+      // should call runRecommendationPipelineForUser(userId, serviceRoleClient) directly
+      // instead of going through this worker. Nothing enqueues this job type
+      // automatically -- it's a supported, opt-in trigger point only.
+      const result = await runRecommendationPipelineForUser(job.user_id);
+      return {
+        businessProfileId: result.businessProfileId,
+        stages: result.stages,
       };
     }
 

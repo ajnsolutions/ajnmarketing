@@ -15,6 +15,7 @@ import type { BusinessProfile } from "@/lib/business-profile";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function queueWebsiteAnalysisForProfile(
   profile: BusinessProfile
@@ -77,8 +78,19 @@ async function extractWithFallback(
     : new Error(formatOpenAiError(primaryError));
 }
 
-export async function runWebsiteAnalysisForUser(userId: string): Promise<WebsiteAnalysis | null> {
-  const supabase = await createClient();
+/**
+ * Accepts an optional injected Supabase client — omitted, it defaults to the
+ * request-scoped cookie client exactly like every other *ForUser function in this
+ * codebase; pass a service-role client (lib/supabase/service.ts) to run this for any
+ * tenant from background-job, admin, or orchestrated-pipeline execution with no cookies
+ * or session. Every database access in this function is threaded through the same
+ * client.
+ */
+export async function runWebsiteAnalysisForUser(
+  userId: string,
+  supabaseClient?: SupabaseClient
+): Promise<WebsiteAnalysis | null> {
+  const supabase = supabaseClient ?? (await createClient());
 
   const { data: profile, error: profileError } = await supabase
     .from("business_profiles")

@@ -11,6 +11,7 @@ export const BackgroundJobTypes = {
   PUBLISHING_EXECUTE: "publishing_execute",
   ANALYTICS_CAPTURE: "analytics_capture",
   OPPORTUNITY_DETECTION: "opportunity_detection",
+  RECOMMENDATION_PIPELINE: "recommendation_pipeline",
 } as const;
 
 export type BackgroundJobType = (typeof BackgroundJobTypes)[keyof typeof BackgroundJobTypes];
@@ -109,4 +110,5 @@ export const BACKGROUND_JOB_TYPE_LABELS: Record<string, string> = {
   linkedin_sync: "LinkedIn Sync",
   publishing_execute: "Publishing",
   analytics_capture: "Analytics Capture",
+  recommendation_pipeline: "Recommendation Pipeline",
 };
