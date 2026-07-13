@@ -45,7 +45,7 @@ function safePath(u) {
     let search = parsed.search;
     if (search) search = search.replace(/access_token=[^&]*/gi, "access_token=[REDACTED]");
     return parsed.origin + parsed.pathname + search;
-  } catch (e) {
+  } catch {
     return `[unparseable url: ${String(u).slice(0, 40)}]`;
   }
 }

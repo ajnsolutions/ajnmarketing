@@ -13,7 +13,7 @@
  *
  * Run with: node --experimental-strip-types scripts/audit/rls-tenant-isolation.ts
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -173,7 +173,11 @@ async function main() {
     const { generateContentDraftForRecommendation } = await import(
       "../../lib/marketing-decisions/create-content.ts"
     );
-    const draftResult = await generateContentDraftForRecommendation(B.userId, recA.id, B.client as any);
+    const draftResult = await generateContentDraftForRecommendation(
+      B.userId,
+      recA.id,
+      B.client as unknown as SupabaseClient
+    );
     record(
       "create-content: tenant B cannot generate a draft from tenant A's recommendation",
       draftResult.result === null && typeof draftResult.error === "string",
