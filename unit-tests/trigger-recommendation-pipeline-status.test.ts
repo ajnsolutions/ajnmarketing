@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {
   getRecentRecommendationPipelineRuns,
   getRecommendationPipelineHealth,
+  type RecommendationPipelineRunsListClient,
 } from "../lib/trigger/recommendationPipelineStatus.ts";
-import type { RecommendationPipelineRunsListClient } from "../lib/trigger/recommendationPipelineStatus.ts";
 
 function makeFakeRunsClient(
   runsByTask: Record<

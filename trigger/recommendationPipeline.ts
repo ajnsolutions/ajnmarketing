@@ -1,47 +1,38 @@
-import { task, queue, logger } from "@trigger.dev/sdk";
+import { task, schedules, queue, logger, idempotencyKeys } from "@trigger.dev/sdk";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { runRecommendationPipelineForUser } from "@/lib/recommendation-pipeline/orchestrator";
 import { PipelineOverallStatuses } from "@/lib/recommendation-pipeline/types";
 import { logAuditEvent, auditErrorMetadata } from "@/lib/audit-log/service";
 import { AuditActions } from "@/lib/audit-log/types";
-import type { RecommendationPipelineTaskPayload } from "@/lib/trigger/recommendationPipelineKeys";
+import { getOnboardedBusinessesForPipeline } from "@/lib/trigger/recommendationPipelineEligibility";
+import {
+  buildRecommendationPipelineConcurrencyKey,
+  buildRecommendationPipelineIdempotencyKeyParts,
+  buildRecommendationPipelineTaskPayloads,
+  RECOMMENDATION_PIPELINE_SWEEP_LIMIT,
+  type RecommendationPipelineTaskPayload,
+} from "@/lib/trigger/recommendationPipelineKeys";
 
 /**
- * SCOPE: Phase 2C — connect the existing Recommendation Pipeline Orchestrator to
- * Trigger.dev for *manual* execution only. This file does not schedule itself
- * (schedules.task() / cron are intentionally NOT used), does not auto-trigger on
- * events, and does not duplicate any stage business logic — it only injects the
- * service-role client and calls runRecommendationPipelineForUser.
+ * Phase 2D — autonomous daily recommendation pipeline.
  *
- * Idempotency of opportunities / recommendations / market context / drafts remains the
- * orchestrator's + persistence layers' responsibility (skip rules + upserts). This task
- * adds per-tenant concurrency so two pipeline runs for the same user never execute at
- * once.
+ * Per-tenant execution reuses runRecommendationPipelineForUser (skip rules handle
+ * freshness / OpenAI avoidance). The sweep fans out with concurrency + day idempotency.
+ *
+ * Schedule (declarative, PRODUCTION only until explicitly approved/deployed):
+ *   cron 0 14 * * *  timezone UTC  → 14:00 UTC daily
+ * Staggered away from analytics (06:00 UTC) and publishing (:05 every hour).
  */
 
-/**
- * concurrencyLimit: 1 on this queue, combined with a per-tenant concurrencyKey (see
- * buildRecommendationPipelineConcurrencyKey) when triggering, guarantees at most one
- * pipeline run in flight per user at a time — Trigger.dev creates one copy of this
- * queue per distinct key, each inheriting the limit of 1.
- */
 const recommendationPipelineQueue = queue({
   name: "recommendation-pipeline",
   concurrencyLimit: 1,
 });
 
-/**
- * Runs the full recommendation pipeline for one tenant. Reuses
- * runRecommendationPipelineForUser exactly as-is with an explicitly injected privileged
- * client — the same function the background-job worker and admin sync path use.
- *
- * maxDuration is raised above the project default (60s): a cold pipeline can include
- * website analysis + AI profile + market context OpenAI calls in one attempt.
- *
- * Retry policy matches analytics-capture (idempotent reads/writes): a few quick retries.
- * Total pipeline `failure` throws so Trigger.dev retries; `partial_success` / `success`
- * complete the run (mirrors lib/background-jobs/worker.ts).
- */
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export const recommendationPipelineForTenantTask = task({
   id: "recommendation-pipeline-for-tenant",
   queue: recommendationPipelineQueue,
@@ -87,8 +78,6 @@ export const recommendationPipelineForTenantTask = task({
       failed: result.summary.failed,
     });
 
-    // Align Trigger.dev run outcome with pipeline overall status (same as worker.ts):
-    // success / partial_success → run succeeds; failure → throw so retries apply.
     if (result.status === PipelineOverallStatuses.FAILURE) {
       logger.error("recommendation-pipeline: overall failure (will retry if attempts remain)", {
         userId: payload.userId,
@@ -120,9 +109,6 @@ export const recommendationPipelineForTenantTask = task({
       error: error instanceof Error ? error.message : String(error),
     });
 
-    // Orchestrator already writes RECOMMENDATION_PIPELINE_FAILED when it returns
-    // status === failure. This covers crashes / unexpected throws that bypassed that
-    // path, matching analytics-capture's onFailure audit convention.
     const supabase = createServiceRoleClient();
     await logAuditEvent(supabase, {
       userId: payload.userId,
@@ -136,5 +122,85 @@ export const recommendationPipelineForTenantTask = task({
         attempt: ctx.attempt.number,
       },
     });
+  },
+});
+
+/**
+ * Daily sweep: list onboarded tenants and fan out per-tenant pipeline runs.
+ * Manual Test / tasks.trigger still work without attaching an imperative schedule.
+ */
+export const recommendationPipelineSweepTask = schedules.task({
+  id: "recommendation-pipeline-sweep",
+  /**
+   * ACTIVATION GATE: declarative cron is present in source for review, but must only be
+   * deployed after explicit approval. Until then, keep PRODUCTION deploy on a version
+   * without an attached schedule (or deactivate in the dashboard).
+   *
+   * 0 14 * * * UTC = 14:00 UTC daily — staggered after analytics (06:00) and off the hour.
+   */
+  cron: {
+    pattern: "0 14 * * *",
+    timezone: "UTC",
+    environments: ["PRODUCTION"],
+  },
+  ttl: "6h",
+  retry: {
+    maxAttempts: 3,
+    minTimeoutInMs: 2_000,
+    maxTimeoutInMs: 10_000,
+    factor: 2,
+    randomize: true,
+  },
+  run: async (payload) => {
+    logger.info("recommendation-pipeline-sweep: starting", {
+      scheduleId: payload.scheduleId,
+      timestamp: payload.timestamp.toISOString(),
+      lastTimestamp: payload.lastTimestamp?.toISOString() ?? null,
+      upcoming: payload.upcoming.map((d) => d.toISOString()),
+    });
+
+    const supabase = createServiceRoleClient();
+    const tenants = await getOnboardedBusinessesForPipeline(supabase, {
+      limit: RECOMMENDATION_PIPELINE_SWEEP_LIMIT,
+    });
+    const today = todayIsoDate();
+
+    logger.info("recommendation-pipeline-sweep: found tenants", { count: tenants.length });
+
+    if (tenants.length === 0) {
+      return { evaluated: 0, triggered: 0 };
+    }
+
+    const payloads = buildRecommendationPipelineTaskPayloads(tenants, "scheduled_daily");
+    const items = await Promise.all(
+      payloads.map(async (tenantPayload) => {
+        const idempotencyKey = await idempotencyKeys.create(
+          buildRecommendationPipelineIdempotencyKeyParts(tenantPayload.userId, today),
+          { scope: "global" }
+        );
+
+        return {
+          payload: tenantPayload,
+          options: {
+            concurrencyKey: buildRecommendationPipelineConcurrencyKey(tenantPayload.userId),
+            idempotencyKey,
+            idempotencyKeyTTL: "20h",
+          },
+        };
+      })
+    );
+
+    const batch = await recommendationPipelineForTenantTask.batchTrigger(items);
+
+    logger.info("recommendation-pipeline-sweep: triggered batch", {
+      evaluated: tenants.length,
+      triggered: batch.runCount,
+    });
+
+    return {
+      evaluated: tenants.length,
+      triggered: batch.runCount,
+      upcoming: payload.upcoming.map((d) => d.toISOString()),
+    };
   },
 });

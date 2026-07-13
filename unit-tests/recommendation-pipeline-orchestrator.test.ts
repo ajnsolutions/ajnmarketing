@@ -241,10 +241,55 @@ test("ai_marketing_profile is skipped while already generating", async () => {
   assert.equal(calls.aiProfile, 0);
 });
 
-test("market_context is skipped when the active brief is recent (within 7 days)", async () => {
+test("market_context is skipped when the active brief is recent (within 24 hours)", async () => {
+  const now = new Date("2026-07-15T12:00:00.000Z");
+  const recent = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
   const { client } = fakeClient({
     market_context_briefs: {
-      data: marketContextBrief({ status: "active", created_at: new Date().toISOString() }),
+      data: marketContextBrief({ status: "active", created_at: recent }),
+      error: null,
+    },
+  });
+  const { deps, calls } = successfulDeps();
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps, now);
+
+  const stage = result.stages.find((s) => s.stage === "market_context")!;
+  assert.equal(stage.status, "skipped");
+  assert.match(stage.reason, /24 hours/);
+  assert.equal(calls.marketContext, 0);
+  assert.equal(calls.opportunities, 1);
+  assert.equal(calls.decisionEngine, 1);
+});
+
+test("market_context reruns when the active brief is stale (older than 24 hours)", async () => {
+  const now = new Date("2026-07-15T12:00:00.000Z");
+  const staleDate = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const { client } = fakeClient({
+    market_context_briefs: { data: marketContextBrief({ status: "active", created_at: staleDate }), error: null },
+  });
+  const { deps, calls } = successfulDeps();
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps, now);
+
+  assert.equal(result.stages.find((s) => s.stage === "market_context")!.status, "completed");
+  assert.equal(calls.marketContext, 1);
+});
+
+test("ai_marketing_profile regenerates when Website Analysis is newer than the active profile", async () => {
+  const { client } = fakeClient({
+    website_analysis: {
+      data: websiteAnalysis({
+        analysis_status: "completed",
+        updated_at: "2026-07-15T10:00:00.000Z",
+      }),
+      error: null,
+    },
+    ai_marketing_profiles: {
+      data: aiProfile({
+        profile_status: "active",
+        updated_at: "2026-07-14T10:00:00.000Z",
+      }),
       error: null,
     },
   });
@@ -252,23 +297,35 @@ test("market_context is skipped when the active brief is recent (within 7 days)"
 
   const result = await runRecommendationPipelineForUser(USER, client, deps);
 
-  const stage = result.stages.find((s) => s.stage === "market_context")!;
-  assert.equal(stage.status, "skipped");
-  assert.match(stage.reason, /recent/i);
-  assert.equal(calls.marketContext, 0);
+  assert.equal(result.stages.find((s) => s.stage === "ai_marketing_profile")!.status, "completed");
+  assert.equal(calls.aiProfile, 1);
+  assert.equal(result.stages.find((s) => s.stage === "website_analysis")!.status, "skipped");
+  assert.equal(calls.websiteAnalysis, 0);
 });
 
-test("market_context reruns when the active brief is stale (older than 7 days)", async () => {
-  const staleDate = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+test("ai_marketing_profile stays skipped when active and Website Analysis is not newer", async () => {
   const { client } = fakeClient({
-    market_context_briefs: { data: marketContextBrief({ status: "active", created_at: staleDate }), error: null },
+    website_analysis: {
+      data: websiteAnalysis({
+        analysis_status: "completed",
+        updated_at: "2026-07-14T10:00:00.000Z",
+      }),
+      error: null,
+    },
+    ai_marketing_profiles: {
+      data: aiProfile({
+        profile_status: "active",
+        updated_at: "2026-07-15T10:00:00.000Z",
+      }),
+      error: null,
+    },
   });
   const { deps, calls } = successfulDeps();
 
   const result = await runRecommendationPipelineForUser(USER, client, deps);
 
-  assert.equal(result.stages.find((s) => s.stage === "market_context")!.status, "completed");
-  assert.equal(calls.marketContext, 1);
+  assert.equal(result.stages.find((s) => s.stage === "ai_marketing_profile")!.status, "skipped");
+  assert.equal(calls.aiProfile, 0);
 });
 
 test("failure containment: a failing stage does not corrupt or block independent downstream stages", async () => {
@@ -349,8 +406,20 @@ test("idempotent rerun: calling twice in a row skips already-fresh stages the se
   // profile active, brief active-and-fresh (the fake client only returns the state I
   // configure up front, so this models "the first run's writes are now visible").
   const { client: client2 } = fakeClient({
-    website_analysis: { data: websiteAnalysis({ analysis_status: "completed" }), error: null },
-    ai_marketing_profiles: { data: aiProfile({ profile_status: "active" }), error: null },
+    website_analysis: {
+      data: websiteAnalysis({
+        analysis_status: "completed",
+        updated_at: "2026-07-14T10:00:00.000Z",
+      }),
+      error: null,
+    },
+    ai_marketing_profiles: {
+      data: aiProfile({
+        profile_status: "active",
+        updated_at: "2026-07-14T10:00:00.000Z",
+      }),
+      error: null,
+    },
     market_context_briefs: { data: marketContextBrief({ status: "active" }), error: null },
   });
 
