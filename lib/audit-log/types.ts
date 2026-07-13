@@ -49,6 +49,7 @@ export const AuditActions = {
   MARKETING_RECOMMENDATION_CONTENT_DRAFT_REUSED: "marketing_recommendation.content_draft.reused",
   RECOMMENDATION_PIPELINE_STARTED: "recommendation_pipeline.started",
   RECOMMENDATION_PIPELINE_COMPLETED: "recommendation_pipeline.completed",
+  RECOMMENDATION_PIPELINE_FAILED: "recommendation_pipeline.failed",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];

@@ -149,13 +149,21 @@ export async function generateWeeklyMarketContextBrief(input: {
   const aiMarketingProfile = await getAiMarketingProfileForUser(supabase, input.userId);
   const businessContext = buildBusinessContext(profile as BusinessProfile, aiMarketingProfile);
 
-  const generatingBrief = await upsertMarketContextBriefGenerating(supabase, {
+  const claim = await upsertMarketContextBriefGenerating(supabase, {
     userId: input.userId,
     businessProfileId: input.businessProfileId,
     briefStartDate: start,
     briefEndDate: end,
   });
 
+  if (claim.alreadyGenerating) {
+    return {
+      briefWithItems: null,
+      error: "Market context brief generation is already in progress.",
+    };
+  }
+
+  const generatingBrief = claim.brief;
   if (!generatingBrief) {
     return { briefWithItems: null, error: "Unable to start market context brief generation." };
   }
