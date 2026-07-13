@@ -17,6 +17,7 @@ import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { sanitizeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const GENERATION_FAILURE_FALLBACK_MESSAGE =
   "AI marketing profile generation failed. Please try again.";
@@ -94,10 +95,19 @@ export type GenerateAiMarketingProfileResult = {
   error?: string;
 };
 
+/**
+ * Accepts an optional injected Supabase client — omitted, it defaults to the
+ * request-scoped cookie client exactly like every other *ForUser function in this
+ * codebase; pass a service-role client (lib/supabase/service.ts) to run this for any
+ * tenant from background-job, admin, or orchestrated-pipeline execution with no cookies
+ * or session. Every database access in this function is threaded through the same
+ * client.
+ */
 export async function generateAiMarketingProfileForUser(
-  userId: string
+  userId: string,
+  supabaseClient?: SupabaseClient
 ): Promise<GenerateAiMarketingProfileResult> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? (await createClient());
 
   const { data: profile, error: profileError } = await supabase
     .from("business_profiles")
