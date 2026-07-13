@@ -23,6 +23,11 @@ import {
   runMarketingDecisionEngineForUser,
   type MarketingDecisionResult,
 } from "@/lib/marketing-decisions/service";
+import {
+  executeEligibleRecommendationsForUser,
+  type RecommendationExecutionDeps,
+} from "@/lib/recommendation-execution/engine";
+import type { RecommendationExecutionBatchResult } from "@/lib/recommendation-execution/types";
 import { logAuditEvent } from "@/lib/audit-log/service";
 import { AuditActions } from "@/lib/audit-log/types";
 import {
@@ -65,6 +70,7 @@ const GENERIC_STAGE_FAILURE_MESSAGES: Record<PipelineStageName, string> = {
   market_context: "Market context refresh failed.",
   opportunity_detection: "Opportunity detection failed.",
   decision_engine: "Decision engine failed.",
+  content_execution: "Recommendation content execution failed.",
 };
 
 /**
@@ -101,6 +107,11 @@ export type RecommendationPipelineDeps = {
     supabase: SupabaseClient,
     now?: Date
   ) => Promise<MarketingDecisionResult>;
+  executeEligibleRecommendations?: (
+    userId: string,
+    supabase: SupabaseClient,
+    deps?: RecommendationExecutionDeps
+  ) => Promise<RecommendationExecutionBatchResult>;
 };
 
 async function runWebsiteAnalysisStage(
@@ -319,19 +330,68 @@ async function runDecisionEngineStage(
   }
 }
 
+async function runContentExecutionStage(
+  supabase: SupabaseClient,
+  userId: string,
+  decisionEngineStatus: PipelineStageStatus,
+  deps: RecommendationPipelineDeps
+): Promise<PipelineStageResult> {
+  const stage: PipelineStageName = "content_execution";
+
+  // Same dependency shape as decision_engine's own reliance on opportunity_detection:
+  // a hard failure in the prior stage (not "produced nothing", an actual thrown error)
+  // signals the same DB/connectivity problem would likely just repeat here.
+  if (decisionEngineStatus === "failed") {
+    return { stage, status: "skipped", reason: "Skipped because decision_engine failed." };
+  }
+
+  try {
+    const executeEligibleRecommendations =
+      deps.executeEligibleRecommendations ?? executeEligibleRecommendationsForUser;
+    const { summary, results } = await executeEligibleRecommendations(userId, supabase, {});
+
+    if (summary.evaluated === 0) {
+      return {
+        stage,
+        status: "skipped",
+        reason: "No eligible recommendations to execute.",
+      };
+    }
+
+    return {
+      stage,
+      status: "completed",
+      reason: `Evaluated ${summary.evaluated} recommendation(s): ${summary.executed} executed, ${summary.alreadyExecuted} already executed, ${summary.skipped} skipped, ${summary.unsupported} unsupported, ${summary.failed} failed.`,
+      details: {
+        evaluated: summary.evaluated,
+        executed: summary.executed,
+        alreadyExecuted: summary.alreadyExecuted,
+        skipped: summary.skipped,
+        unsupported: summary.unsupported,
+        failed: summary.failed,
+        recommendationIds: results.map((r) => r.recommendationId),
+      },
+    };
+  } catch {
+    return { stage, status: "failed", reason: GENERIC_STAGE_FAILURE_MESSAGES.content_execution };
+  }
+}
+
 /**
  * Runs the full recommendation pipeline for one user:
  *   Website Analysis (if applicable) -> AI Marketing Profile -> Market Context refresh
- *   -> Opportunity Detection -> Marketing Decision Engine
+ *   -> Opportunity Detection -> Marketing Decision Engine -> Recommendation Execution
  *
  * This is orchestration only -- every stage's own persistence layer already guarantees
  * idempotency (upsert-by-user for Website Analysis/AI Marketing Profile, dedupe-key
- * upsert + status-preservation for opportunities/recommendations); this function adds
- * skip conditions on top so a rerun doesn't redundantly repeat expensive, already-fresh
- * work (see each stage helper above for its specific skip rule).
+ * upsert + status-preservation for opportunities/recommendations, a partial unique index
+ * on content_approvals.marketing_recommendation_id for drafts); this function adds skip
+ * conditions on top so a rerun doesn't redundantly repeat expensive, already-fresh work
+ * (see each stage helper above for its specific skip rule).
  *
  * A stage failing never prevents a later, independent stage from running -- only
- * Decision Engine has a real dependency (on Opportunity Detection not having failed).
+ * Decision Engine (on Opportunity Detection not having failed) and Content Execution
+ * (on Decision Engine not having failed) have a real dependency on the stage before them.
  * Every stage catches its own errors and returns a PipelineStageResult rather than
  * throwing, so one bad stage can never abort the rest of the run.
  *
@@ -393,9 +453,17 @@ export async function runRecommendationPipelineForUser(
   const opportunityStage = await runOpportunityDetectionStage(supabase, userId, now, deps);
   stages.push(opportunityStage);
 
-  stages.push(
-    await runDecisionEngineStage(supabase, userId, businessProfile.id, opportunityStage.status, now, deps)
+  const decisionEngineStage = await runDecisionEngineStage(
+    supabase,
+    userId,
+    businessProfile.id,
+    opportunityStage.status,
+    now,
+    deps
   );
+  stages.push(decisionEngineStage);
+
+  stages.push(await runContentExecutionStage(supabase, userId, decisionEngineStage.status, deps));
 
   const status = derivePipelineOverallStatus(stages);
   const summary = buildPipelineStageSummary(stages, status);

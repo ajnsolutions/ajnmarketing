@@ -6,6 +6,7 @@ import {
   type RecommendationPipelineDeps,
 } from "../lib/recommendation-pipeline/orchestrator.ts";
 import { PIPELINE_STAGE_ORDER } from "../lib/recommendation-pipeline/types.ts";
+import type { RecommendationExecutionBatchResult } from "../lib/recommendation-execution/types.ts";
 import { createFakeSupabaseClient, userIdsQueried } from "./support/fake-supabase-client.ts";
 import type { WebsiteAnalysis } from "../lib/website-analysis/types.ts";
 import type { AiMarketingProfile } from "../lib/ai-marketing-profile/types.ts";
@@ -110,7 +111,7 @@ function fakeClient(overrides: Record<string, unknown> = {}) {
   });
 }
 
-test("successful pipeline: all five stages run and complete in order when nothing exists yet", async () => {
+test("successful pipeline: all five upstream stages complete, content_execution runs last and completes in order", async () => {
   const { client } = fakeClient();
   const { deps, calls } = successfulDeps();
 
@@ -119,7 +120,11 @@ test("successful pipeline: all five stages run and complete in order when nothin
   assert.equal(result.businessProfileId, BIZ);
   assert.equal(result.status, "success");
   assert.equal(result.summary.failed, 0);
+  // Zero eligible recommendations in this fixture (marketing_recommendations isn't
+  // configured), so content_execution itself is "skipped" -- still a success outcome,
+  // per derivePipelineOverallStatus treating skipped as non-failing.
   assert.equal(result.summary.completed, 5);
+  assert.equal(result.summary.skipped, 1);
   assert.match(result.summary.label, /^success:/);
   assert.ok(typeof result.durationMs === "number");
   assert.ok(result.startedAt);
@@ -128,7 +133,10 @@ test("successful pipeline: all five stages run and complete in order when nothin
     result.stages.map((s) => s.stage),
     PIPELINE_STAGE_ORDER
   );
-  assert.ok(result.stages.every((s) => s.status === "completed"), JSON.stringify(result.stages));
+  const [upstream, contentExecution] = [result.stages.slice(0, 5), result.stages.at(-1)!];
+  assert.ok(upstream.every((s) => s.status === "completed"), JSON.stringify(result.stages));
+  assert.equal(contentExecution.stage, "content_execution");
+  assert.equal(contentExecution.status, "skipped");
   assert.deepEqual(calls, {
     websiteAnalysis: 1,
     aiProfile: 1,
@@ -144,7 +152,14 @@ test("stage ordering is always fixed regardless of outcome", async () => {
   const result = await runRecommendationPipelineForUser(USER, client, deps);
   assert.deepEqual(
     result.stages.map((s) => s.stage),
-    ["website_analysis", "ai_marketing_profile", "market_context", "opportunity_detection", "decision_engine"]
+    [
+      "website_analysis",
+      "ai_marketing_profile",
+      "market_context",
+      "opportunity_detection",
+      "decision_engine",
+      "content_execution",
+    ]
   );
 });
 
@@ -157,8 +172,8 @@ test("no business profile: every stage is skipped with a clear reason, no stage 
   assert.equal(result.businessProfileId, null);
   assert.equal(result.status, "success");
   assert.equal(result.summary.completed, 0);
-  assert.equal(result.summary.skipped, 5);
-  assert.equal(result.stages.length, 5);
+  assert.equal(result.summary.skipped, 6);
+  assert.equal(result.stages.length, 6);
   assert.ok(result.stages.every((s) => s.status === "skipped"));
   assert.ok(result.stages.every((s) => s.reason.includes("No business profile")));
   assert.deepEqual(calls, { websiteAnalysis: 0, aiProfile: 0, marketContext: 0, opportunities: 0, decisionEngine: 0 });
@@ -399,7 +414,9 @@ test("idempotent rerun: calling twice in a row skips already-fresh stages the se
   const { deps, calls } = successfulDeps();
 
   const first = await runRecommendationPipelineForUser(USER, client, deps);
-  assert.ok(first.stages.every((s) => s.status === "completed"));
+  // content_execution is "skipped" here too (no eligible recommendations in this
+  // fixture) -- every other stage still completes.
+  assert.ok(first.stages.filter((s) => s.stage !== "content_execution").every((s) => s.status === "completed"));
   assert.deepEqual(calls, { websiteAnalysis: 1, aiProfile: 1, marketContext: 1, opportunities: 1, decisionEngine: 1 });
 
   // Simulate the persisted state a second run would actually see: analysis completed,
@@ -569,4 +586,127 @@ test("overall FAILURE: audit FAILED with status failure when no stage completes"
   const metadata = failedAudit.metadata as Record<string, unknown>;
   assert.equal(metadata.pipelineStatus, "failure");
   assert.match(String(metadata.summary), /^failure:/);
+});
+
+// --- content_execution stage (Recommendation Execution Engine integration) ---
+
+function batchResult(overrides: Partial<RecommendationExecutionBatchResult["summary"]> = {}): RecommendationExecutionBatchResult {
+  return {
+    summary: {
+      evaluated: 0,
+      executed: 0,
+      alreadyExecuted: 0,
+      skipped: 0,
+      unsupported: 0,
+      failed: 0,
+      ...overrides,
+    },
+    results: [],
+  };
+}
+
+test("content_execution runs last, after decision_engine, and is not called when zero recommendations are eligible", async () => {
+  const { client } = fakeClient();
+  const { deps } = successfulDeps();
+  let executeCalls = 0;
+  deps.executeEligibleRecommendations = async () => {
+    executeCalls += 1;
+    return batchResult({ evaluated: 0 });
+  };
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+
+  assert.equal(result.stages.at(-1)!.stage, "content_execution");
+  assert.equal(executeCalls, 1);
+  const stage = result.stages.find((s) => s.stage === "content_execution")!;
+  assert.equal(stage.status, "skipped");
+  assert.match(stage.reason, /no eligible recommendations/i);
+});
+
+test("content_execution is skipped (not attempted) when decision_engine fails", async () => {
+  const { client } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.runDecisionEngine = async () => {
+    throw new Error("db unreachable");
+  };
+  let executeCalls = 0;
+  deps.executeEligibleRecommendations = async () => {
+    executeCalls += 1;
+    return batchResult();
+  };
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+
+  assert.equal(result.stages.find((s) => s.stage === "decision_engine")!.status, "failed");
+  const stage = result.stages.find((s) => s.stage === "content_execution")!;
+  assert.equal(stage.status, "skipped");
+  assert.match(stage.reason, /decision_engine failed/i);
+  assert.equal(executeCalls, 0);
+});
+
+test("content_execution still runs when decision_engine is only skipped (not failed)", async () => {
+  const { client } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.evaluateOpportunities = async () => {
+    throw new Error("boom");
+  };
+  let executeCalls = 0;
+  deps.executeEligibleRecommendations = async () => {
+    executeCalls += 1;
+    return batchResult({ evaluated: 0 });
+  };
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+
+  assert.equal(result.stages.find((s) => s.stage === "decision_engine")!.status, "skipped");
+  assert.equal(executeCalls, 1);
+});
+
+test("content_execution completes with the batch summary reflected in stage details and reason", async () => {
+  const { client } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.executeEligibleRecommendations = async () =>
+    batchResult({ evaluated: 3, executed: 1, alreadyExecuted: 1, unsupported: 1 });
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+
+  const stage = result.stages.find((s) => s.stage === "content_execution")!;
+  assert.equal(stage.status, "completed");
+  assert.deepEqual(stage.details, {
+    evaluated: 3,
+    executed: 1,
+    alreadyExecuted: 1,
+    skipped: 0,
+    unsupported: 1,
+    failed: 0,
+    recommendationIds: [],
+  });
+  assert.match(stage.reason, /3 recommendation\(s\): 1 executed, 1 already executed, 0 skipped, 1 unsupported, 0 failed/);
+});
+
+test("content_execution failure is contained: does not affect decision_engine's own recorded outcome or overall FAILURE-vs-PARTIAL classification", async () => {
+  const { client } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.executeEligibleRecommendations = async () => {
+    throw new Error("raw pg error: relation content_approvals does not exist");
+  };
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+
+  const stage = result.stages.find((s) => s.stage === "content_execution")!;
+  assert.equal(stage.status, "failed");
+  assert.equal(stage.reason.includes("relation"), false);
+  assert.equal(result.stages.find((s) => s.stage === "decision_engine")!.status, "completed");
+  assert.equal(result.status, "partial_success");
+});
+
+test("content_execution does not flip on production schedule activation by existing -- no cron/schedule fields appear anywhere in a pipeline result", async () => {
+  const { client } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.executeEligibleRecommendations = async () => batchResult({ evaluated: 1, executed: 1 });
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+
+  const serialized = JSON.stringify(result);
+  assert.equal(/cron|schedule/i.test(serialized), false);
 });

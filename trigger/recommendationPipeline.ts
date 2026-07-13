@@ -19,6 +19,11 @@ import { declarativeProductionCron } from "@/lib/trigger/scheduleActivation";
  *
  * Per-tenant execution reuses runRecommendationPipelineForUser (skip rules handle
  * freshness / OpenAI avoidance). The sweep fans out with concurrency + day idempotency.
+ * As of the Recommendation Execution Engine, the orchestrator's last stage
+ * ("content_execution") also turns eligible recommendations into content_approvals
+ * drafts via the existing recommendation-to-content workflow -- no changes were needed
+ * in this file for that: result.stages already logs every stage generically below, and
+ * drafts only ever land in the existing Approval Center, never published automatically.
  *
  * Intended schedule (gated — see lib/trigger/scheduleActivation.ts):
  *   cron 0 14 * * *  timezone UTC  → 14:00 UTC daily
