@@ -11,6 +11,7 @@ import {
   publishingHourIsoKey,
   type PublishingExecuteTaskPayload,
 } from "@/lib/trigger/publishingDueKeys";
+import { declarativeProductionCron } from "@/lib/trigger/scheduleActivation";
 
 /**
  * Phase 2D — hourly due publishing sweep.
@@ -19,7 +20,9 @@ import {
  * Execution uses the existing publishing engine + provider safety checks with an injected
  * service-role client. GET /api/publishing is read-only; this is the sole autonomous path.
  *
- * Schedule: cron 5 * * * * timezone UTC (:05 every hour) — staggered off :00.
+ * Intended schedule (gated — see lib/trigger/scheduleActivation.ts):
+ *   cron 5 * * * * timezone UTC (:05 every hour) — staggered off :00.
+ * Declarative cron is omitted until ATTACH_DECLARATIVE_PRODUCTION_CRONS is flipped on.
  */
 
 const publishingDueSweepQueue = queue({
@@ -111,15 +114,8 @@ export const publishingExecuteJobTask = task({
 
 export const publishingDueSweepTask = schedules.task({
   id: "publishing-due-sweep",
-  /**
-   * ACTIVATION GATE: deploy only after explicit approval.
-   * 5 * * * * UTC = :05 every hour — avoids colliding with :00 batch work.
-   */
-  cron: {
-    pattern: "5 * * * *",
-    timezone: "UTC",
-    environments: ["PRODUCTION"],
-  },
+  // No declarative cron unless scheduleActivation gate is open (manual Test still works).
+  ...declarativeProductionCron("publishing-due-sweep"),
   queue: publishingDueSweepQueue,
   ttl: "50m",
   retry: {
