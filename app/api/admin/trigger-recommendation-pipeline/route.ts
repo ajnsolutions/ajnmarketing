@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
+import { tasks } from "@trigger.dev/sdk";
+import type { recommendationPipelineForTenantTask } from "@/trigger/recommendationPipeline";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { isAdminUserId } from "@/lib/admin/isAdminUser";
 import { parseTriggerRecommendationPipelineRequestBody } from "@/lib/admin/triggerRecommendationPipelineRequest";
-import { runRecommendationPipelineForUser } from "@/lib/recommendation-pipeline/orchestrator";
+import { buildRecommendationPipelineConcurrencyKey } from "@/lib/trigger/recommendationPipelineKeys";
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 
 /**
- * Admin-only developer utility: manually runs the full recommendation pipeline
- * (Website Analysis -> AI Marketing Profile -> Market Context -> Opportunity Detection
- * -> Decision Engine) for one specified tenant. Exists for exercising and debugging the
- * orchestration directly without waiting for a future scheduler or writing SQL by hand.
- * Mirrors app/api/admin/trigger-analytics-capture/route.ts's auth/ownership pattern.
+ * Admin-only developer utility: manually triggers recommendationPipelineForTenantTask
+ * for one specified tenant. Exists for exercising and debugging the Trigger.dev
+ * integration directly (confirming a real run completes, writes the expected audit rows,
+ * and behaves correctly) without writing SQL by hand.
  *
- * Unlike that route, this runs synchronously (awaited in the request) rather than
- * firing a Trigger.dev task -- this is explicitly not the Trigger.dev scheduling phase.
- * Matches the existing precedent of app/api/ai-marketing-profile/route.ts, which already
- * awaits an OpenAI-backed generation step directly in its own handler.
+ * Deliberately fire-and-forget: this returns the Trigger.dev run handle immediately
+ * rather than blocking the request while the pipeline executes, so it can't tie up a
+ * Vercel function for the duration of OpenAI-backed stages. Use the returned runId with
+ * the Trigger.dev dashboard (or `runs.retrieve`) to check on completion.
  *
- * Does not create, modify, or activate any schedule -- this only fires a single one-off
- * run, exactly as implemented.
+ * Does not create, modify, or activate any schedule — this only fires a single one-off
+ * run of the existing task via the standard `tasks.trigger()` type-only-import pattern
+ * (never importing the task instance itself into app code). Concurrency key is set so
+ * two admin triggers for the same tenant cannot run in parallel.
  */
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -68,11 +71,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runRecommendationPipelineForUser(targetUserId, serviceClient);
-    return NextResponse.json(result);
+    const handle = await tasks.trigger<typeof recommendationPipelineForTenantTask>(
+      "recommendation-pipeline-for-tenant",
+      { userId: targetUserId, reason: "manual_trigger" },
+      {
+        concurrencyKey: buildRecommendationPipelineConcurrencyKey(targetUserId),
+      }
+    );
+
+    return NextResponse.json({ runId: handle.id, taskIdentifier: handle.taskIdentifier });
   } catch (error) {
     return NextResponse.json(
-      { error: toSafeUserErrorMessage(error, "Failed to run the recommendation pipeline") },
+      { error: toSafeUserErrorMessage(error, "Failed to trigger the recommendation pipeline") },
       { status: 502 }
     );
   }

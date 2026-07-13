@@ -2,9 +2,10 @@ import "server-only";
 
 /**
  * Pure request-body validation for the admin manual-trigger endpoint
- * (app/api/admin/trigger-recommendation-pipeline). Kept separate from the route handler
- * so the validation rules are unit-testable without a real Supabase session or
- * service-role client. Mirrors lib/admin/triggerAnalyticsCaptureRequest.ts.
+ * (app/api/admin/trigger-recommendation-pipeline), which fire-and-forgets
+ * recommendationPipelineForTenantTask. Kept separate from the route handler so the
+ * validation rules are unit-testable without a real Supabase session or Trigger.dev
+ * network call. Mirrors lib/admin/triggerAnalyticsCaptureRequest.ts.
  */
 
 export type ParsedTriggerRecommendationPipelineRequest =
