@@ -3,7 +3,8 @@ export type PipelineStageName =
   | "ai_marketing_profile"
   | "market_context"
   | "opportunity_detection"
-  | "decision_engine";
+  | "decision_engine"
+  | "content_execution";
 
 /** Fixed execution order — every result array from the orchestrator follows this order. */
 export const PIPELINE_STAGE_ORDER: PipelineStageName[] = [
@@ -12,6 +13,7 @@ export const PIPELINE_STAGE_ORDER: PipelineStageName[] = [
   "market_context",
   "opportunity_detection",
   "decision_engine",
+  "content_execution",
 ];
 
 export type PipelineStageStatus = "completed" | "skipped" | "failed";
