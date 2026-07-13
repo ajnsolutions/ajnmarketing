@@ -141,6 +141,36 @@ export async function getLatestMarketContextBriefWithItemsForUser(
   return { brief, items };
 }
 
+async function getMarketContextBriefForUserWeek(
+  supabase: SupabaseClient,
+  userId: string,
+  briefStartDate: string,
+  briefEndDate: string
+): Promise<MarketContextBrief | null> {
+  const { data, error } = await supabase
+    .from("market_context_briefs")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("brief_start_date", briefStartDate)
+    .eq("brief_end_date", briefEndDate)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapBriefRow(data as Record<string, unknown>);
+}
+
+export type UpsertMarketContextBriefGeneratingResult = {
+  brief: MarketContextBrief | null;
+  /** True when another generation for this user+week is already in flight. */
+  alreadyGenerating: boolean;
+};
+
+/**
+ * Claims (or reclaims) the single Market Context brief row for this user+week.
+ * Enforced by unique index market_context_briefs_user_week_uidx.
+ * If a row is already `generating`, does not overwrite it — returns alreadyGenerating.
+ * Concurrent insert races resolve via 23505 → re-read.
+ */
 export async function upsertMarketContextBriefGenerating(
   supabase: SupabaseClient,
   input: {
@@ -149,26 +179,59 @@ export async function upsertMarketContextBriefGenerating(
     briefStartDate: string;
     briefEndDate: string;
   }
-): Promise<MarketContextBrief | null> {
+): Promise<UpsertMarketContextBriefGeneratingResult> {
+  const existing = await getMarketContextBriefForUserWeek(
+    supabase,
+    input.userId,
+    input.briefStartDate,
+    input.briefEndDate
+  );
+
+  if (existing?.status === "generating") {
+    return { brief: null, alreadyGenerating: true };
+  }
+
+  const payload = {
+    user_id: input.userId,
+    business_profile_id: input.businessProfileId,
+    brief_start_date: input.briefStartDate,
+    brief_end_date: input.briefEndDate,
+    overall_summary: "",
+    recommended_topics: [],
+    high_opportunity_keywords: [],
+    content_angles: [],
+    selected_context_item_ids: [],
+    status: "generating" as const,
+  };
+
   const { data, error } = await supabase
     .from("market_context_briefs")
-    .insert({
-      user_id: input.userId,
-      business_profile_id: input.businessProfileId,
-      brief_start_date: input.briefStartDate,
-      brief_end_date: input.briefEndDate,
-      overall_summary: "",
-      recommended_topics: [],
-      high_opportunity_keywords: [],
-      content_angles: [],
-      selected_context_item_ids: [],
-      status: "generating",
-    })
+    .upsert(payload, { onConflict: "user_id,brief_start_date,brief_end_date" })
     .select("*")
     .single();
 
-  if (error || !data) return null;
-  return mapBriefRow(data as Record<string, unknown>);
+  if (error) {
+    const code = (error as { code?: string }).code;
+    // Unique-index race: another writer claimed the week first.
+    if (code === "23505") {
+      const raced = await getMarketContextBriefForUserWeek(
+        supabase,
+        input.userId,
+        input.briefStartDate,
+        input.briefEndDate
+      );
+      if (raced?.status === "generating") {
+        return { brief: null, alreadyGenerating: true };
+      }
+      if (raced) {
+        return { brief: raced, alreadyGenerating: false };
+      }
+    }
+    return { brief: null, alreadyGenerating: false };
+  }
+
+  if (!data) return { brief: null, alreadyGenerating: false };
+  return { brief: mapBriefRow(data as Record<string, unknown>), alreadyGenerating: false };
 }
 
 export async function saveMarketContextItems(

@@ -27,6 +27,11 @@ import { logAuditEvent } from "@/lib/audit-log/service";
 import { AuditActions } from "@/lib/audit-log/types";
 import {
   PIPELINE_STAGE_ORDER,
+  buildPipelineAuditMetadata,
+  buildPipelineStageSummary,
+  derivePipelineOverallStatus,
+  mapPipelineStatusToAuditStatus,
+  PipelineOverallStatuses,
   type PipelineStageName,
   type PipelineStageResult,
   type PipelineStageStatus,
@@ -189,9 +194,9 @@ async function runMarketContextStage(
   const stage: PipelineStageName = "market_context";
 
   const existing = await getLatestMarketContextBriefWithItemsForUser(supabase, userId);
-  if (existing?.brief.status === "generating") {
-    return { stage, status: "skipped", reason: "Market context brief generation is already in progress." };
-  }
+  // Generating-in-progress is enforced inside generateWeeklyMarketContextBrief /
+  // upsertMarketContextBriefGenerating (unique week key + alreadyGenerating). Keep only
+  // the product cadence skip here: don't force a refresh more often than weekly.
   if (existing?.brief.status === "active") {
     const ageMs = now.getTime() - new Date(existing.brief.created_at).getTime();
     if (ageMs < MARKET_CONTEXT_STALE_AFTER_MS) {
@@ -212,6 +217,13 @@ async function runMarketContextStage(
       supabaseClient: supabase,
     });
     if (error || !briefWithItems) {
+      if (error?.includes("already in progress")) {
+        return {
+          stage,
+          status: "skipped",
+          reason: "Market context brief generation is already in progress.",
+        };
+      }
       return { stage, status: "failed", reason: GENERIC_STAGE_FAILURE_MESSAGES.market_context };
     }
     return {
@@ -317,15 +329,30 @@ export async function runRecommendationPipelineForUser(
   now: Date = new Date()
 ): Promise<RecommendationPipelineResult> {
   const supabase = supabaseClient ?? (await createClient());
+  const startedAt = now;
+  const startedAtIso = startedAt.toISOString();
 
   const businessProfile = await getBusinessProfileForUserId(supabase, userId);
 
   if (!businessProfile) {
     const reason = "No business profile exists for this user yet.";
+    const stages = PIPELINE_STAGE_ORDER.map((stage) => ({
+      stage,
+      status: "skipped" as const,
+      reason,
+    }));
+    const status = derivePipelineOverallStatus(stages);
+    const summary = buildPipelineStageSummary(stages, status);
+    const finishedAt = new Date();
     return {
       userId,
       businessProfileId: null,
-      stages: PIPELINE_STAGE_ORDER.map((stage) => ({ stage, status: "skipped" as const, reason })),
+      status,
+      stages,
+      summary,
+      startedAt: startedAtIso,
+      finishedAt: finishedAt.toISOString(),
+      durationMs: finishedAt.getTime() - startedAt.getTime(),
     };
   }
 
@@ -350,16 +377,35 @@ export async function runRecommendationPipelineForUser(
     await runDecisionEngineStage(supabase, userId, businessProfile.id, opportunityStage.status, now, deps)
   );
 
+  const status = derivePipelineOverallStatus(stages);
+  const summary = buildPipelineStageSummary(stages, status);
+  const finishedAt = new Date();
+  const durationMs = finishedAt.getTime() - startedAt.getTime();
+  const result: RecommendationPipelineResult = {
+    userId,
+    businessProfileId: businessProfile.id,
+    status,
+    stages,
+    summary,
+    startedAt: startedAtIso,
+    finishedAt: finishedAt.toISOString(),
+    durationMs,
+  };
+
+  const auditStatus = mapPipelineStatusToAuditStatus(status);
   await logAuditEvent(supabase, {
     userId,
     businessProfileId: businessProfile.id,
-    action: AuditActions.RECOMMENDATION_PIPELINE_COMPLETED,
+    action:
+      status === PipelineOverallStatuses.FAILURE
+        ? AuditActions.RECOMMENDATION_PIPELINE_FAILED
+        : AuditActions.RECOMMENDATION_PIPELINE_COMPLETED,
     entityType: "recommendation_pipeline",
-    status: "success",
-    metadata: { stages: stages.map((s) => ({ stage: s.stage, status: s.status })) },
+    status: auditStatus,
+    metadata: buildPipelineAuditMetadata(result),
   });
 
-  return { userId, businessProfileId: businessProfile.id, stages };
+  return result;
 }
 
 /** Cookie-bound convenience wrapper — resolves the signed-in user, then delegates. */

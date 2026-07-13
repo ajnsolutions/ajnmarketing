@@ -117,6 +117,13 @@ test("successful pipeline: all five stages run and complete in order when nothin
   const result = await runRecommendationPipelineForUser(USER, client, deps);
 
   assert.equal(result.businessProfileId, BIZ);
+  assert.equal(result.status, "success");
+  assert.equal(result.summary.failed, 0);
+  assert.equal(result.summary.completed, 5);
+  assert.match(result.summary.label, /^success:/);
+  assert.ok(typeof result.durationMs === "number");
+  assert.ok(result.startedAt);
+  assert.ok(result.finishedAt);
   assert.deepEqual(
     result.stages.map((s) => s.stage),
     PIPELINE_STAGE_ORDER
@@ -148,6 +155,9 @@ test("no business profile: every stage is skipped with a clear reason, no stage 
   const result = await runRecommendationPipelineForUser(USER, client, deps);
 
   assert.equal(result.businessProfileId, null);
+  assert.equal(result.status, "success");
+  assert.equal(result.summary.completed, 0);
+  assert.equal(result.summary.skipped, 5);
   assert.equal(result.stages.length, 5);
   assert.ok(result.stages.every((s) => s.status === "skipped"));
   assert.ok(result.stages.every((s) => s.reason.includes("No business profile")));
@@ -283,6 +293,9 @@ test("failure containment: a failing stage does not corrupt or block independent
   assert.equal(calls.aiProfile, 1);
   assert.equal(calls.opportunities, 1);
   assert.equal(calls.decisionEngine, 1);
+  assert.equal(result.status, "partial_success");
+  assert.equal(result.summary.failed, 1);
+  assert.equal(result.summary.completed, 4);
 });
 
 test("decision_engine is skipped when opportunity_detection fails (its one real dependency)", async () => {
@@ -411,4 +424,80 @@ test("failure reasons never leak raw error text for any stage", async () => {
       );
     }
   }
+});
+
+test("overall SUCCESS: audit logs COMPLETED with status success and flat operator summary", async () => {
+  const { client, calls } = fakeClient();
+  const { deps } = successfulDeps();
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+  assert.equal(result.status, "success");
+
+  const auditInserts = calls.filter((c) => c.table === "audit_logs" && c.op === "insert");
+  assert.ok(auditInserts.length >= 2);
+  const completed = auditInserts
+    .map((c) => c.args[0] as Record<string, unknown>)
+    .find((row) => row.action === "recommendation_pipeline.completed");
+  assert.ok(completed);
+  assert.equal(completed.status, "success");
+  const metadata = completed.metadata as Record<string, unknown>;
+  assert.equal(metadata.pipelineStatus, "success");
+  assert.equal(typeof metadata.summary, "string");
+  assert.match(String(metadata.summary), /^success:/);
+  assert.equal(metadata.failed, 0);
+});
+
+test("overall PARTIAL_SUCCESS: audit COMPLETED with success + flat partial_success fields", async () => {
+  const { client, calls } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.runWebsiteAnalysis = async () => {
+    throw new Error("boom");
+  };
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+  assert.equal(result.status, "partial_success");
+
+  const completed = calls
+    .filter((c) => c.table === "audit_logs" && c.op === "insert")
+    .map((c) => c.args[0] as Record<string, unknown>)
+    .find((row) => row.action === "recommendation_pipeline.completed");
+  assert.ok(completed);
+  assert.equal(completed.status, "success");
+  const metadata = completed.metadata as Record<string, unknown>;
+  assert.equal(metadata.pipelineStatus, "partial_success");
+  assert.match(String(metadata.summary), /^partial_success:/);
+  assert.equal(metadata.failed, 1);
+  assert.ok((metadata.failedStages as string[]).includes("website_analysis"));
+});
+
+test("overall FAILURE: audit FAILED with status failure when no stage completes", async () => {
+  const { client, calls } = fakeClient();
+  const { deps } = successfulDeps();
+  deps.runWebsiteAnalysis = async () => {
+    throw new Error("a");
+  };
+  deps.generateAiMarketingProfile = async () => {
+    throw new Error("b");
+  };
+  deps.refreshMarketContext = async () => {
+    throw new Error("c");
+  };
+  deps.evaluateOpportunities = async () => {
+    throw new Error("d");
+  };
+
+  const result = await runRecommendationPipelineForUser(USER, client, deps);
+  assert.equal(result.status, "failure");
+  assert.equal(result.summary.completed, 0);
+  assert.ok(result.summary.failed >= 1);
+
+  const failedAudit = calls
+    .filter((c) => c.table === "audit_logs" && c.op === "insert")
+    .map((c) => c.args[0] as Record<string, unknown>)
+    .find((row) => row.action === "recommendation_pipeline.failed");
+  assert.ok(failedAudit);
+  assert.equal(failedAudit.status, "failure");
+  const metadata = failedAudit.metadata as Record<string, unknown>;
+  assert.equal(metadata.pipelineStatus, "failure");
+  assert.match(String(metadata.summary), /^failure:/);
 });

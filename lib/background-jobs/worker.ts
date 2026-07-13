@@ -174,8 +174,26 @@ export async function executeBackgroundJob(job: BackgroundJob): Promise<Record<s
       // instead of going through this worker. Nothing enqueues this job type
       // automatically -- it's a supported, opt-in trigger point only.
       const result = await runRecommendationPipelineForUser(job.user_id);
+
+      // Align job completion with pipeline overall status:
+      // - success / partial_success → job completes (partial still produced useful work;
+      //   mirrors Google Business sync's partial handling).
+      // - failure → throw so the scheduler marks the job failed.
+      // Do not throw merely because one stage failed when others completed.
+      if (result.status === "failure") {
+        throw new Error(result.summary.label);
+      }
+
       return {
         businessProfileId: result.businessProfileId,
+        status: result.status,
+        summary: result.summary.label,
+        completed: result.summary.completed,
+        skipped: result.summary.skipped,
+        failed: result.summary.failed,
+        durationMs: result.durationMs,
+        startedAt: result.startedAt,
+        finishedAt: result.finishedAt,
         stages: result.stages,
       };
     }
