@@ -36,9 +36,29 @@ export async function createGoogleBusinessLocalPost(
     throw new Error("Connect Google Business Profile before publishing.");
   }
 
-  const location = await getPrimaryGoogleBusinessLocationForUser(supabase, input.userId);
+  // Tenant safety: service-role callers must not publish via a mismatched business id.
+  if (access.connection.business_profile_id !== input.businessProfileId) {
+    throw new Error(
+      "Google Business Profile connection does not match this business. Reconnect Google Business Profile."
+    );
+  }
+
+  const location = await getPrimaryGoogleBusinessLocationForUser(
+    supabase,
+    input.userId,
+    input.businessProfileId
+  );
   if (!location) {
     throw new Error("Sync Google Business Profile locations before publishing.");
+  }
+
+  if (
+    location.user_id !== input.userId ||
+    location.business_profile_id !== input.businessProfileId
+  ) {
+    throw new Error(
+      "Google Business Profile location does not match this business. Sync locations again."
+    );
   }
 
   const { accountId, locationId } = resolveGoogleLocationIds(location);

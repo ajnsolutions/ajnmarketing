@@ -21,12 +21,19 @@ export function formatGoogleSyncDate(isoDate: string | null | undefined): string
 
 export async function getPrimaryGoogleBusinessLocationForUser(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  businessProfileId?: string
 ): Promise<GoogleBusinessLocation | null> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("google_business_locations")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId);
+
+  if (businessProfileId) {
+    query = query.eq("business_profile_id", businessProfileId);
+  }
+
+  const { data, error } = await query
     .order("is_primary", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(1)
