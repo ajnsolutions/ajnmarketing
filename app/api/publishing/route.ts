@@ -12,8 +12,9 @@ import {
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Read-only. Due scheduled/retrying jobs are executed exclusively by the Trigger.dev
- * publishing-due-sweep path — never as a side effect of loading the Publishing dashboard.
+ * GET is read-only. Due scheduled/retrying jobs are never executed here — only via
+ * explicit POST actions (shared executePublishingJobById claim path) or the Trigger.dev
+ * publishing-due-sweep / background-job worker. Page loads must not publish.
  */
 export async function GET(request: Request) {
   const supabase = await createClient();

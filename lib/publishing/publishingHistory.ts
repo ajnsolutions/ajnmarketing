@@ -190,6 +190,50 @@ export async function updatePublishingJobRecord(
   return mapJobRow(data as Record<string, unknown>);
 }
 
+/**
+ * Atomically claim a publishing job for execution (queued|scheduled|retrying → publishing).
+ *
+ * Compare-and-swap on the current executable status: only one concurrent caller wins.
+ * No migration required — uses existing status column + Postgres row update atomicity.
+ *
+ * Returns the claimed row (now status=publishing), or null if another caller won / the
+ * job is not claimable. Callers should use publishingClaimFailureMessage on a fresh read
+ * when null is returned.
+ */
+export async function claimPublishingJobForExecution(
+  supabase: SupabaseClient,
+  userId: string,
+  publishingJobId: string,
+  expectedStatus: PublishingJobStatus,
+  now: Date = new Date()
+): Promise<PublishingJob | null> {
+  // Defense in depth: never CAS from a non-executable status even if the caller errs.
+  if (
+    expectedStatus !== "queued" &&
+    expectedStatus !== "scheduled" &&
+    expectedStatus !== "retrying"
+  ) {
+    return null;
+  }
+
+  void now; // reserved for future due-filter in the UPDATE itself if needed
+
+  const { data, error } = await supabase
+    .from("publishing_jobs")
+    .update({
+      status: "publishing",
+      last_error: null,
+    })
+    .eq("id", publishingJobId)
+    .eq("user_id", userId)
+    .eq("status", expectedStatus)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapJobRow(data as Record<string, unknown>);
+}
+
 export async function getDueScheduledPublishingJobs(
   supabase: SupabaseClient,
   userId?: string

@@ -1,13 +1,18 @@
 import {
   getPublishingDashboardJobsForUser,
 } from "@/lib/publishing/publishingEngine";
-import { processDueScheduledPublishingJobsForUser } from "@/lib/publishing/publishingScheduler";
 import {
   getPublishingQueueForCurrentUser,
   getPublishingQueueStatsForCurrentUser,
 } from "@/lib/publishing-queue/service";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Read-only dashboard data for Publishing / Content / Command Center pages.
+ * Never executes due publishing jobs — execution is exclusive to explicit POST
+ * actions and the background-job / Trigger.dev worker path via
+ * executePublishingJobById (atomic claim).
+ */
 export async function getPublishingDashboardData() {
   const supabase = await createClient();
   const {
@@ -17,8 +22,6 @@ export async function getPublishingDashboardData() {
   if (!user) {
     return { items: [], stats: { ready: 0, scheduled: 0, published: 0, failed: 0 }, jobs: [] };
   }
-
-  await processDueScheduledPublishingJobsForUser(user.id);
 
   const [items, stats, jobs] = await Promise.all([
     getPublishingQueueForCurrentUser(),

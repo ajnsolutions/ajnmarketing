@@ -15,9 +15,11 @@ test("publishing route GET path does not import the due-job processor", async ()
     "utf8"
   );
 
-  assert.equal(source.includes("processDueScheduledPublishingJobs"), false);
-  assert.equal(source.includes("executePublishingJobById"), false);
-  assert.match(source, /Read-only/);
+  assert.equal(/import\s*\{[^}]*processDueScheduledPublishingJobs/.test(source), false);
+  assert.equal(/await\s+processDueScheduledPublishingJobs/.test(source), false);
+  assert.equal(/import\s*\{[^}]*executePublishingJobById/.test(source), false);
+  assert.equal(/await\s+executePublishingJobById/.test(source), false);
+  assert.match(source, /read-only/i);
   assert.match(source, /getPublishingDashboardJobsForUser/);
 });
 

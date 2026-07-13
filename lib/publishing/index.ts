@@ -56,6 +56,14 @@ export {
   listSupportedPublishingProviders,
 } from "@/lib/publishing/providerRouter";
 
+export {
+  canAttemptPublishingClaim,
+  isExecutablePublishingStatus,
+  isPublishingJobDue,
+  publishingClaimFailureMessage,
+  EXECUTABLE_PUBLISHING_STATUSES,
+} from "@/lib/publishing/publishingClaim";
+export { claimPublishingJobForExecution } from "@/lib/publishing/publishingHistory";
 export { processDueScheduledPublishingJobsForUser } from "@/lib/publishing/publishingScheduler";
 
 export {
