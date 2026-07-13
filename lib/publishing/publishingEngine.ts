@@ -12,7 +12,6 @@ import { verifyPublishedContentResult } from "@/lib/publishing/publishVerifier";
 import {
   createPublishingJobRecord,
   getActivePublishingJobForContent,
-  getDueScheduledPublishingJobs,
   getPublishingHistoryForJob,
   getPublishingJobById,
   getPublishingJobsForUser,
@@ -29,6 +28,7 @@ import {
   getPublishingRetryScheduledFor,
   shouldRetryPublishing,
 } from "@/lib/publishing/retryManager";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
@@ -404,9 +404,10 @@ export async function getPublishingDashboardJobsForUser(userId: string): Promise
 
 export async function executePublishingJobById(
   publishingJobId: string,
-  userId: string
+  userId: string,
+  supabaseClient?: SupabaseClient
 ): Promise<{ job: PublishingJob | null; error?: string }> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? (await createClient());
   const job = await getPublishingJobById(supabase, userId, publishingJobId);
 
   if (!job) {

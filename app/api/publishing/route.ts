@@ -9,9 +9,12 @@ import {
   schedulePublishForUser,
   verifyPublishedContentForUser,
 } from "@/lib/publishing/publishingEngine";
-import { processDueScheduledPublishingJobsForUser } from "@/lib/publishing/publishingScheduler";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Read-only. Due scheduled/retrying jobs are executed exclusively by the Trigger.dev
+ * publishing-due-sweep path — never as a side effect of loading the Publishing dashboard.
+ */
 export async function GET(request: Request) {
   const supabase = await createClient();
   const {
@@ -30,7 +33,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ history });
   }
 
-  await processDueScheduledPublishingJobsForUser(user.id);
   const jobs = await getPublishingDashboardJobsForUser(user.id);
   return NextResponse.json({ jobs });
 }

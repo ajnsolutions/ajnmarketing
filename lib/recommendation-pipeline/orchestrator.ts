@@ -38,11 +38,11 @@ import {
   type RecommendationPipelineResult,
 } from "@/lib/recommendation-pipeline/types";
 
-// A brief refreshed within this window is left alone rather than re-fetched — matches
-// the "weekly" cadence docs/ADR_AUTONOMOUS_SCHEDULER.md already documents as the
-// intended refresh rate for Market Context, so the orchestrator doesn't force a refresh
-// more often than the product's own stated design.
-const MARKET_CONTEXT_STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+// A brief refreshed within this window is left alone rather than re-fetched. Phase 2D
+// daily autonomous cadence: refresh Market Context when the latest active brief is at
+// least 24 hours old. Opportunity Detection + Decision Engine still run on the daily
+// schedule even when this stage is skipped as fresh.
+export const MARKET_CONTEXT_STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Fixed, hand-authored failure reasons — never a caught exception's message or a
@@ -144,6 +144,21 @@ async function runWebsiteAnalysisStage(
   }
 }
 
+/**
+ * True when a completed Website Analysis is demonstrably newer than the current AI
+ * profile — the only scheduled path that may regenerate an already-active profile.
+ * Avoids unnecessary OpenAI calls when analysis has not changed.
+ */
+export function shouldRegenerateAiProfileForWebsiteAnalysis(
+  profileUpdatedAt: string | null | undefined,
+  websiteAnalysis: { analysis_status: string; updated_at?: string | null } | null | undefined
+): boolean {
+  if (!websiteAnalysis || websiteAnalysis.analysis_status !== "completed") return false;
+  if (!websiteAnalysis.updated_at) return false;
+  if (!profileUpdatedAt) return true;
+  return new Date(websiteAnalysis.updated_at).getTime() > new Date(profileUpdatedAt).getTime();
+}
+
 async function runAiMarketingProfileStage(
   supabase: SupabaseClient,
   userId: string,
@@ -152,15 +167,20 @@ async function runAiMarketingProfileStage(
   const stage: PipelineStageName = "ai_marketing_profile";
 
   const existing = await getAiMarketingProfileForUser(supabase, userId);
-  if (existing?.profile_status === "active") {
-    return {
-      stage,
-      status: "skipped",
-      reason: "AI marketing profile already active. Use the dashboard's Refresh AI Profile action to force a rerun.",
-    };
-  }
   if (existing?.profile_status === "generating") {
     return { stage, status: "skipped", reason: "AI marketing profile generation is already in progress." };
+  }
+
+  if (existing?.profile_status === "active") {
+    const websiteAnalysis = await getWebsiteAnalysisForUser(supabase, userId);
+    if (!shouldRegenerateAiProfileForWebsiteAnalysis(existing.updated_at, websiteAnalysis)) {
+      return {
+        stage,
+        status: "skipped",
+        reason:
+          "AI marketing profile already active and Website Analysis is not newer. Use the dashboard's Refresh AI Profile action to force a rerun.",
+      };
+    }
   }
 
   try {
@@ -203,7 +223,7 @@ async function runMarketContextStage(
       return {
         stage,
         status: "skipped",
-        reason: "Market context brief is recent (refreshed within the last 7 days).",
+        reason: "Market context brief is recent (refreshed within the last 24 hours).",
       };
     }
   }
