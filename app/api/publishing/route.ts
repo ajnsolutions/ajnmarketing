@@ -9,9 +9,13 @@ import {
   schedulePublishForUser,
   verifyPublishedContentForUser,
 } from "@/lib/publishing/publishingEngine";
-import { processDueScheduledPublishingJobsForUser } from "@/lib/publishing/publishingScheduler";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * GET is read-only. Due scheduled/retrying jobs are never executed here — only via
+ * explicit POST actions (which enqueue the shared executePublishingJobById path) or
+ * a future Trigger.dev / background-job worker. Page loads must not publish.
+ */
 export async function GET(request: Request) {
   const supabase = await createClient();
   const {
@@ -30,7 +34,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ history });
   }
 
-  await processDueScheduledPublishingJobsForUser(user.id);
   const jobs = await getPublishingDashboardJobsForUser(user.id);
   return NextResponse.json({ jobs });
 }

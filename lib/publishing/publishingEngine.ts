@@ -10,15 +10,19 @@ import {
 } from "@/lib/publishing/providerRouter";
 import { verifyPublishedContentResult } from "@/lib/publishing/publishVerifier";
 import {
+  claimPublishingJobForExecution,
   createPublishingJobRecord,
   getActivePublishingJobForContent,
-  getDueScheduledPublishingJobs,
   getPublishingHistoryForJob,
   getPublishingJobById,
   getPublishingJobsForUser,
   insertPublishingHistoryEntry,
   updatePublishingJobRecord,
 } from "@/lib/publishing/publishingHistory";
+import {
+  canAttemptPublishingClaim,
+  publishingClaimFailureMessage,
+} from "@/lib/publishing/publishingClaim";
 import {
   mapPlatformToProvider,
   PublishingJobStatuses,
@@ -29,6 +33,7 @@ import {
   getPublishingRetryScheduledFor,
   shouldRetryPublishing,
 } from "@/lib/publishing/retryManager";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
@@ -404,40 +409,39 @@ export async function getPublishingDashboardJobsForUser(userId: string): Promise
 
 export async function executePublishingJobById(
   publishingJobId: string,
-  userId: string
+  userId: string,
+  supabaseClient?: SupabaseClient,
+  now: Date = new Date()
 ): Promise<{ job: PublishingJob | null; error?: string }> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? (await createClient());
   const job = await getPublishingJobById(supabase, userId, publishingJobId);
 
-  if (!job) {
-    return { job: null, error: "Publishing job not found." };
+  if (!canAttemptPublishingClaim(job, now)) {
+    return { job, error: publishingClaimFailureMessage(job, now) };
   }
 
-  if (job.status === PublishingJobStatuses.CANCELLED) {
-    return { job, error: "Publishing job was cancelled." };
-  }
-
-  if (
-    job.status === PublishingJobStatuses.SCHEDULED ||
-    job.status === PublishingJobStatuses.RETRYING
-  ) {
-    if (job.scheduled_for && new Date(job.scheduled_for).getTime() > Date.now()) {
-      return { job, error: "Publishing job is not due yet." };
-    }
-  }
-
-  const queueItem = await getPublishingQueueItemById(supabase, userId, job.content_id);
-  if (!queueItem) {
-    return { job: null, error: "Publishing queue item not found." };
-  }
-
-  const publishing = await updatePublishingJobRecord(supabase, userId, publishingJobId, {
-    status: PublishingJobStatuses.PUBLISHING,
-    last_error: null,
-  });
+  // Atomic compare-and-swap: only one concurrent caller transitions this status → publishing.
+  const publishing = await claimPublishingJobForExecution(
+    supabase,
+    userId,
+    publishingJobId,
+    job!.status,
+    now
+  );
 
   if (!publishing) {
-    return { job: null, error: "Unable to mark publishing job as publishing." };
+    const latest = await getPublishingJobById(supabase, userId, publishingJobId);
+    return { job: latest, error: publishingClaimFailureMessage(latest, now) };
+  }
+
+  const queueItem = await getPublishingQueueItemById(supabase, userId, publishing.content_id);
+  if (!queueItem) {
+    // Roll the claim back to failed — we cannot publish without queue content.
+    const rolled = await updatePublishingJobRecord(supabase, userId, publishingJobId, {
+      status: PublishingJobStatuses.FAILED,
+      last_error: "Publishing queue item not found.",
+    });
+    return { job: rolled, error: "Publishing queue item not found." };
   }
 
   await recordPublishingEvent(supabase, {
