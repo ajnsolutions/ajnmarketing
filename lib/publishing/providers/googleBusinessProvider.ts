@@ -7,15 +7,14 @@ import {
   type PublishProviderContext,
   type PublishProviderResult,
 } from "@/lib/publishing/publishingTypes";
-import { createClient } from "@/lib/supabase/server";
 
 export class GoogleBusinessProvider extends BasePublishingProvider {
   readonly provider = PublishingProviders.GOOGLE_BUSINESS_PROFILE;
 
   async publish(context: PublishProviderContext): Promise<PublishProviderResult> {
-    const supabase = await createClient();
-
-    const result = await createGoogleBusinessLocalPost(supabase, {
+    // Use the caller-supplied client only (request-scoped or service-role).
+    // Supports Trigger.dev publishing with no request cookies.
+    const result = await createGoogleBusinessLocalPost(context.supabase, {
       userId: context.userId,
       businessProfileId: context.businessProfileId,
       summary: context.input.body,

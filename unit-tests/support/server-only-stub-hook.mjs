@@ -75,6 +75,15 @@ export async function load(url, context, nextLoad) {
       "    return new NextResponse(JSON.stringify(body), { ...init, headers });",
       "  }",
       "}",
+      // next/server.after schedules work after the response — noop in unit tests.",
+      "export function after(fn) {",
+      "  try {",
+      "    const result = typeof fn === 'function' ? fn() : undefined;",
+      "    if (result && typeof result.then === 'function') result.catch(() => undefined);",
+      "  } catch {",
+      "    /* ignore */",
+      "  }",
+      "}",
     ].join("\n");
     return { format: "module", source, shortCircuit: true };
   }

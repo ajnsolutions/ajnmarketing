@@ -459,6 +459,7 @@ export async function executePublishingJobById(
     const publishResult = await provider.publish({
       userId,
       businessProfileId: publishing.business_profile_id,
+      supabase,
       input: {
         title: queueItem.title,
         body: queueItem.content,

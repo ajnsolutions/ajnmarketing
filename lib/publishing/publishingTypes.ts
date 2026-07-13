@@ -1,4 +1,5 @@
 import type { PublishingPlatform } from "@/lib/publishing-queue/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PublishingProviders = {
   GOOGLE_BUSINESS_PROFILE: "google_business_profile",
@@ -70,6 +71,8 @@ export type PublishProviderResult = {
 export type PublishProviderContext = {
   userId: string;
   businessProfileId: string;
+  /** Injected Supabase client — request-scoped or service-role. Never inferred from cookies. */
+  supabase: SupabaseClient;
   input: PublishContentInput;
 };
 
