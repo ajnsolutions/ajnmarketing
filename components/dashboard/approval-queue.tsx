@@ -10,6 +10,16 @@ import { patchContentApprovalRequest } from "@/lib/content-approval-client";
 import { createPublishingQueueRequest } from "@/lib/publishing-queue-client";
 import type { ContentApproval, ContentApprovalStatus } from "@/lib/content-approval/types";
 
+const REJECTION_REASON_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "too_promotional", label: "Too promotional" },
+  { value: "wrong_tone", label: "Wrong tone" },
+  { value: "incorrect_information", label: "Incorrect information" },
+  { value: "off_brand_topic", label: "Off-brand topic" },
+  { value: "poor_timing", label: "Poor timing" },
+  { value: "duplicate_content", label: "Duplicate content" },
+  { value: "other", label: "Other" },
+];
+
 function StatusBadge({ status }: { status: ContentApprovalStatus }) {
   const label = formatApprovalStatus(status);
   const styles = {
@@ -43,8 +53,11 @@ function ApprovalCard({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [title, setTitle] = useState(item.title);
   const [content, setContent] = useState(item.content);
+  const [rejectionReasonCode, setRejectionReasonCode] = useState("too_promotional");
+  const [rejectionComment, setRejectionComment] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
   async function handleAddToQueue() {
@@ -66,22 +79,18 @@ function ApprovalCard({
   async function runAction(action: "approve" | "reject" | "regenerate" | "update") {
     setBusy(action);
 
-    const rejected_reason =
-      action === "reject"
-        ? window.prompt("Optional rejection reason:", "Needs revision before publishing") ??
-          "Rejected by reviewer"
-        : undefined;
-
     await patchContentApprovalRequest({
       id: item.id,
       action,
       title,
       content,
-      rejected_reason,
+      rejected_reason: action === "reject" ? rejectionComment || "Rejected by reviewer" : undefined,
+      rejection_reason_code: action === "reject" ? rejectionReasonCode : undefined,
     });
 
     setBusy(null);
     setEditing(false);
+    setRejecting(false);
     onUpdated();
     router.refresh();
   }
@@ -98,6 +107,11 @@ function ApprovalCard({
           {item.ai_score != null && (
             <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
               AI Score: {item.ai_score}
+            </span>
+          )}
+          {item.marketing_recommendation_id && (
+            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-600 ring-1 ring-violet-100">
+              From Recommendation
             </span>
           )}
         </div>
@@ -118,6 +132,36 @@ function ApprovalCard({
                 rows={5}
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-navy-900 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+          </div>
+        ) : rejecting ? (
+          <div className="space-y-3">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Rejection reason
+              </span>
+              <select
+                value={rejectionReasonCode}
+                onChange={(event) => setRejectionReasonCode(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-navy-900 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              >
+                {REJECTION_REASON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Comment (optional)
+              </span>
+              <input
+                value={rejectionComment}
+                onChange={(event) => setRejectionComment(event.target.value)}
+                placeholder="Needs revision before publishing"
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-navy-900 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </label>
@@ -157,6 +201,27 @@ function ApprovalCard({
                 Cancel
               </button>
             </>
+          ) : rejecting ? (
+            <>
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={() => void runAction("reject")}
+                className="rounded-full bg-rose-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-700 disabled:opacity-60"
+              >
+                {busy === "reject" ? "Rejecting..." : "Confirm Reject"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRejecting(false);
+                  setRejectionComment("");
+                }}
+                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
+              >
+                Cancel
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -170,10 +235,10 @@ function ApprovalCard({
               <button
                 type="button"
                 disabled={!!busy || item.status !== "pending"}
-                onClick={() => void runAction("reject")}
+                onClick={() => setRejecting(true)}
                 className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-60"
               >
-                {busy === "reject" ? "Rejecting..." : "Reject"}
+                Reject
               </button>
               <button
                 type="button"
