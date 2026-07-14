@@ -8,7 +8,13 @@ export const metadata = {
 };
 
 export default async function ApprovalsRoute() {
-  const { approvals, stats } = await getApprovalDashboardData();
+  const { approvals, stats, recommendationPackagesByApprovalId } = await getApprovalDashboardData();
 
-  return <ApprovalsPage approvals={approvals} stats={stats} />;
+  return (
+    <ApprovalsPage
+      approvals={approvals}
+      stats={stats}
+      recommendationPackagesByApprovalId={recommendationPackagesByApprovalId}
+    />
+  );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ApprovalQueue } from "@/components/dashboard/approval-queue";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import type { ContentApproval, ContentApprovalStats } from "@/lib/content-approval/types";
+import type { ClientRecommendationDecisionPackage } from "@/lib/recommendation-presentation/types";
 
 function SectionCard({
   title,
@@ -319,9 +320,11 @@ function WorkflowDiagram() {
 export function ApprovalsPage({
   approvals,
   stats,
+  recommendationPackagesByApprovalId,
 }: {
   approvals: ContentApproval[];
   stats: ContentApprovalStats;
+  recommendationPackagesByApprovalId?: Record<string, ClientRecommendationDecisionPackage>;
 }) {
   const pendingItems = approvals.filter((item) => item.status === "pending");
 
@@ -422,7 +425,10 @@ export function ApprovalsPage({
             subtitle="Everything waiting for your review — approve in one click"
             action="View history"
           >
-            <ApprovalQueue initialApprovals={approvals} />
+            <ApprovalQueue
+              initialApprovals={approvals}
+              recommendationPackagesByApprovalId={recommendationPackagesByApprovalId ?? {}}
+            />
           </SectionCard>
         </div>
 
