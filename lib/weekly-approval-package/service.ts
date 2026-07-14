@@ -21,12 +21,32 @@ import type {
   WeeklyApprovalPackage,
 } from "@/lib/weekly-approval-package/types";
 import { buildEmailActionAbsoluteUrl, createEmailActionToken } from "@/lib/email-actions/tokens";
+import {
+  createCorrelationId,
+  withWorkflowTiming,
+} from "@/lib/observability/workflowLogger";
 
 /**
  * Build a complete Weekly Approval Package (HTML + plain text + signed links)
  * for one tenant. Does not send email, approve content, or publish.
  */
 export async function generateWeeklyApprovalPackageForUser(
+  input: GenerateWeeklyApprovalPackageInput,
+  supabaseClient?: SupabaseClient
+): Promise<WeeklyApprovalPackage> {
+  const correlationId = createCorrelationId();
+  return withWorkflowTiming(
+    {
+      correlationId,
+      tenantUserId: input.userId,
+      businessProfileId: input.businessProfileId,
+      pipelineStage: "weekly_approval_package",
+    },
+    async () => generateWeeklyApprovalPackageForUserInner(input, supabaseClient)
+  );
+}
+
+async function generateWeeklyApprovalPackageForUserInner(
   input: GenerateWeeklyApprovalPackageInput,
   supabaseClient?: SupabaseClient
 ): Promise<WeeklyApprovalPackage> {
