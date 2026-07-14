@@ -54,6 +54,9 @@ function Toggle({
 
 export function ApprovalsDeliveryPage() {
   const [testSent, setTestSent] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
+  const [previewItemCount, setPreviewItemCount] = useState<number | null>(null);
 
   const approvalItems = [
     { title: "Google Business Profile post: seasonal update", type: "Google Post" },
@@ -96,9 +99,26 @@ export function ApprovalsDeliveryPage() {
     },
   ];
 
-  function handleSendTest() {
-    setTestSent(true);
-    window.setTimeout(() => setTestSent(false), 4000);
+  async function handleSendTest() {
+    setPreviewError(null);
+    try {
+      const response = await fetch("/api/weekly-approval-package/preview");
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "Unable to generate preview.");
+      }
+      const body = (await response.json()) as {
+        subject?: string;
+        itemCount?: number;
+        mode?: string;
+      };
+      setPreviewSubject(body.subject ?? null);
+      setPreviewItemCount(typeof body.itemCount === "number" ? body.itemCount : null);
+      setTestSent(true);
+      window.setTimeout(() => setTestSent(false), 6000);
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : "Unable to generate preview.");
+    }
   }
 
   return (
@@ -123,13 +143,30 @@ export function ApprovalsDeliveryPage() {
           onClick={handleSendTest}
           className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
         >
-          Send Test Preview
+          Generate Live Preview
         </button>
       </div>
 
       {testSent && (
         <p className="rounded-xl border border-emerald-200 bg-growth-50 px-4 py-3 text-sm font-medium text-growth-600">
-          Test preview queued — no email or SMS was sent. This is a UI preview only.
+          Live package preview generated
+          {previewItemCount != null ? ` (${previewItemCount} item${previewItemCount === 1 ? "" : "s"})` : ""}
+          {previewSubject ? ` — ${previewSubject}` : ""}. No email or SMS was sent.
+          {" "}
+          <a
+            href="/api/weekly-approval-package/preview?format=html"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold underline"
+          >
+            Open HTML preview
+          </a>
+        </p>
+      )}
+
+      {previewError && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+          {previewError}
         </p>
       )}
 
