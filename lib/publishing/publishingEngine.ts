@@ -37,6 +37,27 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuditActions, auditErrorMetadata, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
+import { getContentApprovalById } from "@/lib/content-approval/persistence";
+import {
+  recordPublishingQueuedOutcome,
+  recordPublishingResultOutcome,
+} from "@/lib/recommendation-outcomes/service";
+
+/**
+ * Resolves the recommendation a publishing job's content ultimately came from, if any --
+ * tenant-scoped via the same userId used for every other lookup in this file. Content
+ * not sourced from a recommendation (e.g. hand-authored in the Content Generator)
+ * resolves to null, and no outcome event is ever recorded for it.
+ */
+async function resolveRecommendationLinkForQueueItem(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  contentApprovalId: string
+): Promise<{ recommendationId: string; contentApprovalId: string } | null> {
+  const approval = await getContentApprovalById(supabase, userId, contentApprovalId);
+  if (!approval?.marketing_recommendation_id) return null;
+  return { recommendationId: approval.marketing_recommendation_id, contentApprovalId: approval.id };
+}
 
 async function recordPublishingEvent(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -190,6 +211,21 @@ async function createJobFromQueueItem(
       status: "scheduled",
       scheduled_for: scheduledFor,
       publish_error: null,
+    });
+  }
+
+  const recommendationLink = await resolveRecommendationLinkForQueueItem(
+    supabase,
+    userId,
+    queueItem.content_approval_id
+  );
+  if (recommendationLink) {
+    await recordPublishingQueuedOutcome(supabase, {
+      userId,
+      businessProfileId: queueItem.business_profile_id,
+      recommendationId: recommendationLink.recommendationId,
+      contentApprovalId: recommendationLink.contentApprovalId,
+      publishingJobId: job.id,
     });
   }
 
@@ -385,6 +421,23 @@ export async function verifyPublishedContentForUser(
       details: verification.details,
     });
 
+    // Manual re-verification has no retry concept -- a failure here is final.
+    const queueItem = await getPublishingQueueItemById(supabase, userId, updated.content_id);
+    const recommendationLink = queueItem
+      ? await resolveRecommendationLinkForQueueItem(supabase, userId, queueItem.content_approval_id)
+      : null;
+    if (recommendationLink) {
+      await recordPublishingResultOutcome(supabase, {
+        userId,
+        businessProfileId: updated.business_profile_id,
+        recommendationId: recommendationLink.recommendationId,
+        contentApprovalId: recommendationLink.contentApprovalId,
+        publishingJobId: updated.id,
+        outcome: verification.verified ? "succeeded" : "failed",
+        failureMessage: verification.verified ? null : verification.message,
+      });
+    }
+
     return { job: updated };
   } catch (error) {
     return {
@@ -515,6 +568,22 @@ export async function executePublishingJobById(
       await queueAnalyticsCaptureForUser(userId, published.business_profile_id).catch(
         () => undefined
       );
+
+      const recommendationLink = await resolveRecommendationLinkForQueueItem(
+        supabase,
+        userId,
+        queueItem.content_approval_id
+      );
+      if (recommendationLink) {
+        await recordPublishingResultOutcome(supabase, {
+          userId,
+          businessProfileId: published.business_profile_id,
+          recommendationId: recommendationLink.recommendationId,
+          contentApprovalId: recommendationLink.contentApprovalId,
+          publishingJobId: published.id,
+          outcome: "succeeded",
+        });
+      }
     }
 
     return { job: published };
@@ -548,6 +617,28 @@ export async function executePublishingJobById(
         auditStatus: "failure",
         error,
       });
+
+      // Only a FINAL failure (no retries remaining) is recorded as a recommendation
+      // outcome -- a "retrying" transition is not the final word on this attempt and
+      // must never be treated as the recommendation's quality outcome.
+      if (!canRetry) {
+        const recommendationLink = await resolveRecommendationLinkForQueueItem(
+          supabase,
+          userId,
+          queueItem.content_approval_id
+        );
+        if (recommendationLink) {
+          await recordPublishingResultOutcome(supabase, {
+            userId,
+            businessProfileId: failed.business_profile_id,
+            recommendationId: recommendationLink.recommendationId,
+            contentApprovalId: recommendationLink.contentApprovalId,
+            publishingJobId: failed.id,
+            outcome: "failed",
+            failureMessage: message,
+          });
+        }
+      }
     }
 
     return { job: failed, error: message };

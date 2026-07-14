@@ -24,6 +24,7 @@ import {
   mapActionTypeToContentTarget,
 } from "@/lib/marketing-decisions/actionTypeContentMapping";
 import { getManualNextStep } from "@/lib/marketing-decisions/ui";
+import { recordDraftCreatedOutcome } from "@/lib/recommendation-outcomes/service";
 import type {
   RecommendationExecutionBatchResult,
   RecommendationExecutionResult,
@@ -126,6 +127,19 @@ export async function executeRecommendationForUser(
       reason: error ?? "Recommendation execution failed.",
     };
   }
+
+  // Fire-and-forget-safe idempotent follow-up -- never on the critical path of
+  // returning this result, and safe to call on both the "executed" and
+  // "already_executed" (reused) branches: the outcome event's own idempotency key is
+  // the content approval id, so calling this every time a draft exists (new or reused)
+  // guarantees the association is recorded exactly once, regardless of how many times
+  // this recommendation is (re-)executed.
+  await recordDraftCreatedOutcome(supabase, {
+    userId,
+    businessProfileId: recommendation.business_profile_id,
+    recommendationId,
+    contentApprovalId: result.contentApproval.id,
+  });
 
   return {
     ...baseResult(recommendation, recommendationId),

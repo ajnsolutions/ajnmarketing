@@ -182,6 +182,7 @@ export async function updateContentApproval(
       | "approved_at"
       | "approved_by"
       | "rejected_reason"
+      | "rejection_reason_code"
     >
   >
 ): Promise<ContentApproval | null> {

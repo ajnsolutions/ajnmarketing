@@ -16,6 +16,8 @@ export type ContentApproval = {
   approved_at: string | null;
   approved_by: string | null;
   rejected_reason: string | null;
+  /** Structured rejection reason code; see lib/recommendation-outcomes/types.ts. */
+  rejection_reason_code: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -37,6 +39,8 @@ export type ContentApprovalPatchInput = {
   content?: string;
   notes?: string;
   rejected_reason?: string;
+  /** Structured rejection reason code; see lib/recommendation-outcomes/types.ts. */
+  rejection_reason_code?: string;
 };
 
 export type ContentApprovalStats = {
