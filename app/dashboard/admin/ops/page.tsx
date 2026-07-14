@@ -9,6 +9,7 @@ import { runProductionHealthChecks } from "@/lib/production-health/service";
 import { runWorkflowValidationHarness } from "@/lib/workflow-validation/harness";
 import { getFailureInjectionState } from "@/lib/failure-injection/gate";
 import { ATTACH_DECLARATIVE_PRODUCTION_CRONS } from "@/lib/trigger/scheduleActivation";
+import { buildAssistedPilotDashboard } from "@/lib/assisted-pilot/service";
 
 export const metadata = {
   title: "Ops Dashboard",
@@ -28,11 +29,12 @@ export default async function AdminOpsPage() {
     redirect("/dashboard/command-center");
   }
 
+  const serviceClient = isSupabaseServiceRoleConfigured() ? createServiceRoleClient() : null;
+
   const health = await runProductionHealthChecks({
-    probeDatabase: isSupabaseServiceRoleConfigured()
+    probeDatabase: serviceClient
       ? async () => {
-          const client = createServiceRoleClient();
-          const { error } = await client.from("business_profiles").select("id").limit(1);
+          const { error } = await serviceClient.from("business_profiles").select("id").limit(1);
           return {
             ok: !error,
             message: error ? error.message.slice(0, 200) : "Database probe succeeded.",
@@ -41,9 +43,8 @@ export default async function AdminOpsPage() {
       : undefined,
   });
 
-  const summary = isSupabaseServiceRoleConfigured()
-    ? await buildOpsDashboardSummary(createServiceRoleClient())
-    : null;
+  const summary = serviceClient ? await buildOpsDashboardSummary(serviceClient) : null;
+  const pilot = serviceClient ? await buildAssistedPilotDashboard(serviceClient) : null;
 
   const alerts = evaluateOpsAlerts({
     publishingFailedCount:
@@ -68,6 +69,7 @@ export default async function AdminOpsPage() {
       alerts={alerts}
       workflow={workflow}
       failureInjection={getFailureInjectionState()}
+      pilot={pilot}
     />
   );
 }
