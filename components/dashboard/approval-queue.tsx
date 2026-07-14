@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   formatApprovalDate,
   formatApprovalStatus,
@@ -384,17 +384,27 @@ function ApprovalCard({
 export function ApprovalQueue({
   initialApprovals,
   recommendationPackagesByApprovalId = {},
+  initialFilter = "all",
+  focusApprovalId = null,
 }: {
   initialApprovals: ContentApproval[];
   recommendationPackagesByApprovalId?: Record<string, ClientRecommendationDecisionPackage>;
+  initialFilter?: "all" | ContentApprovalStatus;
+  focusApprovalId?: string | null;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<"all" | ContentApprovalStatus>("all");
+  const [filter, setFilter] = useState<"all" | ContentApprovalStatus>(initialFilter);
 
   const approvals = useMemo(() => {
     if (filter === "all") return initialApprovals;
     return initialApprovals.filter((item) => item.status === filter);
   }, [filter, initialApprovals]);
+
+  useEffect(() => {
+    if (!focusApprovalId) return;
+    const el = document.getElementById(`approval-${focusApprovalId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusApprovalId, filter, approvals]);
 
   return (
     <div className="space-y-4">
@@ -432,12 +442,21 @@ export function ApprovalQueue({
       ) : (
         <div className="space-y-4">
           {approvals.map((item) => (
-            <ApprovalCard
+            <div
               key={item.id}
-              item={item}
-              recommendationPackage={recommendationPackagesByApprovalId[item.id]}
-              onUpdated={() => router.refresh()}
-            />
+              id={`approval-${item.id}`}
+              className={
+                focusApprovalId === item.id
+                  ? "rounded-2xl ring-2 ring-brand-600 ring-offset-2"
+                  : undefined
+              }
+            >
+              <ApprovalCard
+                item={item}
+                recommendationPackage={recommendationPackagesByApprovalId[item.id]}
+                onUpdated={() => router.refresh()}
+              />
+            </div>
           ))}
         </div>
       )}

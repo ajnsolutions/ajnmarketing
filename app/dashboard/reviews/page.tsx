@@ -7,7 +7,11 @@ export const metadata = {
     "Monitor customer feedback, respond faster, and improve your online reputation.",
 };
 
-export default async function ReviewsRoute() {
-  const data = await getGoogleBusinessDashboardData();
-  return <ReviewsHubPage data={data} />;
+export default async function ReviewsRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const [data, params] = await Promise.all([getGoogleBusinessDashboardData(), searchParams]);
+  return <ReviewsHubPage data={data} focusReviewId={params.focus?.trim() || null} />;
 }
