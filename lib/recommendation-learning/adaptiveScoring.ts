@@ -7,12 +7,13 @@
  */
 
 import type { MarketingRecommendationDraft, RecommendedActionType } from "@/lib/marketing-decisions/types";
-import { urgencyFromPriorityScore } from "@/lib/marketing-decisions/scoring";
+import { urgencyFromPriorityScore, scoreOpportunity, aggregatePriorityScore, aggregateConfidence } from "@/lib/marketing-decisions/scoring";
 import {
   isContentSupportedActionType,
   mapActionTypeToContentTarget,
 } from "@/lib/marketing-decisions/actionTypeContentMapping";
 import { inferPlatformFromContentType } from "@/lib/publishing-queue/persistence";
+import type { MarketingOpportunity } from "@/lib/marketing-opportunities/types";
 import {
   CURRENT_MARKET_WEIGHT,
   HEAVY_EDIT_RATE_THRESHOLD,
@@ -273,4 +274,50 @@ export function applyAdaptiveScoringToDrafts(
 
     return { draft: adjustedDraft, breakdown };
   });
+}
+
+/**
+ * Recomputes the full adaptive score breakdown for one already-persisted recommendation
+ * from its still-linked opportunities -- the same recompute-don't-cache approach
+ * `lib/recommendation-learning/debug.ts`'s admin view uses, extracted here so both the
+ * admin debug view and the client-facing presentation layer
+ * (lib/recommendation-presentation/service.ts) share one implementation rather than
+ * duplicating this recompute logic. Falls back to the recommendation's own stored
+ * priority_score/confidence as the "base" when its opportunities are no longer
+ * resolvable (e.g. hard-deleted) -- extremely unlikely given opportunities are only ever
+ * status-transitioned, never deleted, but a safe default regardless.
+ */
+export function computeRecommendationScoreBreakdown(
+  recommendation: {
+    recommended_action_type: RecommendedActionType;
+    priority_score: number;
+    confidence: number;
+  },
+  relatedOpportunities: MarketingOpportunity[],
+  signals: HistoricalRecommendationSignals,
+  now: Date = new Date()
+): AdaptiveScoreBreakdown {
+  const baseScore =
+    relatedOpportunities.length > 0
+      ? aggregatePriorityScore(relatedOpportunities.map((o) => scoreOpportunity(o, now)))
+      : recommendation.priority_score;
+  const baseConfidence =
+    relatedOpportunities.length > 0
+      ? aggregateConfidence(relatedOpportunities.map((o) => o.confidence))
+      : recommendation.confidence;
+
+  const categories = [...new Set(relatedOpportunities.map((o) => o.category))];
+
+  return computeAdaptiveRecommendationScore(
+    {
+      actionType: recommendation.recommended_action_type,
+      baseScore,
+      baseConfidence,
+      categories,
+      channel: resolveChannelForActionType(recommendation.recommended_action_type),
+      season: seasonFromDate(now),
+      timeOfDay: timeOfDayFromDate(now),
+    },
+    signals
+  );
 }

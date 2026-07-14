@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   formatApprovalDate,
   formatApprovalStatus,
@@ -9,6 +9,7 @@ import {
 import { patchContentApprovalRequest } from "@/lib/content-approval-client";
 import { createPublishingQueueRequest } from "@/lib/publishing-queue-client";
 import type { ContentApproval, ContentApprovalStatus } from "@/lib/content-approval/types";
+import type { ClientRecommendationDecisionPackage } from "@/lib/recommendation-presentation/types";
 
 const REJECTION_REASON_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "too_promotional", label: "Too promotional" },
@@ -44,11 +45,95 @@ function ContentTypeBadge({ type }: { type: string }) {
   );
 }
 
+function OutcomeStatusBadge({ status }: { status: ClientRecommendationDecisionPackage["outcomeStatus"] }) {
+  const className = status.isOperationalIssue
+    ? "bg-amber-50 text-amber-700 ring-amber-100"
+    : "bg-slate-100 text-slate-600 ring-slate-200";
+
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${className}`}>
+      {status.label}
+    </span>
+  );
+}
+
+/**
+ * Client-safe recommendation package -- what AJN recommends, why it matters now, the
+ * expected benefit, and a plain-language confidence label. Never renders internal score
+ * arithmetic or raw confidence percentages (see lib/recommendation-presentation/types.ts).
+ */
+function RecommendationPackagePanel({ pkg }: { pkg: ClientRecommendationDecisionPackage }) {
+  const detailsId = useId();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-navy-900">{pkg.recommendedAction}</span>
+          {pkg.platform && (
+            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-navy-900 ring-1 ring-slate-200">
+              {pkg.platform.replace(/_/g, " ")}
+            </span>
+          )}
+          <OutcomeStatusBadge status={pkg.outcomeStatus} />
+        </div>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={detailsId}
+          onClick={() => setExpanded((value) => !value)}
+          className="text-sm font-semibold text-brand-700 transition-colors hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+        >
+          {expanded ? "Hide details" : "Why this recommendation"}
+        </button>
+      </div>
+
+      {pkg.outcomeStatus.isOperationalIssue && pkg.outcomeStatus.detail && (
+        <p className="mt-2 text-sm leading-6 text-amber-800">{pkg.outcomeStatus.detail}</p>
+      )}
+
+      {expanded && (
+        <div id={detailsId} className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+          <p>{pkg.whyNow}</p>
+
+          {pkg.supportingReasons.length > 0 && (
+            <ul className="space-y-1.5">
+              {pkg.supportingReasons.map((reason, index) => (
+                <li key={index} className="flex gap-2">
+                  <span aria-hidden="true" className="text-growth-500">
+                    ✓
+                  </span>
+                  <span>{reason.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Expected benefit</p>
+            <p className="mt-1">{pkg.expectedBenefit}</p>
+          </div>
+
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              {pkg.confidenceLabelText}
+            </p>
+            <p className="mt-1">{pkg.confidenceExplanation}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ApprovalCard({
   item,
+  recommendationPackage,
   onUpdated,
 }: {
   item: ContentApproval;
+  recommendationPackage?: ClientRecommendationDecisionPackage;
   onUpdated: () => void;
 }) {
   const router = useRouter();
@@ -59,6 +144,7 @@ function ApprovalCard({
   const [rejectionReasonCode, setRejectionReasonCode] = useState("too_promotional");
   const [rejectionComment, setRejectionComment] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [feedbackSent, setFeedbackSent] = useState(false);
 
   async function handleAddToQueue() {
     setBusy("queue");
@@ -76,7 +162,7 @@ function ApprovalCard({
     }
   }
 
-  async function runAction(action: "approve" | "reject" | "regenerate" | "update") {
+  async function runAction(action: "approve" | "reject" | "regenerate" | "update" | "more_like_this") {
     setBusy(action);
 
     await patchContentApprovalRequest({
@@ -91,6 +177,7 @@ function ApprovalCard({
     setBusy(null);
     setEditing(false);
     setRejecting(false);
+    if (action === "more_like_this") setFeedbackSent(true);
     onUpdated();
     router.refresh();
   }
@@ -115,6 +202,11 @@ function ApprovalCard({
             </span>
           )}
         </div>
+
+        {/* The recommendation package stays visible during editing/rejecting, not just
+            the normal view -- the explanation for why AJN suggested this shouldn't
+            disappear the moment a client starts reviewing it. */}
+        {recommendationPackage && <RecommendationPackagePanel pkg={recommendationPackage} />}
 
         {editing ? (
           <div className="space-y-3">
@@ -266,6 +358,21 @@ function ApprovalCard({
                   {busy === "queue" ? "Adding..." : "Add to Publishing Queue"}
                 </button>
               )}
+              {recommendationPackage && (
+                <button
+                  type="button"
+                  disabled={!!busy}
+                  aria-label="Do more like this recommendation"
+                  onClick={() => void runAction("more_like_this")}
+                  className="rounded-full border border-growth-200 bg-growth-50 px-3.5 py-2 text-sm font-semibold text-growth-600 transition-colors hover:bg-growth-100 disabled:opacity-60"
+                >
+                  {busy === "more_like_this"
+                    ? "Saving..."
+                    : feedbackSent
+                      ? "Thanks — noted!"
+                      : "Do more like this"}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -274,7 +381,13 @@ function ApprovalCard({
   );
 }
 
-export function ApprovalQueue({ initialApprovals }: { initialApprovals: ContentApproval[] }) {
+export function ApprovalQueue({
+  initialApprovals,
+  recommendationPackagesByApprovalId = {},
+}: {
+  initialApprovals: ContentApproval[];
+  recommendationPackagesByApprovalId?: Record<string, ClientRecommendationDecisionPackage>;
+}) {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | ContentApprovalStatus>("all");
 
@@ -319,7 +432,12 @@ export function ApprovalQueue({ initialApprovals }: { initialApprovals: ContentA
       ) : (
         <div className="space-y-4">
           {approvals.map((item) => (
-            <ApprovalCard key={item.id} item={item} onUpdated={() => router.refresh()} />
+            <ApprovalCard
+              key={item.id}
+              item={item}
+              recommendationPackage={recommendationPackagesByApprovalId[item.id]}
+              onUpdated={() => router.refresh()}
+            />
           ))}
         </div>
       )}

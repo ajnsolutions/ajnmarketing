@@ -34,7 +34,10 @@ export type ContentApprovalCreateInput = {
 
 export type ContentApprovalPatchInput = {
   id: string;
-  action?: "approve" | "reject" | "regenerate" | "update";
+  /** "more_like_this" records a positive-feedback outcome event only -- it never
+   * mutates this approval's status/title/content. See
+   * lib/recommendation-outcomes/service.ts's recordDoMoreLikeThisOutcome. */
+  action?: "approve" | "reject" | "regenerate" | "update" | "more_like_this";
   title?: string;
   content?: string;
   notes?: string;

@@ -33,6 +33,12 @@ function emptyByEventTypeCounts(): Record<RecommendationOutcomeEventType, number
     publishing_succeeded: 0,
     publishing_failed: 0,
     performance_measured: 0,
+    // do_more_like_this has no corresponding column anywhere to infer from (unlike
+    // draft_approved, which content_approvals.status/approved_at can reconstruct) --
+    // it can never be backfilled retroactively, only captured going forward from the
+    // live integration point. Left at 0 here, same documented limitation pattern as
+    // draft_edited (see docs/RECOMMENDATION_OUTCOME_FEEDBACK_LOOP.md).
+    do_more_like_this: 0,
   };
 }
 

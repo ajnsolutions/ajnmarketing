@@ -14,6 +14,7 @@ import {
   detectMeaningfulEdit,
   getRecommendationOutcomeStatsForUser,
   recordApprovalOutcome,
+  recordDoMoreLikeThisOutcome,
   recordDraftCreatedOutcome,
   recordPerformanceMeasuredOutcome,
   recordPublishingQueuedOutcome,
@@ -307,6 +308,37 @@ test("recordApprovalOutcome: concurrent/repeated approvals do not duplicate", as
   const recordedCount = [first, second].filter((r) => !r.duplicate).length;
   assert.equal(recordedCount, 1);
   assert.equal(duplicateCount, 1);
+});
+
+test("recordDoMoreLikeThisOutcome: records once, repeated calls are idempotent (never duplicated)", async () => {
+  const { client } = createFakeSupabaseClient({
+    recommendation_outcome_events: idempotentInsertTable(eventRow({ event_type: "do_more_like_this" })),
+  });
+  const scope = { userId: USER, businessProfileId: BIZ, recommendationId: REC_ID, contentApprovalId: APPROVAL_ID };
+
+  const first = await recordDoMoreLikeThisOutcome(client, scope);
+  const second = await recordDoMoreLikeThisOutcome(client, scope);
+
+  assert.equal(first.duplicate, false);
+  assert.equal(second.duplicate, true);
+});
+
+test("recordDoMoreLikeThisOutcome: keyed by content approval id, independent of draft_approved's own idempotency key", async () => {
+  const { client, calls } = createFakeSupabaseClient({
+    recommendation_outcome_events: idempotentInsertTable(eventRow({ event_type: "do_more_like_this" })),
+  });
+
+  await recordDoMoreLikeThisOutcome(client, {
+    userId: USER,
+    businessProfileId: BIZ,
+    recommendationId: REC_ID,
+    contentApprovalId: APPROVAL_ID,
+  });
+
+  const insertArgs = calls.find((c) => c.table === "recommendation_outcome_events" && c.op === "insert")!
+    .args[0] as Record<string, unknown>;
+  assert.equal(insertArgs.idempotency_key, `${APPROVAL_ID}:do_more_like_this`);
+  assert.equal(insertArgs.event_type, "do_more_like_this");
 });
 
 test("recordRejectionOutcome: persists a valid structured reason, falls back to 'other' for an invalid one, never duplicates on retry", async () => {
