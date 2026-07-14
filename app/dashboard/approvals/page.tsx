@@ -7,14 +7,26 @@ export const metadata = {
     "Review and approve everything AJN AI has prepared for your business.",
 };
 
-export default async function ApprovalsRoute() {
-  const { approvals, stats, recommendationPackagesByApprovalId } = await getApprovalDashboardData();
+export default async function ApprovalsRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; focus?: string }>;
+}) {
+  const [{ approvals, stats, recommendationPackagesByApprovalId }, params] = await Promise.all([
+    getApprovalDashboardData(),
+    searchParams,
+  ]);
+
+  const focus = params.focus?.trim() || null;
+  const initialFilter = params.view === "pending" ? "pending" : "all";
 
   return (
     <ApprovalsPage
       approvals={approvals}
       stats={stats}
       recommendationPackagesByApprovalId={recommendationPackagesByApprovalId}
+      initialFilter={initialFilter}
+      focusApprovalId={focus}
     />
   );
 }

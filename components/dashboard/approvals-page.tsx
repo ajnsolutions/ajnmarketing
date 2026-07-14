@@ -321,10 +321,14 @@ export function ApprovalsPage({
   approvals,
   stats,
   recommendationPackagesByApprovalId,
+  initialFilter = "all",
+  focusApprovalId = null,
 }: {
   approvals: ContentApproval[];
   stats: ContentApprovalStats;
   recommendationPackagesByApprovalId?: Record<string, ClientRecommendationDecisionPackage>;
+  initialFilter?: "all" | ContentApproval["status"];
+  focusApprovalId?: string | null;
 }) {
   const pendingItems = approvals.filter((item) => item.status === "pending");
 
@@ -428,6 +432,8 @@ export function ApprovalsPage({
             <ApprovalQueue
               initialApprovals={approvals}
               recommendationPackagesByApprovalId={recommendationPackagesByApprovalId ?? {}}
+              initialFilter={initialFilter === "all" ? "all" : initialFilter}
+              focusApprovalId={focusApprovalId}
             />
           </SectionCard>
         </div>

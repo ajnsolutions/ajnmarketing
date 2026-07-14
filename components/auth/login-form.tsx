@@ -1,13 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
 import { AuthField, AuthMessage, AuthShell } from "@/components/auth/auth-shell";
 import { createClient } from "@/lib/supabase/client";
 
+function safeInternalNextPath(raw: string | null): string {
+  if (!raw) return "/dashboard";
+  // Only allow same-origin relative paths (incl. /api/... open redirects).
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) {
+    return "/dashboard";
+  }
+  return raw;
+}
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(
+    () => safeInternalNextPath(searchParams.get("next")),
+    [searchParams]
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,7 +45,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(nextPath);
     router.refresh();
   }
 

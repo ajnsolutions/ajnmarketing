@@ -1,9 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
 import { GoogleBusinessReviewCard } from "@/components/dashboard/google-business-review-card";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import type { GoogleBusinessDashboardData } from "@/lib/google-business/types";
 
-export function ReviewsHubPage({ data }: { data: GoogleBusinessDashboardData }) {
+export function ReviewsHubPage({
+  data,
+  focusReviewId = null,
+}: {
+  data: GoogleBusinessDashboardData;
+  focusReviewId?: string | null;
+}) {
+  useEffect(() => {
+    if (!focusReviewId) return;
+    const el = document.getElementById(`review-${focusReviewId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusReviewId]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -57,7 +72,7 @@ export function ReviewsHubPage({ data }: { data: GoogleBusinessDashboardData }) 
           </div>
 
           <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03]">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
               <div>
                 <h2 className="text-base font-bold text-navy-900 sm:text-lg">Recent Reviews</h2>
                 <p className="mt-1 text-sm text-text-muted">
@@ -73,7 +88,17 @@ export function ReviewsHubPage({ data }: { data: GoogleBusinessDashboardData }) 
             </div>
             <div className="grid gap-4 px-5 py-4 sm:px-6 sm:py-5 lg:grid-cols-2">
               {data.recentReviews.map((review) => (
-                <GoogleBusinessReviewCard key={review.id} review={review} />
+                <div
+                  key={review.id}
+                  id={`review-${review.id}`}
+                  className={
+                    focusReviewId === review.id
+                      ? "rounded-2xl ring-2 ring-brand-600 ring-offset-2"
+                      : undefined
+                  }
+                >
+                  <GoogleBusinessReviewCard review={review} />
+                </div>
               ))}
             </div>
           </section>
