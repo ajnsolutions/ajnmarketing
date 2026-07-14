@@ -16,6 +16,7 @@ import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 import {
   recordApprovalOutcome,
+  recordDoMoreLikeThisOutcome,
   recordDraftEditedOutcome,
   recordRejectionOutcome,
 } from "@/lib/recommendation-outcomes/service";
@@ -175,6 +176,23 @@ export async function patchContentApprovalForUser(
     }
 
     return updated;
+  }
+
+  if (input.action === "more_like_this") {
+    // Positive feedback only -- never mutates status/title/content, never approves,
+    // never publishes. A no-op (still returns the unchanged approval) for content that
+    // isn't recommendation-linked, since there's no recommendation to attribute the
+    // signal to.
+    if (existing.marketing_recommendation_id) {
+      await recordDoMoreLikeThisOutcome(supabase, {
+        userId,
+        businessProfileId: existing.business_profile_id,
+        recommendationId: existing.marketing_recommendation_id,
+        contentApprovalId: existing.id,
+      });
+    }
+
+    return existing;
   }
 
   if (input.action === "regenerate") {

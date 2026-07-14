@@ -230,6 +230,44 @@ export async function recordApprovalOutcome(
   return result;
 }
 
+/**
+ * Records a "do more like this" positive-feedback signal -- deliberately distinct from
+ * recordApprovalOutcome: a client can approve a draft without wanting more like it (and
+ * vice versa), so these are two independent signals, not aliases of each other. Never
+ * mutates content_approvals; this is purely an outcome-event record. Idempotent per
+ * draft (one content approval can only produce one do_more_like_this event, matching
+ * draft_approved/draft_rejected's own singular-per-draft pattern) -- repeating the
+ * action is always safe.
+ */
+export async function recordDoMoreLikeThisOutcome(
+  supabase: SupabaseClient,
+  input: TenantScope & { contentApprovalId: string }
+): Promise<InsertOutcomeEventResult> {
+  const idempotencyKey = buildOutcomeIdempotencyKey(RecommendationOutcomeEventTypes.DO_MORE_LIKE_THIS, {
+    contentApprovalId: input.contentApprovalId,
+  });
+
+  const result = await insertRecommendationOutcomeEvent(supabase, {
+    userId: input.userId,
+    businessProfileId: input.businessProfileId,
+    recommendationId: input.recommendationId,
+    contentApprovalId: input.contentApprovalId,
+    eventType: RecommendationOutcomeEventTypes.DO_MORE_LIKE_THIS,
+    idempotencyKey,
+    source: "content_approval_do_more_like_this",
+  });
+
+  logOutcomeAttempt({
+    recommendationId: input.recommendationId,
+    contentApprovalId: input.contentApprovalId,
+    businessProfileId: input.businessProfileId,
+    eventType: RecommendationOutcomeEventTypes.DO_MORE_LIKE_THIS,
+    result: result.duplicate ? "duplicate" : result.event ? "recorded" : "error",
+  });
+
+  return result;
+}
+
 export async function recordRejectionOutcome(
   supabase: SupabaseClient,
   input: TenantScope & {

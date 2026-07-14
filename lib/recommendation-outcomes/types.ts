@@ -12,6 +12,10 @@ export const RecommendationOutcomeEventTypes = {
   PUBLISHING_SUCCEEDED: "publishing_succeeded",
   PUBLISHING_FAILED: "publishing_failed",
   PERFORMANCE_MEASURED: "performance_measured",
+  /** Durable positive-feedback signal ("do more like this"), distinct from
+   * draft_approved -- a client can approve a draft without wanting more like it, and
+   * vice versa. See docs/CLIENT_RECOMMENDATION_EXPERIENCE.md. */
+  DO_MORE_LIKE_THIS: "do_more_like_this",
 } as const;
 
 export type RecommendationOutcomeEventType =
