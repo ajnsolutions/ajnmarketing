@@ -5,15 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { AuthField, AuthMessage, AuthShell } from "@/components/auth/auth-shell";
 import { createClient } from "@/lib/supabase/client";
-
-function safeInternalNextPath(raw: string | null): string {
-  if (!raw) return "/dashboard";
-  // Only allow same-origin relative paths (incl. /api/... open redirects).
-  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) {
-    return "/dashboard";
-  }
-  return raw;
-}
+import { safeInternalNextPath } from "@/lib/auth/safeNextPath";
 
 export function LoginForm() {
   const router = useRouter();
