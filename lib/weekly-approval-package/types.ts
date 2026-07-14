@@ -42,8 +42,14 @@ export type WeeklyPackageItem = {
   whyNow: string | null;
   expectedBenefit: string | null;
   createdAt: string;
-  /** Signed, time-limited link into the Approval Center for this item. */
+  /** Signed, time-limited link into the Approval Center for this item ("Edit"). */
   reviewUrl: string;
+  /** One-click email action links (see lib/email-actions). Only set for items with a
+   * contentApprovalId and only when a recipient email is known to bind the token to --
+   * review-reply items and recipient-less generations leave these null, falling back to
+   * reviewUrl/Approval Center only. */
+  approveActionUrl: string | null;
+  rejectActionUrl: string | null;
 };
 
 export type WeeklyPackagePlatformGroup = {
@@ -72,6 +78,10 @@ export type WeeklyApprovalPackage = {
   items: WeeklyPackageItem[];
   approveAllUrl: string;
   approvalCenterUrl: string;
+  /** One-click "Approve All" email action link (see lib/email-actions) -- executes
+   * directly rather than redirecting into the Approval Center. Null when no recipient
+   * email is known or there are no eligible (contentApprovalId-bearing) items. */
+  approveAllActionUrl: string | null;
   html: string;
   text: string;
   isEmpty: boolean;

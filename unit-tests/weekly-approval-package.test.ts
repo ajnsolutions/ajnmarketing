@@ -42,6 +42,8 @@ function item(overrides: Partial<WeeklyPackageItem> = {}): WeeklyPackageItem {
     expectedBenefit: "Attract nearby customers searching for local services.",
     createdAt: "2026-07-10T12:00:00.000Z",
     reviewUrl: "https://example.com/open?token=a",
+    approveActionUrl: null,
+    rejectActionUrl: null,
     ...overrides,
   };
 }
@@ -262,6 +264,7 @@ function samplePackage(overrides: Partial<WeeklyApprovalPackage> = {}): WeeklyAp
     items: groups.flatMap((g) => g.items),
     approveAllUrl: "https://example.com/api/weekly-approval-package/open?token=approve",
     approvalCenterUrl: "https://example.com/api/weekly-approval-package/open?token=center",
+    approveAllActionUrl: null,
     html: "",
     text: "",
     isEmpty: false,
@@ -277,9 +280,9 @@ test("HTML rendering includes executive summary, explanations, Approve All, mobi
   assert.match(html, /Why now:/);
   assert.match(html, /Expected benefit:/);
   assert.match(html, /Independence Day weekend/);
-  assert.match(html, /Approve All in Approval Center/);
+  assert.match(html, />\s*Approve All\s*</);
   assert.match(html, /max-width:600px/);
-  assert.match(html, /Review in Approval Center/);
+  assert.match(html, />Edit</);
   assert.equal(html.includes("<script"), false);
 });
 
@@ -293,7 +296,7 @@ test("HTML empty state is calm and has no Approve All CTA", () => {
   });
   const html = renderWeeklyApprovalPackageHtml(pkg);
   assert.match(html, /all caught up/i);
-  assert.equal(html.includes("Approve All in Approval Center"), false);
+  assert.equal(html.includes(">Approve All<"), false);
 });
 
 test("plain-text rendering includes links and explanations", () => {

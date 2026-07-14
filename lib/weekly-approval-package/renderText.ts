@@ -20,7 +20,11 @@ export function renderWeeklyApprovalPackageText(pkg: WeeklyApprovalPackage): str
       lines.push(`- ${row.count} ${row.label}`);
     }
     lines.push("");
-    lines.push(`Approve All (opens Approval Center): ${pkg.approveAllUrl}`);
+    lines.push(
+      pkg.approveAllActionUrl
+        ? `Approve All: ${pkg.approveAllActionUrl}`
+        : `Approve All (opens Approval Center): ${pkg.approveAllUrl}`
+    );
     lines.push("");
 
     for (const group of pkg.groups) {
@@ -31,7 +35,9 @@ export function renderWeeklyApprovalPackageText(pkg: WeeklyApprovalPackage): str
         lines.push(item.summary);
         if (item.whyNow) lines.push(`Why now: ${item.whyNow}`);
         if (item.expectedBenefit) lines.push(`Expected benefit: ${item.expectedBenefit}`);
-        lines.push(`Review: ${item.reviewUrl}`);
+        if (item.approveActionUrl) lines.push(`Approve: ${item.approveActionUrl}`);
+        if (item.rejectActionUrl) lines.push(`Reject: ${item.rejectActionUrl}`);
+        lines.push(`Edit: ${item.reviewUrl}`);
         lines.push("");
       }
     }

@@ -18,6 +18,7 @@ export type WeeklyApprovalPackagePreview = {
   text: string;
   approveAllUrl: string;
   approvalCenterUrl: string;
+  approveAllActionUrl: string | null;
   groups: Array<{ platformLabel: string; count: number }>;
 };
 
@@ -36,6 +37,7 @@ export function toWeeklyApprovalPackagePreview(
     text: pkg.text,
     approveAllUrl: pkg.approveAllUrl,
     approvalCenterUrl: pkg.approvalCenterUrl,
+    approveAllActionUrl: pkg.approveAllActionUrl,
     groups: pkg.groups.map((g) => ({
       platformLabel: g.platformLabel,
       count: g.items.length,

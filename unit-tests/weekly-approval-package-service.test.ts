@@ -318,6 +318,155 @@ test("generateWeeklyApprovalPackageForUser: multiple recommendation types + expl
   });
 });
 
+test("generateWeeklyApprovalPackageForUser: mints one-click email action links scoped to exactly the eligible items, excluding review replies", async () => {
+  await withEnv(SIGNING_ENV, async () => {
+    const nowIso = "2026-07-14T12:00:00.000Z";
+    const approvals = [
+      {
+        id: "ca-gbp",
+        user_id: "user-1",
+        business_profile_id: "biz-1",
+        content_type: "Google Business Profile Post",
+        title: "Holiday hours",
+        content: "We are open this weekend for walk-ins.",
+        status: "pending",
+        source: "marketing_recommendation",
+        version: 1,
+        ai_score: 80,
+        notes: null,
+        marketing_recommendation_id: "rec-seasonal",
+        approved_at: null,
+        approved_by: null,
+        rejected_reason: null,
+        rejection_reason_code: null,
+        created_at: "2026-07-13T10:00:00.000Z",
+        updated_at: "2026-07-13T10:00:00.000Z",
+      },
+    ];
+
+    const reviews = [
+      {
+        id: "rev-1",
+        user_id: "user-1",
+        business_profile_id: "biz-1",
+        location_id: null,
+        google_review_id: "g-1",
+        reviewer_name: "Alex",
+        reviewer_photo_url: null,
+        rating: 5,
+        comment: "Great",
+        review_reply: null,
+        reply_status: "draft",
+        ai_draft_reply: "Thanks so much, Alex!",
+        google_review_url: null,
+        review_created_at: "2026-07-11T00:00:00.000Z",
+        reply_updated_at: null,
+        raw_json: {},
+        created_at: "2026-07-11T00:00:00.000Z",
+        updated_at: "2026-07-11T00:00:00.000Z",
+      },
+    ];
+
+    const { client } = createFakeSupabaseClient({
+      business_profiles: {
+        data: { id: "biz-1", user_id: "user-1", business_name: "AJN solutions", onboarding_completed: true },
+        error: null,
+      },
+      content_approvals: { data: approvals, error: null },
+      google_business_reviews: { data: reviews, error: null },
+      marketing_recommendations: { data: [], error: null },
+      marketing_opportunities: { data: [], error: null },
+      recommendation_outcome_events: { data: [], error: null },
+      recommendation_learning_signals: { data: null, error: null },
+    });
+
+    const pkg = await generateWeeklyApprovalPackageForUser(
+      {
+        userId: "user-1",
+        businessProfileId: "biz-1",
+        businessName: "AJN solutions",
+        recipientName: "Sean",
+        recipientEmail: "sean@example.com",
+        baseUrl: "https://app.example.com",
+        now: new Date(nowIso),
+      },
+      client
+    );
+
+    // The content draft gets real one-click action links...
+    const draftItem = pkg.items.find((i) => i.contentApprovalId === "ca-gbp")!;
+    assert.match(draftItem.approveActionUrl ?? "", /\/api\/email-actions\/open\?token=/);
+    assert.match(draftItem.rejectActionUrl ?? "", /\/api\/email-actions\/open\?token=/);
+
+    // ...but the review-reply item (no contentApprovalId, different mutation path) does
+    // not -- explicit scope boundary for one-click email approve/reject.
+    const reviewItem = pkg.items.find((i) => i.reviewId === "rev-1")!;
+    assert.equal(reviewItem.approveActionUrl, null);
+    assert.equal(reviewItem.rejectActionUrl, null);
+
+    // Approve All's token snapshot contains exactly the eligible content-draft id, never
+    // the review-reply item.
+    assert.ok(pkg.approveAllActionUrl);
+    const approveAllToken = new URL(pkg.approveAllActionUrl!).searchParams.get("token")!;
+    const { verifyEmailActionToken } = await import("../lib/email-actions/tokens.ts");
+    const payload = verifyEmailActionToken(approveAllToken, new Date(nowIso));
+    assert.deepEqual(payload.contentApprovalIds, ["ca-gbp"]);
+    assert.equal(payload.emailRecipient, "sean@example.com");
+  });
+});
+
+test("generateWeeklyApprovalPackageForUser: with no recipient email, one-click action links are omitted (Edit/Approval Center only)", async () => {
+  await withEnv(SIGNING_ENV, async () => {
+    const approvals = [
+      {
+        id: "ca-gbp",
+        user_id: "user-1",
+        business_profile_id: "biz-1",
+        content_type: "Google Business Profile Post",
+        title: "Holiday hours",
+        content: "We are open this weekend for walk-ins.",
+        status: "pending",
+        source: "marketing_recommendation",
+        version: 1,
+        ai_score: 80,
+        notes: null,
+        marketing_recommendation_id: null,
+        approved_at: null,
+        approved_by: null,
+        rejected_reason: null,
+        rejection_reason_code: null,
+        created_at: "2026-07-13T10:00:00.000Z",
+        updated_at: "2026-07-13T10:00:00.000Z",
+      },
+    ];
+
+    const { client } = createFakeSupabaseClient({
+      business_profiles: {
+        data: { id: "biz-1", user_id: "user-1", business_name: "AJN solutions", onboarding_completed: true },
+        error: null,
+      },
+      content_approvals: { data: approvals, error: null },
+      google_business_reviews: { data: [], error: null },
+    });
+
+    const pkg = await generateWeeklyApprovalPackageForUser(
+      {
+        userId: "user-1",
+        businessProfileId: "biz-1",
+        businessName: "AJN solutions",
+        recipientName: "Sean",
+        baseUrl: "https://app.example.com",
+        now: new Date("2026-07-14T12:00:00.000Z"),
+      },
+      client
+    );
+
+    assert.equal(pkg.approveAllActionUrl, null);
+    assert.ok(pkg.items.every((i) => i.approveActionUrl === null && i.rejectActionUrl === null));
+    assert.match(pkg.html, />\s*Edit\s*</);
+  });
+});
+
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false (no schedule activation via this feature)", async () => {
   const { ATTACH_DECLARATIVE_PRODUCTION_CRONS } = await import(
     "../lib/trigger/scheduleActivation.ts"

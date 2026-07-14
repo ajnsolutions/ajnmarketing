@@ -20,6 +20,7 @@ import type {
   GenerateWeeklyApprovalPackageInput,
   WeeklyApprovalPackage,
 } from "@/lib/weekly-approval-package/types";
+import { buildEmailActionAbsoluteUrl, createEmailActionToken } from "@/lib/email-actions/tokens";
 
 /**
  * Build a complete Weekly Approval Package (HTML + plain text + signed links)
@@ -76,7 +77,68 @@ export async function generateWeeklyApprovalPackageForUser(
       ),
   });
 
-  const groups = groupWeeklyPackageItems(rawItems);
+  // One-click email action links (see lib/email-actions) require a known recipient
+  // email to bind the token to -- graceful degradation when it's unavailable rather
+  // than minting a token whose recipient cross-check can never pass. Enriched BEFORE
+  // grouping so both pkg.items and pkg.groups[].items carry the same action URLs.
+  const recipientEmail = input.recipientEmail?.trim() || null;
+  const eligibleContentApprovalIds = rawItems
+    .map((item) => item.contentApprovalId)
+    .filter((id): id is string => Boolean(id));
+
+  let enrichedItems = rawItems;
+  if (recipientEmail) {
+    enrichedItems = rawItems.map((item) => {
+      if (!item.contentApprovalId) return item;
+
+      const approveActionUrl = buildEmailActionAbsoluteUrl(
+        baseUrl,
+        createEmailActionToken({
+          action: "approve",
+          userId: input.userId,
+          businessProfileId: input.businessProfileId,
+          emailRecipient: recipientEmail,
+          contentApprovalId: item.contentApprovalId,
+          recommendationId: item.recommendationId,
+          ttlSeconds: ttl,
+          now,
+        })
+      );
+      const rejectActionUrl = buildEmailActionAbsoluteUrl(
+        baseUrl,
+        createEmailActionToken({
+          action: "reject",
+          userId: input.userId,
+          businessProfileId: input.businessProfileId,
+          emailRecipient: recipientEmail,
+          contentApprovalId: item.contentApprovalId,
+          recommendationId: item.recommendationId,
+          ttlSeconds: ttl,
+          now,
+        })
+      );
+
+      return { ...item, approveActionUrl, rejectActionUrl };
+    });
+  }
+
+  const approveAllActionUrl =
+    recipientEmail && eligibleContentApprovalIds.length > 0
+      ? buildEmailActionAbsoluteUrl(
+          baseUrl,
+          createEmailActionToken({
+            action: "approve_all",
+            userId: input.userId,
+            businessProfileId: input.businessProfileId,
+            emailRecipient: recipientEmail,
+            contentApprovalIds: eligibleContentApprovalIds,
+            ttlSeconds: ttl,
+            now,
+          })
+        )
+      : null;
+
+  const groups = groupWeeklyPackageItems(enrichedItems);
   const items = groups.flatMap((g) => g.items);
   const executiveSummary = buildExecutiveSummary(items);
   const weekLabel = formatWeekLabel(now);
@@ -102,6 +164,7 @@ export async function generateWeeklyApprovalPackageForUser(
     items,
     approveAllUrl,
     approvalCenterUrl,
+    approveAllActionUrl,
     html: "",
     text: "",
     isEmpty: items.length === 0,

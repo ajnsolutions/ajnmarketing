@@ -50,6 +50,8 @@ export const AuditActions = {
   RECOMMENDATION_PIPELINE_STARTED: "recommendation_pipeline.started",
   RECOMMENDATION_PIPELINE_COMPLETED: "recommendation_pipeline.completed",
   RECOMMENDATION_PIPELINE_FAILED: "recommendation_pipeline.failed",
+  EMAIL_ACTION_EXECUTED: "email_action.executed",
+  EMAIL_ACTION_REJECTED: "email_action.rejected",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
