@@ -9,6 +9,7 @@ const COLORS = {
   border: "#e2e8f0",
   white: "#ffffff",
   body: "#334155",
+  danger: "#b91c1c",
 };
 
 function escapeHtml(value: string): string {
@@ -18,6 +19,23 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function itemActionButtons(item: WeeklyPackageItem): string {
+  const editLink = `<a href="${escapeHtml(item.reviewUrl)}" style="display:inline-block;font-size:13px;font-weight:700;color:${COLORS.brand};text-decoration:none;margin:0 16px 0 0;">Edit</a>`;
+
+  if (!item.approveActionUrl || !item.rejectActionUrl) {
+    // No email-action link minted (e.g. review-reply items, or no recipient email
+    // known) -- Edit (Approval Center) is the only available action from email.
+    return `<p style="margin:14px 0 0;">${editLink}</p>`;
+  }
+
+  return `
+    <p style="margin:14px 0 0;">
+      <a href="${escapeHtml(item.approveActionUrl)}" style="display:inline-block;background:${COLORS.deepNavy};color:${COLORS.white};font-size:13px;font-weight:700;text-decoration:none;padding:9px 18px;border-radius:999px;margin:0 8px 8px 0;">Approve</a>
+      <a href="${escapeHtml(item.rejectActionUrl)}" style="display:inline-block;background:${COLORS.white};color:${COLORS.danger};border:1px solid ${COLORS.danger};font-size:13px;font-weight:700;text-decoration:none;padding:8px 17px;border-radius:999px;margin:0 8px 8px 0;">Reject</a>
+      ${editLink}
+    </p>`;
 }
 
 function itemBlock(item: WeeklyPackageItem): string {
@@ -36,9 +54,7 @@ function itemBlock(item: WeeklyPackageItem): string {
         <p style="margin:8px 0 0;font-size:14px;line-height:1.55;color:${COLORS.body};">${escapeHtml(item.summary)}</p>
         ${why}
         ${benefit}
-        <p style="margin:14px 0 0;">
-          <a href="${escapeHtml(item.reviewUrl)}" style="display:inline-block;font-size:14px;font-weight:700;color:${COLORS.brand};text-decoration:none;">Review in Approval Center →</a>
-        </p>
+        ${itemActionButtons(item)}
       </td>
     </tr>`;
 }
@@ -123,11 +139,15 @@ export function renderWeeklyApprovalPackageHtml(pkg: WeeklyApprovalPackage): str
           </tr>
           <tr>
             <td style="padding:22px 24px 8px;" align="center">
-              <a href="${escapeHtml(pkg.approveAllUrl)}" style="display:inline-block;background:${COLORS.deepNavy};color:${COLORS.white};font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">
-                Approve All in Approval Center
+              <a href="${escapeHtml(pkg.approveAllActionUrl ?? pkg.approveAllUrl)}" style="display:inline-block;background:${COLORS.deepNavy};color:${COLORS.white};font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">
+                Approve All
               </a>
               <p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:${COLORS.muted};max-width:420px;">
-                Opens your secure Approval Center. Approvals always happen there — this email never auto-approves or publishes.
+                ${
+                  pkg.approveAllActionUrl
+                    ? "Confirms on a secure page before anything is approved. This never auto-approves or publishes — editing still happens in the Approval Center."
+                    : "Opens your secure Approval Center. Approvals always happen there — this email never auto-approves or publishes."
+                }
               </p>
             </td>
           </tr>`

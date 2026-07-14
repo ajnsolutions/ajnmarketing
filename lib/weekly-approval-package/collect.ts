@@ -105,6 +105,10 @@ export async function collectWeeklyPackageItems(input: {
       expectedBenefit: pkg?.expectedBenefit ?? null,
       createdAt: approval.created_at,
       reviewUrl: buildItemReviewUrl(itemId),
+      // Populated by the caller (generateWeeklyApprovalPackageForUser) once a recipient
+      // email is known to bind the email-action token to -- see lib/email-actions.
+      approveActionUrl: null,
+      rejectActionUrl: null,
     });
   }
 
@@ -127,6 +131,10 @@ export async function collectWeeklyPackageItems(input: {
       expectedBenefit: "Strengthen local reputation and show customers you are listening.",
       createdAt: review.review_created_at ?? review.updated_at ?? review.created_at,
       reviewUrl: buildItemReviewUrl(itemId),
+      // Review replies use a different mutation path (not patchContentApprovalForUser),
+      // so they are explicitly out of scope for one-click email approve/reject.
+      approveActionUrl: null,
+      rejectActionUrl: null,
     });
   }
 
