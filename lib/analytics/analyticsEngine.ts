@@ -31,6 +31,9 @@ import type {
 import { getGoogleBusinessDashboardDataForUser } from "@/lib/google-business/service";
 import { getPublishingJobsForUser } from "@/lib/publishing/publishingHistory";
 import { getPublishingQueueItemById } from "@/lib/publishing-queue/persistence";
+import { getContentApprovalById } from "@/lib/content-approval/persistence";
+import { recordPerformanceMeasuredOutcome } from "@/lib/recommendation-outcomes/service";
+import { measurementWindowKey } from "@/lib/recommendation-outcomes/idempotency";
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -120,7 +123,28 @@ async function syncContentPerformanceRecords(
       },
     });
 
-    if (record) saved += 1;
+    if (record) {
+      saved += 1;
+
+      const approval = await getContentApprovalById(supabase, userId, queueItem.content_approval_id);
+      if (approval?.marketing_recommendation_id) {
+        await recordPerformanceMeasuredOutcome(supabase, {
+          userId,
+          businessProfileId,
+          recommendationId: approval.marketing_recommendation_id,
+          contentApprovalId: approval.id,
+          publishingJobId: job.id,
+          windowKey: measurementWindowKey(),
+          metrics: {
+            views: perPostViews,
+            clicks: perPostClicks,
+            engagement: perPostViews + perPostClicks,
+            conversions: perPostClicks,
+            performanceScore,
+          },
+        });
+      }
+    }
   }
 
   await logAuditEvent(supabase, {

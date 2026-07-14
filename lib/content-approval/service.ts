@@ -14,6 +14,12 @@ import type {
 import type { BusinessProfile } from "@/lib/business-profile";
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  recordApprovalOutcome,
+  recordDraftEditedOutcome,
+  recordRejectionOutcome,
+} from "@/lib/recommendation-outcomes/service";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function buildRegeneratedContent(content: string, version: number): string {
   const suffix = version % 2 === 0 ? " We're here to help when you need us." : " Contact us to learn more.";
@@ -76,11 +82,20 @@ export async function submitContentForApproval(
   return approval;
 }
 
+/**
+ * Accepts an optional injected Supabase client -- defaults to the request-scoped
+ * cookie client exactly as before, preserving the existing caller (the content-approval
+ * API route) unchanged. Same convention as executeRecommendationForUser,
+ * generateContentDraftForRecommendation, and every other *ForUser function in this
+ * codebase; added so this function's outcome-event wiring is unit-testable without a
+ * real Next.js request context.
+ */
 export async function patchContentApprovalForUser(
   userId: string,
-  input: ContentApprovalPatchInput
+  input: ContentApprovalPatchInput,
+  supabaseClient?: SupabaseClient
 ): Promise<ContentApproval | null> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? (await createClient());
   const existing = await getContentApprovalById(supabase, userId, input.id);
 
   if (!existing) return null;
@@ -106,6 +121,15 @@ export async function patchContentApprovalForUser(
         status: "success",
         metadata: { contentType: updated.content_type, source: updated.source },
       });
+
+      if (updated.marketing_recommendation_id) {
+        await recordApprovalOutcome(supabase, {
+          userId,
+          businessProfileId: updated.business_profile_id,
+          recommendationId: updated.marketing_recommendation_id,
+          contentApprovalId: updated.id,
+        });
+      }
     }
 
     return updated;
@@ -115,6 +139,7 @@ export async function patchContentApprovalForUser(
     const updated = await updateContentApproval(supabase, userId, input.id, {
       status: "rejected",
       rejected_reason: input.rejected_reason ?? "Rejected by reviewer",
+      rejection_reason_code: input.rejection_reason_code ?? null,
       approved_at: null,
       approved_by: null,
       title: input.title ?? existing.title,
@@ -136,6 +161,17 @@ export async function patchContentApprovalForUser(
           reasonProvided: Boolean(input.rejected_reason?.trim()),
         },
       });
+
+      if (updated.marketing_recommendation_id) {
+        await recordRejectionOutcome(supabase, {
+          userId,
+          businessProfileId: updated.business_profile_id,
+          recommendationId: updated.marketing_recommendation_id,
+          contentApprovalId: updated.id,
+          reasonCode: input.rejection_reason_code,
+          comment: input.rejected_reason,
+        });
+      }
     }
 
     return updated;
@@ -159,9 +195,23 @@ export async function patchContentApprovalForUser(
     });
   }
 
+  const nextTitle = input.title ?? existing.title;
+  const nextContent = input.content ?? existing.content;
+
+  if (existing.marketing_recommendation_id) {
+    await recordDraftEditedOutcome(supabase, {
+      userId,
+      businessProfileId: existing.business_profile_id,
+      recommendationId: existing.marketing_recommendation_id,
+      contentApprovalId: existing.id,
+      before: { title: existing.title, content: existing.content, contentType: existing.content_type },
+      after: { title: nextTitle, content: nextContent, contentType: existing.content_type },
+    });
+  }
+
   return updateContentApproval(supabase, userId, input.id, {
-    title: input.title ?? existing.title,
-    content: input.content ?? existing.content,
+    title: nextTitle,
+    content: nextContent,
     notes: input.notes ?? existing.notes,
   });
 }
