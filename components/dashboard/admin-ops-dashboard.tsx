@@ -3,6 +3,8 @@ import type { OpsDashboardSummary } from "@/lib/ops-dashboard/types";
 import type { OpsAlertSnapshot } from "@/lib/production-alerts/types";
 import type { WorkflowValidationReport } from "@/lib/workflow-validation/harness";
 import type { FailureInjectionState } from "@/lib/failure-injection/gate";
+import type { AssistedPilotDashboardData } from "@/lib/assisted-pilot/types";
+import { AssistedPilotPanel } from "@/components/dashboard/assisted-pilot-panel";
 
 function statusColor(status: string): string {
   if (status === "healthy" || status === "success" || status === "info") return "text-growth-600";
@@ -30,12 +32,14 @@ export function AdminOpsDashboard({
   alerts,
   workflow,
   failureInjection,
+  pilot,
 }: {
   health: ProductionHealthReport;
   summary: OpsDashboardSummary | null;
   alerts: OpsAlertSnapshot;
   workflow: WorkflowValidationReport;
   failureInjection: FailureInjectionState;
+  pilot: AssistedPilotDashboardData | null;
 }) {
   return (
     <div className="space-y-8">
@@ -45,12 +49,13 @@ export function AdminOpsDashboard({
           Operational Dashboard
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-text-muted sm:text-base">
-          Monitor autonomous pipeline health, queues, alerts, and launch gates. This surface is
-          admin-allowlist only and does not activate schedules, auto-approve, or auto-publish.
+          Monitor autonomous pipeline health, queues, alerts, assisted pilot progress, and launch
+          gates. This surface is admin-allowlist only and does not activate schedules, auto-approve,
+          or auto-publish.
         </p>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03]">
           <p className="text-sm font-medium text-text-muted">Overall health</p>
           <p className={`mt-2 text-2xl font-bold ${statusColor(health.overall)}`}>{health.overall}</p>
@@ -81,7 +86,22 @@ export function AdminOpsDashboard({
           </p>
           <p className="mt-2 text-xs text-text-muted">{workflow.scenarios.length} scenarios</p>
         </article>
+        <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03]">
+          <p className="text-sm font-medium text-text-muted">Pilot readiness</p>
+          <p className="mt-2 text-2xl font-bold text-navy-900">
+            {pilot?.aggregateReadiness.total ?? "—"}
+          </p>
+          <p className="mt-2 text-xs text-text-muted">
+            {pilot?.launchRecommendation ?? "Register pilots after migration"}
+          </p>
+        </article>
       </section>
+
+      {pilot && (
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-6">
+          <AssistedPilotPanel data={pilot} />
+        </section>
+      )}
 
       <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03]">
         <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
