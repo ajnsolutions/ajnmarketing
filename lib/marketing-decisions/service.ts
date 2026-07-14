@@ -8,6 +8,9 @@ import {
   upsertMarketingRecommendation,
 } from "@/lib/marketing-decisions/persistence";
 import type { MarketingRecommendation } from "@/lib/marketing-decisions/types";
+import { getHistoricalRecommendationSignalsForUser } from "@/lib/recommendation-learning/signals";
+import { applyAdaptiveScoringToDrafts } from "@/lib/recommendation-learning/adaptiveScoring";
+import type { AdaptiveScoreBreakdown } from "@/lib/recommendation-learning/types";
 import { logAuditEvent, auditErrorMetadata } from "@/lib/audit-log/service";
 import { AuditActions } from "@/lib/audit-log/types";
 import { createClient } from "@/lib/supabase/server";
@@ -17,6 +20,33 @@ export type MarketingDecisionResult = {
   supersededCount: number;
   evaluatedOpportunityCount: number;
 };
+
+/**
+ * Structured, secret-free server log for the Adaptive Recommendation Intelligence
+ * adjustment applied to each draft this run -- never logs opportunity/recommendation
+ * prompt text, only ids, scores, and reason type/weight summaries.
+ */
+function logAdaptiveScoringBreakdowns(
+  userId: string,
+  businessProfileId: string,
+  scored: Array<{ draft: { dedupeKey: string; recommendedActionType: string }; breakdown: AdaptiveScoreBreakdown }>
+): void {
+  for (const { draft, breakdown } of scored) {
+    console.info("[AdaptiveRecommendationIntelligence]", {
+      scope: "recommendation-learning",
+      userId,
+      businessProfileId,
+      dedupeKey: draft.dedupeKey,
+      actionType: draft.recommendedActionType,
+      baseScore: breakdown.baseScore,
+      historicalAdjustment: breakdown.historicalAdjustment,
+      finalScore: breakdown.finalScore,
+      historicalSampleSize: breakdown.historicalSampleSize,
+      finalConfidence: breakdown.finalConfidence,
+      reasonSummary: breakdown.reasons.map((r) => `${r.reasonType}:${r.reasonWeight}`),
+    });
+  }
+}
 
 /**
  * Runs the Marketing Decision Engine for one user: reads active (open/in_progress)
@@ -56,7 +86,28 @@ export async function runMarketingDecisionEngineForUser(
       (o) => o.business_profile_id === businessProfileId
     );
 
-    const drafts = buildMarketingRecommendationDrafts(scopedOpportunities, now);
+    const baseDrafts = buildMarketingRecommendationDrafts(scopedOpportunities, now);
+
+    // Adaptive Recommendation Intelligence: adjust the base (current-market-only) score
+    // and confidence using this business's own historical outcome signals (PR #27).
+    // buildMarketingRecommendationDrafts itself is completely unchanged -- this is a
+    // layer on top, applied here in the orchestration/I-O layer since historical
+    // signals require a database read the pure decision engine deliberately never does.
+    const categoryByOpportunityId = new Map<string, string>(
+      scopedOpportunities.map((o) => [o.id, o.category])
+    );
+    const categoriesByDedupeKey = new Map(
+      baseDrafts.map((d) => [
+        d.dedupeKey,
+        [...new Set(d.relatedOpportunityIds.map((id) => categoryByOpportunityId.get(id)).filter((c): c is string => Boolean(c)))],
+      ])
+    );
+
+    const signals = await getHistoricalRecommendationSignalsForUser(userId, businessProfileId, supabase);
+    const scored = applyAdaptiveScoringToDrafts(baseDrafts, categoriesByDedupeKey, signals, now);
+    const drafts = scored.map((s) => s.draft);
+
+    logAdaptiveScoringBreakdowns(userId, businessProfileId, scored);
 
     const recommendations: MarketingRecommendation[] = [];
     for (const draft of drafts) {
