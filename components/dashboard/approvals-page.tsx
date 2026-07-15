@@ -281,7 +281,7 @@ function WorkflowDiagram() {
       ),
     },
     {
-      label: "Automatically Published",
+      label: "Ready to Publish",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0-4 4m4-4 4 4M5 19h14" />
@@ -371,18 +371,12 @@ export function ApprovalsPage({
           >
             Preview Email/SMS Delivery
           </Link>
-          <button
-            type="button"
+          <Link
+            href="/dashboard/approvals?view=pending"
             className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
           >
-            Approve All
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-          >
-            Refresh Queue
-          </button>
+            Review pending
+          </Link>
         </div>
       </div>
 
@@ -513,7 +507,7 @@ export function ApprovalsPage({
           )}
         </SectionCard>
 
-        <SectionCard title="How It Works" subtitle="From AI draft to published — automatically">
+        <SectionCard title="How It Works" subtitle="From AI draft to your review — then you approve before anything publishes">
           <WorkflowDiagram />
         </SectionCard>
       </div>
@@ -551,30 +545,24 @@ export function ApprovalsPage({
                 )}
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
-                <button
-                  type="button"
+                <Link
+                  href="/dashboard/approvals?view=pending"
                   className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
                 >
-                  Approve All
-                </button>
-                <button
-                  type="button"
+                  Review pending items
+                </Link>
+                <Link
+                  href="/dashboard/approvals/delivery"
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
                 >
-                  Approve Individually
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
+                  Open delivery preview
+                </Link>
+                <Link
+                  href="/dashboard/command-center"
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
                 >
-                  View Dashboard
-                </button>
+                  View dashboard
+                </Link>
               </div>
             </div>
           </div>

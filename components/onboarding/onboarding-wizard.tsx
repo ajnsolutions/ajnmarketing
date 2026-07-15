@@ -341,18 +341,17 @@ export function OnboardingWizard() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                   </svg>
                 </div>
-                <p className="mt-4 font-semibold text-navy-900">Google connection coming soon</p>
+                <p className="mt-4 font-semibold text-navy-900">Connect Google Business Profile</p>
                 <p className="mt-2 text-sm leading-6 text-text-muted">
-                  Direct Google Business Profile integration is on the way. You can finish setup now
-                  and connect later from your dashboard.
+                  You can finish setup now and connect Google whenever you are ready. Connecting lets
+                  AJN draft review replies and prepare posts for your approval before publishing.
                 </p>
-                <button
-                  type="button"
-                  disabled
-                  className="mt-5 cursor-not-allowed rounded-full bg-brand-600/60 px-5 py-2.5 text-sm font-semibold text-white"
+                <Link
+                  href="/dashboard/google-business-profile/connect"
+                  className="mt-5 inline-flex rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
                 >
                   Connect Google Business Profile
-                </button>
+                </Link>
               </div>
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60">
                 <input
