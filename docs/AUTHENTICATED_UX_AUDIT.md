@@ -276,7 +276,7 @@ See `docs/AUTHENTICATED_UX_IMPLEMENTATION_PLAN.md` (PRs A–G).
 |-----|--------|
 | Workflow diagram no longer says “Automatically Published” | `approvals-page.tsx` |
 | “How It Works” subtitle honesty | `approvals-page.tsx` |
-| Dead Approve All / Refresh → “Review pending” link; mock email CTAs demoted to real links | `approvals-page.tsx` |
+| Dead Approve All / Refresh → “Review pending” link; mock email CTAs demoted to real links | `approvals-page.tsx`, `approvals-delivery-page.tsx` |
 | Onboarding GBP points to real connect route | `onboarding-wizard.tsx` |
 
-Documented residual: GBP Disconnect remains UI-only by product decision until a revoke API ships.
+Documented residual: GBP Disconnect remains UI-only by product decision until a revoke API ships. Preview mockups on delivery/approvals should stay non-actionable for approve/reject (real actions live in Approval Center / email-action links).
