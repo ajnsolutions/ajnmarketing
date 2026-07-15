@@ -24,7 +24,7 @@ function ArrowIcon() {
 }
 
 export function CtaButton({
-  href = "/demo",
+  href = "/ai-demo",
   children,
   variant = "primary",
   className = "",

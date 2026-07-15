@@ -13,7 +13,7 @@ export function getSiteUrl(): string {
 }
 
 /** Primary conversion destination for “Get Started”. */
-export const getStartedHref = "/demo" as const;
+export const getStartedHref = "/ai-demo" as const;
 
 export const navLinks = [
   { href: "/", label: "Home" },
@@ -27,7 +27,8 @@ export const navLinks = [
 export const footerExtraLinks = [
   { href: "/industries", label: "Industries" },
   { href: "/for-agencies", label: "For Agencies" },
-  { href: "/demo", label: "Free Demo" },
+  { href: "/ai-demo", label: "Interactive Demo" },
+  { href: "/demo", label: "Request a Demo Call" },
   { href: "/signup", label: "Create Account" },
   { href: "/login", label: "Log In" },
 ] as const;

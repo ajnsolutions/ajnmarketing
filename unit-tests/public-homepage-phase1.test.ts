@@ -24,7 +24,7 @@ describe("public homepage phase 1 redesign", () => {
     assert.match(siteContent, /href: "\/features"/);
     assert.match(siteContent, /href: "\/about"/);
     assert.match(siteContent, /href: "\/contact"/);
-    assert.match(siteContent, /getStartedHref = "\/demo"/);
+    assert.match(siteContent, /getStartedHref = "\/ai-demo"/);
   });
 
   it("how-it-works uses six connect-to-improve steps", () => {

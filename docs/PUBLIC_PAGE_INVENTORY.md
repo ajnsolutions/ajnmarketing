@@ -3,7 +3,7 @@
 **Companion to:** [`PUBLIC_WEBSITE_UX_AUDIT.md`](./PUBLIC_WEBSITE_UX_AUDIT.md) · [`PUBLIC_UX_IMPLEMENTATION_PLAN.md`](./PUBLIC_UX_IMPLEMENTATION_PLAN.md)  
 **Date:** 2026-07-15 · **Branch:** `audit-public-website-ux`
 
-> **Phase 1 update:** Primary nav is now Home · Features · How It Works · Pricing · About · Contact (+ Log In / Get Started → `/demo`). New routes: `/features`, `/about`, `/contact`. Industries / For Agencies / Demo remain in footer “More”.
+> **Phase 1 update:** Primary nav is Home · Features · How It Works · Pricing · About · Contact (+ Log In / Get Started → `/ai-demo`). Interactive demo docs: [`INTERACTIVE_DEMO.md`](./INTERACTIVE_DEMO.md).
 
 ---
 

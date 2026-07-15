@@ -16,7 +16,7 @@ export default function NotFound() {
         <CtaButton href="/" variant="secondary">
           Back to home
         </CtaButton>
-        <CtaButton href="/demo" showArrow>
+        <CtaButton href="/ai-demo" showArrow>
           Get Started
         </CtaButton>
       </div>

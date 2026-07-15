@@ -1,19 +1,28 @@
-export type AiDemoInputs = {
-  website_url: string;
-  business_name: string;
+export type AiDemoFormInputs = {
+  websiteUrl: string;
+  businessName: string;
+  industry: string;
   city: string;
   state: string;
-  industry: string;
-  email: string;
 };
 
-export const initialAiDemoInputs: AiDemoInputs = {
-  website_url: "",
-  business_name: "",
+export const initialAiDemoFormInputs: AiDemoFormInputs = {
+  websiteUrl: "",
+  businessName: "",
+  industry: "",
   city: "",
   state: "",
-  industry: "",
-  email: "",
 };
 
-export type AiDemoStep = 1 | 2 | 3;
+export type AiDemoUiPhase =
+  | "form"
+  | "loading"
+  | "results";
+
+export const DEMO_PROGRESS_MESSAGES = [
+  "Analyzing website...",
+  "Understanding your business...",
+  "Learning your market...",
+  "Generating recommendations...",
+  "Preparing content...",
+] as const;

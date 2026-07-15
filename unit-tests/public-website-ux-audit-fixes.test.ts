@@ -43,6 +43,6 @@ describe("public website UX audit limited fixes", () => {
   it("custom not-found page offers recovery CTAs", () => {
     assert.match(notFound, /Page not found/);
     assert.match(notFound, /href="\/"/);
-    assert.match(notFound, /\/demo/);
+    assert.match(notFound, /\/ai-demo/);
   });
 });
