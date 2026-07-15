@@ -6,6 +6,10 @@ const footer = readFileSync(
   new URL("../components/site-footer.tsx", import.meta.url),
   "utf8",
 );
+const siteContent = readFileSync(
+  new URL("../lib/site-content.ts", import.meta.url),
+  "utf8",
+);
 const trustBar = readFileSync(
   new URL("../components/home/hero-trust-bar.tsx", import.meta.url),
   "utf8",
@@ -22,7 +26,8 @@ const notFound = readFileSync(
 describe("public website UX audit limited fixes", () => {
   it("footer does not use placeholder hash company or social links", () => {
     assert.equal(footer.includes('href="#"'), false);
-    assert.match(footer, /for-agencies/);
+    assert.match(footer, /footerExtraLinks/);
+    assert.match(siteContent, /for-agencies/);
     assert.match(footer, /coming soon/i);
   });
 

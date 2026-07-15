@@ -1,12 +1,14 @@
 import { FinalCta } from "@/components/final-cta";
 import { HowItWorksSteps } from "@/components/how-it-works-steps";
 import { SectionHeading } from "@/components/section-heading";
+import { buildPageMetadata } from "@/lib/site-metadata";
 
-export const metadata = {
+export const metadata = buildPageMetadata({
   title: "How It Works",
   description:
-    "See how AJN Marketing scans your presence, generates local content, gets your approval, publishes updates, and reports back every week.",
-};
+    "Connect, learn, create, approve, publish, and improve — AJN Marketing handles local marketing while you stay in control with weekly approvals.",
+  path: "/how-it-works",
+});
 
 export default function HowItWorksPage() {
   return (
@@ -16,7 +18,7 @@ export default function HowItWorksPage() {
           <SectionHeading
             align="left"
             eyebrow="How it works"
-            title="Marketing done for you — with your approval at every step"
+            title="Your marketing employee — with your approval at every step"
             description="You stay in control without doing the work. We handle Google, reviews, and local content while you focus on jobs, crews, and customers."
           />
         </div>
@@ -46,7 +48,7 @@ export default function HowItWorksPage() {
               },
               {
                 title: "Run your business",
-                copy: "That's it. We handle the rest while you stay focused on the work that pays.",
+                copy: "That’s it. We handle the rest while you stay focused on the work that pays.",
               },
             ].map((item) => (
               <article
@@ -61,18 +63,10 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="rounded-3xl border border-slate-200 bg-white px-8 py-12 sm:px-12">
-            <SectionHeading
-              title="Built for busy owners, not marketing teams"
-              description="Whether you're a one-truck plumber or a growing HVAC company, AJN Marketing is designed for people who want local visibility without becoming marketers."
-            />
-          </div>
-        </div>
-      </section>
-
-      <FinalCta />
+      <FinalCta
+        title="Ready to stop worrying about marketing?"
+        description="Get started with a free demo built for your business — no contracts, no marketing homework."
+      />
     </>
   );
 }

@@ -1,13 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { navLinks, siteName, tagline } from "@/lib/site-content";
-
-/** Only ship links that resolve to real routes. Missing legal/about pages are tracked in the public UX audit. */
-const companyLinks = [
-  { href: "/for-agencies", label: "For Agencies" },
-  { href: "/signup", label: "Create Account" },
-  { href: "/login", label: "Log In" },
-] as const;
+import {
+  footerExtraLinks,
+  navLinks,
+  siteName,
+  tagline,
+} from "@/lib/site-content";
 
 export function SiteFooter() {
   return (
@@ -24,10 +22,6 @@ export function SiteFooter() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(37,99,235,0.14),transparent_50%)]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(37,99,235,0.08),transparent_45%)]"
       />
 
       <div className="relative mx-auto max-w-6xl px-6 py-20 lg:px-8 lg:py-24">
@@ -67,10 +61,10 @@ export function SiteFooter() {
 
           <div className="md:pl-10 lg:pl-12">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
-              Company
+              More
             </p>
             <ul className="mt-5 space-y-3">
-              {companyLinks.map((link) => (
+              {footerExtraLinks.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
@@ -82,7 +76,7 @@ export function SiteFooter() {
               ))}
             </ul>
             <p className="mt-6 text-xs leading-6 text-[#64748B]">
-              About, contact, and legal pages are coming soon.
+              Privacy Policy and Terms of Service pages are coming soon.
             </p>
           </div>
         </div>

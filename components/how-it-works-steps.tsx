@@ -9,8 +9,8 @@ export function HowItWorksSteps({ compact = false }: HowItWorksStepsProps) {
     <div
       className={`grid gap-6 ${
         compact
-          ? "md:grid-cols-2 lg:grid-cols-5"
-          : "md:grid-cols-2 xl:grid-cols-5"
+          ? "sm:grid-cols-2 lg:grid-cols-3"
+          : "sm:grid-cols-2 lg:grid-cols-3"
       }`}
     >
       {howItWorksSteps.map((item) => (

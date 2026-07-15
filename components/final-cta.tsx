@@ -1,4 +1,5 @@
 import { CtaButton } from "./cta-button";
+import { getStartedHref } from "@/lib/site-content";
 
 type FinalCtaProps = {
   title?: string;
@@ -6,8 +7,8 @@ type FinalCtaProps = {
 };
 
 export function FinalCta({
-  title = "Ready to show up when your town searches?",
-  description = "See a free demo built for your business — no contracts, no marketing homework.",
+  title = "Ready to stop worrying about marketing?",
+  description = "Get started with a free demo built for your business — no contracts, no marketing homework.",
 }: FinalCtaProps) {
   return (
     <section className="bg-brand-700 py-20">
@@ -19,8 +20,12 @@ export function FinalCta({
           {description}
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <CtaButton className="bg-white text-brand-700 hover:bg-brand-50">
-            See Your Free Demo
+          <CtaButton
+            href={getStartedHref}
+            className="bg-white text-brand-700 hover:bg-brand-50"
+            showArrow
+          >
+            Get Started
           </CtaButton>
         </div>
       </div>
