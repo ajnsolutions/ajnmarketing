@@ -5,6 +5,8 @@
 **Scope:** All public/marketing surfaces — `/`, `/how-it-works`, `/pricing`, `/industries`, `/demo`, `/ai-demo`, `/for-agencies`, `/login`, `/signup`, `/forgot-password`, site chrome (header/footer), and default 404. Authenticated `/dashboard/**` and `/onboarding` are out of scope except where public CTAs hand off into them.  
 **Companions:** [`PUBLIC_PAGE_INVENTORY.md`](./PUBLIC_PAGE_INVENTORY.md) · [`PUBLIC_UX_IMPLEMENTATION_PLAN.md`](./PUBLIC_UX_IMPLEMENTATION_PLAN.md)
 
+> **Update (Phase 1 homepage redesign):** Messaging, nav IA, Features/About/Contact, six-step workflow, weekly approval + AI-search sections, and SEO primitives shipped on `redesign-public-homepage-phase1`. Privacy/Terms and real testimonials remain follow-ups.
+
 ---
 
 ## 1. Executive Summary

@@ -111,7 +111,7 @@ export default function ForAgenciesPage() {
             and client mix.
           </p>
           <div className="mt-8">
-            <CtaButton>See Your Free Demo</CtaButton>
+            <CtaButton>Get Started</CtaButton>
           </div>
         </div>
       </section>

@@ -17,7 +17,7 @@ export default function NotFound() {
           Back to home
         </CtaButton>
         <CtaButton href="/demo" showArrow>
-          See Your Free Demo
+          Get Started
         </CtaButton>
       </div>
     </section>

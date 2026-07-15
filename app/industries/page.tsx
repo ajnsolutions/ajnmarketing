@@ -83,7 +83,7 @@ export default function IndustriesPage() {
             and we&apos;ll show you what&apos;s possible for your business.
           </p>
           <div className="mt-8">
-            <CtaButton>Get My Free Demo</CtaButton>
+            <CtaButton>Get Started</CtaButton>
           </div>
         </div>
       </section>

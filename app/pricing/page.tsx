@@ -1,13 +1,15 @@
 import { FinalCta } from "@/components/final-cta";
 import { PricingCard } from "@/components/pricing-card";
 import { SectionHeading } from "@/components/section-heading";
-import { pricingTiers } from "@/lib/site-content";
+import { guaranteeSummary, pricingTiers } from "@/lib/site-content";
+import { buildPageMetadata } from "@/lib/site-metadata";
 
-export const metadata = {
+export const metadata = buildPageMetadata({
   title: "Pricing",
   description:
-    "Simple monthly pricing for local service businesses. Starter $99/mo, Growth $199/mo, Pro $299/mo.",
-};
+    "Simple monthly pricing for local service businesses. Starter $99/mo, Growth $199/mo, Pro $299/mo — with a 90-day visibility guarantee.",
+  path: "/pricing",
+});
 
 export default function PricingPage() {
   return (
@@ -17,7 +19,7 @@ export default function PricingPage() {
           <SectionHeading
             eyebrow="Pricing"
             title="Straightforward plans. No surprises."
-            description="Every plan includes Google visibility support, review monitoring, and our 90-day visibility guarantee. Start with a free demo to see what we'd do for your business."
+            description={`${guaranteeSummary} Start with a free demo to see what we’d do for your business.`}
           />
         </div>
       </section>

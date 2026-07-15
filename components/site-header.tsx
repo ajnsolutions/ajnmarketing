@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { navLinks } from "@/lib/site-content";
+import { getStartedHref, navLinks } from "@/lib/site-content";
 import { CtaButton } from "./cta-button";
 
 function UserIcon() {
@@ -31,7 +31,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white">
+    <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/95 backdrop-blur-sm">
       <div className="relative mx-auto flex max-w-6xl items-center px-6 py-3 lg:px-8 lg:py-3.5">
         <Link
           href="/"
@@ -47,9 +47,15 @@ export function SiteHeader() {
           />
         </Link>
 
-        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
+        <nav
+          aria-label="Primary"
+          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-6 xl:gap-8 lg:flex"
+        >
           {navLinks.map((link) => {
-            const active = pathname === link.href;
+            const active =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
@@ -75,11 +81,12 @@ export function SiteHeader() {
             Log In
           </Link>
           <CtaButton
+            href={getStartedHref}
             variant="navy"
             showArrow
             className="px-5 py-2.5 text-sm shadow-md"
           >
-            See Your Free Demo
+            Get Started
           </CtaButton>
         </div>
 
@@ -87,18 +94,25 @@ export function SiteHeader() {
           type="button"
           aria-label="Toggle menu"
           aria-expanded={open}
+          aria-controls="mobile-nav"
           onClick={() => setOpen((current) => !current)}
-          className="relative z-10 ml-auto inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[#0B1426] shadow-sm transition-all duration-200 hover:border-slate-300 lg:hidden"
+          className="relative z-10 ml-auto inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[#0B1426] shadow-sm transition-all duration-200 hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 lg:hidden"
         >
           Menu
         </button>
       </div>
 
       {open && (
-        <div className="border-t border-slate-200 bg-white px-6 py-4 lg:hidden">
-          <nav className="flex flex-col gap-3">
+        <div
+          id="mobile-nav"
+          className="border-t border-slate-200 bg-white px-6 py-4 lg:hidden"
+        >
+          <nav aria-label="Mobile" className="flex flex-col gap-3">
             {navLinks.map((link) => {
-              const active = pathname === link.href;
+              const active =
+                link.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(link.href);
               return (
                 <Link
                   key={link.href}
@@ -122,13 +136,16 @@ export function SiteHeader() {
               <UserIcon />
               Log In
             </Link>
-            <CtaButton
-              className="mt-2 w-full px-5 py-2.5 text-sm"
-              variant="navy"
-              showArrow
-            >
-              See Your Free Demo
-            </CtaButton>
+            <span onClick={() => setOpen(false)} className="mt-2 block w-full">
+              <CtaButton
+                href={getStartedHref}
+                className="w-full px-5 py-2.5 text-sm"
+                variant="navy"
+                showArrow
+              >
+                Get Started
+              </CtaButton>
+            </span>
           </nav>
         </div>
       )}

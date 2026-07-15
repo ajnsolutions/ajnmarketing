@@ -1,3 +1,4 @@
+import { getStartedHref } from "@/lib/site-content";
 import { CtaButton } from "./cta-button";
 
 type PricingCardProps = {
@@ -45,10 +46,11 @@ export function PricingCard({
         ))}
       </ul>
       <CtaButton
+        href={getStartedHref}
         variant={featured ? "primary" : "secondary"}
         className="mt-8 w-full"
       >
-        See Your Free Demo
+        Get Started
       </CtaButton>
     </div>
   );

@@ -1,46 +1,135 @@
 export const siteName = "AJN Marketing";
 
+/** Canonical marketing tagline — used in meta and footer. */
 export const tagline =
-  "We make sure your town finds you on Google — and you don't have to do anything.";
+  "AJN Marketing becomes your marketing employee — keeping local businesses visible, consistent, and discoverable.";
+
+export const siteDescription =
+  "Stop worrying about marketing. AJN Marketing keeps your Google Business Profile strong, creates local content, manages reviews, and improves over time — with your approval every week.";
+
+export function getSiteUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  return fromEnv || "https://ajnmarketing.com";
+}
+
+/** Primary conversion destination for “Get Started”. */
+export const getStartedHref = "/demo" as const;
 
 export const navLinks = [
   { href: "/", label: "Home" },
+  { href: "/features", label: "Features" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+] as const;
+
+export const footerExtraLinks = [
   { href: "/industries", label: "Industries" },
+  { href: "/for-agencies", label: "For Agencies" },
   { href: "/demo", label: "Free Demo" },
+  { href: "/signup", label: "Create Account" },
+  { href: "/login", label: "Log In" },
 ] as const;
 
 export const howItWorksSteps = [
   {
     step: "1",
-    title: "Scan",
+    title: "Connect",
     description:
-      "We review your Google Business Profile, website, reviews, and local competitors so we know exactly where you stand.",
+      "Share your business basics and connect Google Business Profile so we understand how you show up today.",
   },
   {
     step: "2",
-    title: "Generate",
+    title: "Learn",
     description:
-      "We create profile updates, review replies, and local content tailored to your trade and your town.",
+      "We study your services, location, reviews, competitors, and local market signals — including Market Context.",
   },
   {
     step: "3",
-    title: "Approve",
+    title: "Create",
     description:
-      "You get a simple email or text. Tap approve — or skip if you're busy. Nothing goes live without your OK.",
+      "We draft profile updates, review replies, posts, and content tailored to your trade and your town.",
   },
   {
     step: "4",
-    title: "Publish",
+    title: "Approve",
     description:
-      "Approved updates go live on Google and your web presence. You stay visible without lifting a finger.",
+      "You get a simple weekly email or text. Review and approve in minutes — nothing goes live without your OK.",
   },
   {
     step: "5",
-    title: "Report",
+    title: "Publish",
     description:
-      "Every week you get a plain-English report: what changed, what's working, and what we're doing next.",
+      "Approved updates go live on Google and your web presence while you stay focused on the work that pays.",
+  },
+  {
+    step: "6",
+    title: "Improve",
+    description:
+      "We track what’s working, learn from outcomes, and refine recommendations so marketing gets sharper over time.",
+  },
+] as const;
+
+export const platformPillars = [
+  {
+    title: "Be Found",
+    description:
+      "Strengthen your Google Business Profile and local visibility so nearby customers can find you.",
+    items: [
+      "Google Business Profile optimization",
+      "Local visibility support",
+      "Search-friendly business information",
+    ],
+  },
+  {
+    title: "Stay Active",
+    description:
+      "Publish useful, local content consistently — without adding marketing homework to your week.",
+    items: [
+      "Social and Google posts",
+      "Blog and website-ready drafts",
+      "Seasonal and timely marketing",
+    ],
+  },
+  {
+    title: "Build Trust",
+    description:
+      "Respond to reviews professionally and keep your reputation active and credible.",
+    items: [
+      "Review monitoring",
+      "AI-assisted reply drafts for your approval",
+      "Reputation consistency",
+    ],
+  },
+  {
+    title: "Learn & Improve",
+    description:
+      "Understand local opportunities and steadily improve what we recommend for your business.",
+    items: [
+      "Plain-English analytics",
+      "Market Context signals",
+      "Recommendation learning over time",
+    ],
+  },
+] as const;
+
+export const weeklyApprovalSteps = [
+  {
+    title: "Receive one email",
+    description: "Your weekly package of recommended updates arrives by email or text.",
+  },
+  {
+    title: "Review recommendations",
+    description: "See what we suggest for Google, reviews, and local content — in plain English.",
+  },
+  {
+    title: "Approve in minutes",
+    description: "Tap approve, edit, or skip. You’re always in control.",
+  },
+  {
+    title: "AJN handles the rest",
+    description: "We publish what you approve and keep your marketing moving.",
   },
 ] as const;
 
@@ -56,7 +145,7 @@ export const features = [
       "We watch new reviews and draft thoughtful replies for you to approve — fast, professional, on-brand.",
   },
   {
-    title: "Local-aware AI content",
+    title: "Local-aware content",
     description:
       "Posts and updates written for your city, your services, and the seasons — not generic filler.",
   },
@@ -68,7 +157,12 @@ export const features = [
   {
     title: "Email/SMS approval flow",
     description:
-      "Approve updates from your phone between jobs. No logins, no meetings, no marketing homework.",
+      "Approve updates from your phone between jobs. No meetings, no marketing homework.",
+  },
+  {
+    title: "Market Context & learning",
+    description:
+      "Local signals and outcome learning help recommendations stay relevant as your market changes.",
   },
 ] as const;
 
@@ -119,3 +213,6 @@ export const targetIndustries = [
   "Painters",
   "Cleaners",
 ] as const;
+
+export const guaranteeSummary =
+  "Every plan includes our 90-day visibility guarantee. If your Google Business Profile visibility doesn’t improve, you don’t pay.";
