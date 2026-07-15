@@ -235,28 +235,22 @@ export function ApprovalsDeliveryPage() {
                 </ul>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
+                <Link
+                  href="/dashboard/approvals?view=pending"
                   className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
                 >
-                  Approve All
-                </button>
-                <button
-                  type="button"
+                  Review pending items
+                </Link>
+                <Link
+                  href="/dashboard/command-center"
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm hover:border-brand-300 hover:text-brand-700"
                 >
-                  Make Changes
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm hover:border-brand-300 hover:text-brand-700"
-                >
-                  View Dashboard
-                </button>
+                  View dashboard
+                </Link>
               </div>
               <div className="space-y-3 border-t border-slate-100 pt-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Individual approvals
+                  Individual approvals (email preview only)
                 </p>
                 {approvalItems.slice(0, 3).map((item) => (
                   <div
@@ -265,20 +259,9 @@ export function ApprovalsDeliveryPage() {
                   >
                     <p className="text-xs font-semibold text-brand-600">{item.type}</p>
                     <p className="mt-1 text-sm font-medium text-navy-900">{item.title}</p>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        className="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-navy-900"
-                      >
-                        Edit
-                      </button>
-                    </div>
+                    <p className="mt-2 text-xs text-text-muted">
+                      Approve or edit from Approval Center — not from this preview.
+                    </p>
                   </div>
                 ))}
                 <p className="text-xs text-text-muted">+ 3 more items in full email</p>
