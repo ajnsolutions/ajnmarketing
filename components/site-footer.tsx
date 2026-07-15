@@ -2,31 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { navLinks, siteName, tagline } from "@/lib/site-content";
 
+/** Only ship links that resolve to real routes. Missing legal/about pages are tracked in the public UX audit. */
 const companyLinks = [
-  { href: "#", label: "About Us" },
-  { href: "#", label: "Careers" },
-  { href: "#", label: "Contact Us" },
-  { href: "#", label: "Privacy Policy" },
-  { href: "#", label: "Terms of Service" },
+  { href: "/for-agencies", label: "For Agencies" },
+  { href: "/signup", label: "Create Account" },
+  { href: "/login", label: "Log In" },
 ] as const;
-
-function SocialIcon({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href="#"
-      aria-label={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[#94A3B8] transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
-    >
-      {children}
-    </Link>
-  );
-}
 
 export function SiteFooter() {
   return (
@@ -64,30 +45,6 @@ export function SiteFooter() {
             <p className="mt-5 max-w-xs text-sm leading-7 text-[#94A3B8]">
               {tagline}
             </p>
-            <div className="mt-6 flex flex-wrap gap-2.5">
-              <SocialIcon label="Facebook">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                  <path d="M14 8.5V7.2c0-.66.44-1.2 1.24-1.2H17V3.9h-2.1C12.66 3.9 11 5.57 11 8v.5H9v3.1h2V21h3v-9.4h2.1l.4-3.1H14Z" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon label="Instagram">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
-                  <rect x="4.5" y="4.5" width="15" height="15" rx="4" />
-                  <circle cx="12" cy="12" r="3.2" />
-                  <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon label="LinkedIn">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                  <path d="M6.5 8.5h3v9h-3v-9Zm1.5-4.5a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5ZM10 8.5h2.9v1.2h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.6v4.76H16.3v-4.22c0-1.01-.02-2.31-1.41-2.31-1.41 0-1.63 1.1-1.63 2.24v4.29H10V8.5Z" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon label="Email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 7.5 12 13l8-5.5M5 18h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z" />
-                </svg>
-              </SocialIcon>
-            </div>
           </div>
 
           <div className="md:px-10 lg:px-12">
@@ -124,6 +81,9 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
+            <p className="mt-6 text-xs leading-6 text-[#64748B]">
+              About, contact, and legal pages are coming soon.
+            </p>
           </div>
         </div>
       </div>

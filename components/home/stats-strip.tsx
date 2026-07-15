@@ -1,34 +1,35 @@
 const stats = [
   {
-    value: "250+",
-    label: "Local Businesses Supported",
-    detail: "And growing every month",
+    value: "Weekly",
+    label: "Approval by email or text",
+    detail: "Nothing publishes without your OK",
     iconBg: "bg-growth-500 text-white",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l4 4L19 6" />
       </svg>
     ),
   },
   {
-    value: "10,000+",
-    label: "Customer Interactions Generated",
-    detail: "Calls, messages & direction requests",
+    value: "Google",
+    label: "Business Profile focus",
+    detail: "Listings, reviews, and local posts",
     iconBg: "bg-brand-600 text-white",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-10M21 9v6h-6" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11Z" />
+        <circle cx="12" cy="10" r="2.5" />
       </svg>
     ),
   },
   {
-    value: "4.9★",
-    label: "Average Client Rating",
-    detail: "Based on 128+ reviews",
+    value: "90-day",
+    label: "Visibility guarantee",
+    detail: "If Google visibility doesn’t improve, you don’t pay",
     iconBg: "bg-growth-500 text-white",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l2.9 6.9 7.4.6-5.6 4.9 1.7 7.2L12 18.8 7.6 21.6l1.7-7.2-5.6-4.9 7.4-.6L12 2Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
       </svg>
     ),
   },
