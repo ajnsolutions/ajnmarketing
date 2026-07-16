@@ -41,14 +41,13 @@ Marketing Plan, Tasks, Recommendations, Command Center, Assisted Pilot, and Anal
 
 ## Customer experience
 
-Landing feels like checking in with a Head of Marketing:
+Landing feels like checking in with a Head of Marketing via the **Weekly Briefing** (same `/dashboard` surface — see [`WEEKLY_BRIEFING.md`](./WEEKLY_BRIEFING.md)):
 
-- Greeting + Marketing Health badge  
-- “While you were running your business…” accomplishments  
-- What I noticed / what I’d recommend / why it matters  
+- Greeting + Marketing Health  
+- This Week / What I noticed / What I’d recommend / Next Week  
 - Estimated review time  
-- **One** primary CTA (`Review This Week` or connect Google or calm “nothing needed”)  
-- Magic Moments when clear (“I've got this”, “Go enjoy your day”)
+- **One** primary CTA (`Review This Week` or calm “nothing needed”)  
+- Magic Moments when clear (“Everything is under control”, “Go enjoy your week”)
 
 Early customers still get First Five Minutes setup when Google isn't connected.
 

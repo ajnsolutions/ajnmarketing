@@ -46,7 +46,8 @@
 - **Dependencies:** Marketing Health v1 rules; nav philosophy.  
 - **Risk:** Big-bang redesign; losing power users.  
 - **Acceptance:** Four questions answerable in 15 seconds; no placeholder peers in primary nav without honesty.  
-- **Shipped (One Head of Marketing):** `/dashboard` is the single “what next?” briefing; Marketing Health v1; primary nav simplified with progressive disclosure for former decision centers. See [`ONE_HEAD_OF_MARKETING.md`](./ONE_HEAD_OF_MARKETING.md).
+- **Shipped (One Head of Marketing):** `/dashboard` is the single “what next?” briefing; Marketing Health v1; primary nav simplified with progressive disclosure for former decision centers. See [`ONE_HEAD_OF_MARKETING.md`](./ONE_HEAD_OF_MARKETING.md).  
+- **Shipped (Weekly Briefing):** Structured weekly conversation on the same HoM surface (This Week → Noticed → Recommend → Health → Next Week); cadence hook for future management styles. See [`WEEKLY_BRIEFING.md`](./WEEKLY_BRIEFING.md).
 
 ---
 
