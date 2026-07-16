@@ -13,8 +13,8 @@ test("Magic first-five-minutes source ships calm Head of Marketing onboarding", 
     "utf8",
   );
   expect(wizard).toContain("Head of Marketing");
-  expect(wizard).toContain("Learning about your business");
-  expect(wizard).toContain("Go to Dashboard");
+  expect(wizard).toContain("Meet Your Head of Marketing");
+  expect(wizard).toContain("already started learning about your business");
 
   const home = readFileSync(
     join(process.cwd(), "components/dashboard/first-days-home.tsx"),

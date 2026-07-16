@@ -35,7 +35,8 @@
 - **Dependencies:** A copy patterns.  
 - **Risk:** Still too many fields; dead ends.  
 - **Acceptance:** New owner reaches first meaningful insight/approval path without support call.  
-- **Shipped (First Five Minutes):** Conversational one-question flow, progress magic moments, completion CTA, early-customer focused nav + calm `/dashboard` home. See [`FIRST_FIVE_MINUTES.md`](./FIRST_FIVE_MINUTES.md).
+- **Shipped (First Five Minutes):** Conversational one-question flow, progress magic moments, completion CTA, early-customer focused nav + calm `/dashboard` home. See [`FIRST_FIVE_MINUTES.md`](./FIRST_FIVE_MINUTES.md).  
+- **Shipped (Meet Your Head of Marketing):** Introduction framing (“why I need to know this”), customer origin + LinkedIn skip path, learning-language progress by local/online, trust seed, CTA to HoM briefing. See [`MEET_YOUR_HEAD_OF_MARKETING.md`](./MEET_YOUR_HEAD_OF_MARKETING.md).
 
 ---
 

@@ -18,3 +18,4 @@ Implementation notes (post-blueprint):
 
 - FIRST_FIVE_MINUTES.md — Phase B conversational onboarding + first dashboard
 - ONE_HEAD_OF_MARKETING.md — unified customer decision surface + Marketing Health v1
+- MEET_YOUR_HEAD_OF_MARKETING.md — conversation philosophy + progressive setup introduction

@@ -192,7 +192,10 @@ export function buildHeadOfMarketingBriefing(
 ): HeadOfMarketingBriefing {
   const deferred = parseDeferredConnections(input.voiceNotes ?? "");
   const isEarlyCustomer =
-    !input.gbpConnected || deferred.facebookSkipped || deferred.instagramSkipped;
+    !input.gbpConnected ||
+    deferred.facebookSkipped ||
+    deferred.instagramSkipped ||
+    deferred.linkedinSkipped;
 
   const health = resolveMarketingHealth({
     overallScore: input.businessHealth.overall,

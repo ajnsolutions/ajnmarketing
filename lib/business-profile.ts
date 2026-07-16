@@ -1,9 +1,12 @@
 import type { OnboardingData } from "@/lib/onboarding-storage";
 import {
   applyAudienceToGoals,
+  applyCustomerOriginToGoals,
   audienceFromGoals,
   buildDeferredConnectionsNote,
+  customerOriginFromGoals,
   parseDeferredConnections,
+  stripMagicGoalMarkers,
 } from "@/lib/onboarding-storage";
 
 export type BusinessProfile = {
@@ -106,7 +109,10 @@ export function onboardingDataToProfileRow(
     seasonal_services: data.seasonalServices || null,
     specialty_services: data.specialtyServices || null,
     competitors: serializeCompetitors(data),
-    marketing_goals: applyAudienceToGoals(data.marketingGoals, data.businessAudience),
+    marketing_goals: applyCustomerOriginToGoals(
+      applyAudienceToGoals(data.marketingGoals, data.businessAudience),
+      data.customerOrigin,
+    ),
     brand_voice_tone: data.tone || null,
     preferred_words: data.wordsToUse || null,
     avoid_words: data.wordsToAvoid || null,
@@ -114,6 +120,7 @@ export function onboardingDataToProfileRow(
       data.exampleMessage,
       data.facebookSkipped,
       data.instagramSkipped,
+      data.linkedinSkipped,
     ) || null,
     onboarding_completed: onboardingCompleted,
   };
@@ -137,8 +144,10 @@ export function profileRowToOnboardingData(profile: BusinessProfile): Onboarding
     gbpSkipped: true,
     gbpAnswer: "",
     businessAudience: audienceFromGoals(goals),
+    customerOrigin: customerOriginFromGoals(goals),
     facebookSkipped: deferred.facebookSkipped,
     instagramSkipped: deferred.instagramSkipped,
+    linkedinSkipped: deferred.linkedinSkipped,
     primaryServices: profile.primary_services ?? "",
     emergencyServices: profile.emergency_services ?? "",
     seasonalServices: profile.seasonal_services ?? "",
@@ -147,10 +156,7 @@ export function profileRowToOnboardingData(profile: BusinessProfile): Onboarding
     competitor2: competitors.competitor2,
     competitor3: competitors.competitor3,
     competitorsSkipped: competitors.competitorsSkipped,
-    marketingGoals: goals.filter(
-      (goal) =>
-        goal !== "Audience: Local business" && goal !== "Audience: Online business",
-    ),
+    marketingGoals: stripMagicGoalMarkers(goals),
     tone: profile.brand_voice_tone ?? "",
     wordsToUse: profile.preferred_words ?? "",
     wordsToAvoid: profile.avoid_words ?? "",

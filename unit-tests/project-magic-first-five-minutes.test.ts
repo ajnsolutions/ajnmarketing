@@ -129,11 +129,12 @@ test("onboarding wizard uses Magic Head of Marketing copy and GBP connect path",
     "utf8",
   );
   assert.match(source, /Head of Marketing/);
-  assert.match(source, /Learning about your business/);
+  assert.match(source, /Meet Your Head of Marketing/);
   assert.match(source, /let you know when I need you/);
   assert.match(source, /\/dashboard\/google-business-profile\/connect/);
   assert.equal(source.includes("Google connection coming soon"), false);
   assert.equal(source.includes("AJN AI is preparing"), false);
+  assert.equal(source.includes("Initializing"), false);
 });
 
 test("First Five Minutes documentation exists", () => {
