@@ -61,6 +61,7 @@ Tone: professional, calm, confident, helpful. Never technical. Never guilt-induc
 - **Reads** existing command-center context, health scoring helpers, plan calendar, approvals/publishing/GBP stats, open recommendation counts  
 - **Does not** call or rewrite recommendation, analytics, publishing, or planning engines  
 - **Does not** invent a fourth decision system  
+- **Also builds** the [Head of Marketing Journal](./HEAD_OF_MARKETING_JOURNAL.md) (`briefing.journal`) from the same signals, via `buildHeadOfMarketingJournal` — a narrative companion surfaced through progressive disclosure on this same experience, never a second decision center
 
 Engines remain the single source of truth. The briefing summarizes.
 

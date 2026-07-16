@@ -4,6 +4,7 @@ import type {
   CommandCenterCalendarItem,
   CommandCenterWeeklyWins,
 } from "@/lib/command-center/types";
+import { buildHeadOfMarketingJournal } from "@/lib/head-of-marketing/journal";
 import { resolveMarketingHealth } from "@/lib/head-of-marketing/marketingHealth";
 import type {
   BriefingCadenceSupport,
@@ -315,6 +316,26 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     ? "I'm getting started on your marketing..."
     : "While you were running your business...";
 
+  const journal = buildHeadOfMarketingJournal({
+    gbpConnected: input.gbpConnected,
+    unansweredReviews: input.unansweredReviews,
+    pendingApprovals: input.pendingApprovals,
+    openRecommendations: input.openRecommendations,
+    publishFailures: input.publishFailures,
+    publishingReadyOrScheduled: input.publishingReadyOrScheduled,
+    businessHealth: input.businessHealth,
+    healthState: health.state,
+    weeklyWins: input.weeklyWins,
+    planSummary: input.planSummary,
+    seasonalHint: input.seasonalHint,
+    topPriorityTitle: input.topPriorityTitle,
+    profileCreatedAt: input.profileCreatedAt,
+    websiteUrl: input.websiteUrl,
+    estimatedReviewMinutes,
+    isEarlyCustomer,
+    now: input.now,
+  });
+
   return {
     experienceTitle: "Weekly Briefing",
     greeting,
@@ -332,6 +353,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     isEarlyCustomer,
     businessName: input.businessName || "your business",
     cadence: CADENCE,
+    journal,
   };
 }
 

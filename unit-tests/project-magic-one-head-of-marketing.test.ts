@@ -104,6 +104,7 @@ test("briefing unifies one primary CTA and Magic Moments", () => {
   assert.ok(briefing.recommendation?.expectedBenefit);
   assert.ok(briefing.estimatedReviewMinutes >= 2);
   assert.equal(briefing.cadence.activeCadence, "weekly");
+  assert.ok(briefing.journal.entries.length > 0);
 });
 
 test("clear briefing celebrates instead of shaming", () => {
@@ -133,6 +134,7 @@ test("clear briefing celebrates instead of shaming", () => {
   assert.match(briefing.magicMoment ?? "", /enjoy your week|under control|let you know/i);
   assert.equal(briefing.timeRespectLabel, "Nothing to review");
   assert.equal(briefing.health.state, "excellent");
+  assert.ok(briefing.journal.closing);
 });
 
 test("primary nav excludes competing decision centers", () => {
