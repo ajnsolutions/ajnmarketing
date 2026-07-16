@@ -3,20 +3,35 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { dashboardNavItems } from "./dashboard-nav";
+import { dashboardNavItems, focusedDashboardNavHrefs } from "./dashboard-nav";
 
 export function DashboardSidebar({
   mobileOpen,
   onNavigate,
+  focusedNav = false,
 }: {
   mobileOpen: boolean;
   onNavigate?: () => void;
+  focusedNav?: boolean;
 }) {
   const pathname = usePathname();
+  const items = focusedNav
+    ? dashboardNavItems
+        .filter((item) =>
+          (focusedDashboardNavHrefs as readonly string[]).includes(item.href),
+        )
+        .map((item) =>
+          item.href === "/dashboard/command-center"
+            ? { ...item, label: "Home", href: "/dashboard" }
+            : item,
+        )
+    : dashboardNavItems;
+
+  const homeHref = focusedNav ? "/dashboard" : "/dashboard/command-center";
 
   const sidebarLogo = (
     <Link
-      href="/dashboard/command-center"
+      href={homeHref}
       onClick={onNavigate}
       className="block w-full transition-opacity hover:opacity-90"
     >
@@ -35,14 +50,17 @@ export function DashboardSidebar({
   const nav = (
     <div className="flex flex-1 flex-col px-3 py-5">
       <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        Main
+        {focusedNav ? "Getting started" : "Main"}
       </p>
       <nav className="flex flex-col gap-2">
-        {dashboardNavItems.map((item) => {
+        {items.map((item) => {
           const active =
-            item.href === "/dashboard/command-center"
-              ? pathname === "/dashboard" || pathname.startsWith("/dashboard/command-center")
-              : pathname.startsWith(item.href);
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : item.href === "/dashboard/command-center"
+                ? pathname === "/dashboard" ||
+                  pathname.startsWith("/dashboard/command-center")
+                : pathname.startsWith(item.href);
 
           return (
             <Link
@@ -63,6 +81,11 @@ export function DashboardSidebar({
           );
         })}
       </nav>
+      {focusedNav && (
+        <p className="mt-6 px-3 text-xs leading-5 text-slate-500">
+          More options appear as your marketing setup matures. Nothing important is locked away.
+        </p>
+      )}
     </div>
   );
 
