@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { getDashboardSessionContext } from "@/lib/dashboard/session-context";
+import { getFirstDaysHomeForCurrentUser } from "@/lib/dashboard/first-days-home-server";
+import { shouldUseFocusedNav } from "@/lib/dashboard/first-days-home";
 import { isOnboardingCompleteForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,13 +31,19 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  const session = await getDashboardSessionContext();
+  const [session, firstDays] = await Promise.all([
+    getDashboardSessionContext(),
+    getFirstDaysHomeForCurrentUser(),
+  ]);
+
+  const focusedNav = firstDays ? shouldUseFocusedNav(firstDays) : false;
 
   return (
     <DashboardShell
       businessName={session.businessName}
       userName={session.userName}
       userInitials={session.userInitials}
+      focusedNav={focusedNav}
     >
       {children}
     </DashboardShell>

@@ -9,11 +9,13 @@ export function DashboardShell({
   businessName,
   userName,
   userInitials,
+  focusedNav = false,
 }: {
   children: React.ReactNode;
   businessName: string;
   userName: string;
   userInitials: string;
+  focusedNav?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -22,6 +24,7 @@ export function DashboardShell({
       <DashboardSidebar
         mobileOpen={mobileOpen}
         onNavigate={() => setMobileOpen(false)}
+        focusedNav={focusedNav}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

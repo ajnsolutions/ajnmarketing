@@ -30,4 +30,5 @@ test("Onboarding GBP step links to the real connect flow", () => {
   );
   assert.equal(source.includes("Google connection coming soon"), false);
   assert.match(source, /\/dashboard\/google-business-profile\/connect/);
+  assert.match(source, /Do you already have a Google Business Profile/);
 });

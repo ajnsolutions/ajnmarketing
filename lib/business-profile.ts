@@ -1,4 +1,10 @@
 import type { OnboardingData } from "@/lib/onboarding-storage";
+import {
+  applyAudienceToGoals,
+  audienceFromGoals,
+  buildDeferredConnectionsNote,
+  parseDeferredConnections,
+} from "@/lib/onboarding-storage";
 
 export type BusinessProfile = {
   id: string;
@@ -100,17 +106,24 @@ export function onboardingDataToProfileRow(
     seasonal_services: data.seasonalServices || null,
     specialty_services: data.specialtyServices || null,
     competitors: serializeCompetitors(data),
-    marketing_goals: data.marketingGoals,
+    marketing_goals: applyAudienceToGoals(data.marketingGoals, data.businessAudience),
     brand_voice_tone: data.tone || null,
     preferred_words: data.wordsToUse || null,
     avoid_words: data.wordsToAvoid || null,
-    voice_notes: data.exampleMessage || null,
+    voice_notes: buildDeferredConnectionsNote(
+      data.exampleMessage,
+      data.facebookSkipped,
+      data.instagramSkipped,
+    ) || null,
     onboarding_completed: onboardingCompleted,
   };
 }
 
 export function profileRowToOnboardingData(profile: BusinessProfile): OnboardingData {
   const competitors = parseCompetitors(profile.competitors);
+  const voiceNotes = profile.voice_notes ?? "";
+  const deferred = parseDeferredConnections(voiceNotes);
+  const goals = profile.marketing_goals ?? [];
 
   return {
     businessName: profile.business_name ?? "",
@@ -122,6 +135,10 @@ export function profileRowToOnboardingData(profile: BusinessProfile): Onboarding
     primaryServiceArea: profile.primary_service_area ?? "",
     nearbyCities: profile.nearby_cities ?? "",
     gbpSkipped: true,
+    gbpAnswer: "",
+    businessAudience: audienceFromGoals(goals),
+    facebookSkipped: deferred.facebookSkipped,
+    instagramSkipped: deferred.instagramSkipped,
     primaryServices: profile.primary_services ?? "",
     emergencyServices: profile.emergency_services ?? "",
     seasonalServices: profile.seasonal_services ?? "",
@@ -130,11 +147,14 @@ export function profileRowToOnboardingData(profile: BusinessProfile): Onboarding
     competitor2: competitors.competitor2,
     competitor3: competitors.competitor3,
     competitorsSkipped: competitors.competitorsSkipped,
-    marketingGoals: profile.marketing_goals ?? [],
+    marketingGoals: goals.filter(
+      (goal) =>
+        goal !== "Audience: Local business" && goal !== "Audience: Online business",
+    ),
     tone: profile.brand_voice_tone ?? "",
     wordsToUse: profile.preferred_words ?? "",
     wordsToAvoid: profile.avoid_words ?? "",
-    exampleMessage: profile.voice_notes ?? "",
+    exampleMessage: voiceNotes.replace(/\n?Deferred connections:.*$/m, "").trim(),
   };
 }
 

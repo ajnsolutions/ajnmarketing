@@ -13,3 +13,7 @@ Required constitution documents:
 - NAVIGATION_PHILOSOPHY.md
 - DASHBOARD_PHILOSOPHY.md
 - IMPLEMENTATION_ROADMAP.md
+
+Implementation notes (post-blueprint):
+
+- FIRST_FIVE_MINUTES.md — Phase B conversational onboarding + first dashboard

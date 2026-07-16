@@ -6,6 +6,15 @@ export type DashboardNavItem = {
   icon: ReactNode;
 };
 
+/** Early post-onboarding: calm subset — full nav returns after setup matures. */
+export const focusedDashboardNavHrefs = [
+  "/dashboard/command-center",
+  "/dashboard/google-business-profile",
+  "/dashboard/marketing-recommendations",
+  "/dashboard/approvals",
+  "/dashboard/settings",
+] as const;
+
 export const dashboardNavItems: DashboardNavItem[] = [
   {
     label: "Command Center",

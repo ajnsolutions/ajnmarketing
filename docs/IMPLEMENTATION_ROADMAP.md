@@ -34,7 +34,8 @@
 - **Scope:** Emotion-first onboarding (“I’m learning…”); minimal steps to first value; GBP connect clarity; end with “I’ll take it from here.”  
 - **Dependencies:** A copy patterns.  
 - **Risk:** Still too many fields; dead ends.  
-- **Acceptance:** New owner reaches first meaningful insight/approval path without support call.
+- **Acceptance:** New owner reaches first meaningful insight/approval path without support call.  
+- **Shipped (First Five Minutes):** Conversational one-question flow, progress magic moments, completion CTA, early-customer focused nav + calm `/dashboard` home. See [`FIRST_FIVE_MINUTES.md`](./FIRST_FIVE_MINUTES.md).
 
 ---
 
@@ -109,7 +110,7 @@ From the manifesto — enforced in review:
 ## Suggested sequencing for near-term engineering
 
 1. Keep shipping Phase A polish on public + demo (already partially landed).  
-2. Phase B onboarding calm pass.  
+2. Phase B onboarding calm pass — **First Five Minutes landed** (see [`FIRST_FIVE_MINUTES.md`](./FIRST_FIVE_MINUTES.md)).  
 3. Phase C/E thin slice: Health badge + attention list on home (before full nav rewrite).  
 4. Phase D workflow clarity.  
 5. Phase F admin as needed for pilot scale.  
