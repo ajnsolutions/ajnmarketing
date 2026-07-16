@@ -49,11 +49,11 @@ Voice patterns: I noticed… / I prepared… / I’m monitoring… / I’m learn
 
 On Your Head of Marketing:
 
-1. Greeting + Weekly check-in (decision surface)  
+1. Greeting + **Weekly Briefing** (decision surface — see [`WEEKLY_BRIEFING.md`](./WEEKLY_BRIEFING.md))  
 2. **Journal** — progressive disclosure (“While you were busy”)  
 3. More tools — advanced paths  
 
-The Journal supports the briefing; it does **not** become another “what should I do next?” center. One primary CTA remains on the briefing.
+The Journal supports the Weekly Briefing; it does **not** become another “what should I do next?” center, and it never replaces or duplicates the briefing. One primary CTA remains on the briefing.
 
 ---
 
@@ -98,8 +98,9 @@ Journal candidates can later absorb:
 | `lib/head-of-marketing/journal.ts` | Pure narrative builder from HoM signals |
 | `lib/head-of-marketing/journalTypes.ts` | Entry + detail-support types |
 | `components/dashboard/head-of-marketing-journal.tsx` | Progressive disclosure UI |
+| `lib/head-of-marketing/weeklyBriefing.ts` | Calls `buildHeadOfMarketingJournal` inside `buildWeeklyBriefing` and attaches the result as `HeadOfMarketingBriefing.journal` |
 
-Reuses signals already loaded for the HoM briefing (GBP, reviews, publishing stats, plan, recommendations count, Marketing Health). No new engines.
+Reuses signals already loaded for the Weekly Briefing (GBP, reviews, publishing stats, plan, recommendations count, Marketing Health). No new engines. `lib/head-of-marketing/briefing.ts` is a compatibility re-export only — `weeklyBriefing.ts` is the single orchestrator both the briefing and the Journal are built from.
 
 ---
 
