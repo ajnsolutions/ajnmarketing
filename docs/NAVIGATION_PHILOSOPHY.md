@@ -78,8 +78,6 @@ It should **preview** the Head-of-Marketing story, not mirror the authenticated 
 
 ## 5. Migration stance from current IA
 
-Current authenticated nav is feature-catalog heavy (Command Center, Tasks, Approvals, Publishing, GBP, Website Analysis, Brand Voice, AI Profile, Plan, Recommendations, Content, Reviews, Market Context, Analytics, placeholders…).
+**Shipped (One Head of Marketing):** Primary customer nav is now small — Your Head of Marketing, This Week, Google Profile, Business Settings — with former “what next?” peers (Plan, Tasks, Recommendations, Command Center, Analytics, …) under progressive disclosure (“More tools”). Routes remain; nothing is deleted. Details: [`ONE_HEAD_OF_MARKETING.md`](./ONE_HEAD_OF_MARKETING.md).
 
-**Magic direction:** group and rename toward Dashboard / Marketing / Results / Business; demote or nest power tools; remove placeholder peers from primary nav when possible.
-
-This doc does **not** implement that rename — it defines the target constitution for future PRs.
+**Still ahead:** fuller grouping into Marketing / Results / Business shells, and removing any remaining placeholder peers from advanced lists when they are not real.

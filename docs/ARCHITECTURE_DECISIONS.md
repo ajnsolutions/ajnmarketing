@@ -70,7 +70,9 @@ A record of *why* the major systems in this codebase exist and are shaped the wa
 
 **Why they each exist:** They were built to answer the same underlying customer need — "tell me what to do" — from three different angles that arrived at different times: Marketing Recommendations is the most mature, data-driven, and outcome-tracked; Tasks is a lighter-weight, more immediate, conversational framing; Marketing Plan is a longer-horizon, narrative framing. None of them is wrong in isolation.
 
-**Why this is flagged, not defended:** Project Magic's premise is a single, simplified relationship with a "Head of Marketing." Three systems each producing their own version of "what to do" is the opposite of that premise, and is called out as the single highest-priority consolidation decision in the architecture review (§3.1, §8). **Future expectation:** before building Magic's unified surface, decide explicitly which of these three is authoritative, which get folded into it as a data source, and which get retired — do not let the unified UI quietly become a fourth system layered on top of the other three.
+**Why this is flagged, not defended:** Project Magic's premise is a single, simplified relationship with a "Head of Marketing." Three systems each producing their own version of "what to do" is the opposite of that premise, and is called out as the single highest-priority consolidation decision in the architecture review (§3.1, §8).
+
+**Decision (2026-07-16, One Head of Marketing):** The authoritative **customer-facing** answer to “what should I do next?” is `lib/head-of-marketing` → `/dashboard` (“Your Head of Marketing”). Marketing Recommendations remain the most mature **data-driven** source; Tasks and Marketing Plan are folded in as supporting signals. None of the three engines are retired or rewritten — they are demoted from competing UI decision centers via progressive disclosure. See [`ONE_HEAD_OF_MARKETING.md`](./ONE_HEAD_OF_MARKETING.md).
 
 ---
 
@@ -96,7 +98,7 @@ A record of *why* the major systems in this codebase exist and are shaped the wa
 
 ## 10. Documentation-first product definition (Project Magic docs)
 
-**What:** `docs/NAVIGATION_PHILOSOPHY.md`, `docs/DASHBOARD_PHILOSOPHY.md`, `docs/TRUST_MODEL.md`, `docs/MARKETING_HEALTH.md`, `docs/CUSTOMER_JOURNEYS.md`, `docs/MAGIC_BLUEPRINT.md`, and related docs describe a target product state that has **zero corresponding code** in most cases (confirmed: `management_style`, `trust_stage`, `MarketingHealth` all have zero occurrences in `app`/`components`/`lib`).
+**What:** `docs/NAVIGATION_PHILOSOPHY.md`, `docs/DASHBOARD_PHILOSOPHY.md`, `docs/TRUST_MODEL.md`, `docs/MARKETING_HEALTH.md`, `docs/CUSTOMER_JOURNEYS.md`, `docs/MAGIC_BLUEPRINT.md`, and related docs describe a target product state. As of One Head of Marketing, Marketing Health v1 and the unified briefing surface exist in `lib/head-of-marketing/` (presentation layer). `management_style` / `trust_stage` remain documentation-first until Trust Model UI ships.
 
 **Why:** The product direction was deliberately locked down in writing before implementation, so that incremental PRs (like the ones that built the recommendation pipeline, weekly approval package, etc.) could be evaluated against a stable target rather than a moving one. This is why the architecture review could confidently say "this is greenfield work, not a rename" for Trust Model/Marketing Health — the docs were never meant to describe existing code.
 
