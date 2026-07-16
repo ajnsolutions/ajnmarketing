@@ -1,6 +1,6 @@
 # Project Magic — First Five Minutes
 
-**Status:** Implemented (experience layer only)  
+**Status:** Implemented (experience layer only) — evolved by [`MEET_YOUR_HEAD_OF_MARKETING.md`](./MEET_YOUR_HEAD_OF_MARKETING.md)  
 **Branch / PR theme:** `project-magic-first-five-minutes`  
 **Constraint:** No schedule activation; `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`. No recommendation-engine, publishing, analytics, Trigger.dev, auth, or schema changes.
 

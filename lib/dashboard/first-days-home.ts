@@ -81,7 +81,10 @@ export function buildFirstDaysHomeModel(input: {
   ];
 
   const isEarlyCustomer =
-    !input.gbpConnected || deferred.facebookSkipped || deferred.instagramSkipped;
+    !input.gbpConnected ||
+    deferred.facebookSkipped ||
+    deferred.instagramSkipped ||
+    deferred.linkedinSkipped;
 
   let primaryAction: FirstDaysPrimaryAction;
   if (!input.gbpConnected) {

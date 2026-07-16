@@ -4,8 +4,8 @@ import { isOnboardingCompleteForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
-  title: "Onboarding",
-  description: "Set up your AJN Marketing workspace.",
+  title: "Meet Your Head of Marketing",
+  description: "Introduce your business to your AJN Marketing Head of Marketing.",
 };
 
 export default async function OnboardingPage() {
