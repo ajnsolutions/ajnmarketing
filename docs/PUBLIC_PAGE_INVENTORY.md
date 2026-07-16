@@ -32,9 +32,9 @@
 | `/signup` | Account create | New customer | Sign up | Login link | Metadata set | Auth shell | Link Privacy/Terms when pages exist (E) |
 | `/forgot-password` | Reset | Returning | Submit | Login | Metadata set | Auth shell | OK |
 | `/` 404 (`not-found`) | Recovery | Any | Home / Demo | — | N/A | Clear H1 | Added this branch |
-| Features | **Missing** | — | — | — | — | — | Create in PR C |
-| About | **Missing** | — | — | — | — | — | Create in PR E |
-| Contact | **Missing** | — | — | — | — | — | Create in PR E |
+| `/features` | Feature explainer | Owner | FinalCta → `/demo` | — | Title + description | H1 present | Shipped since this audit — no longer missing |
+| `/about` | Company story | Owner | FinalCta → `/demo` | — | Title + description | H1 present | Shipped since this audit — no longer missing |
+| `/contact` | Contact / support | Owner | FinalCta / mailto | — | Title + description | H1 present | Shipped since this audit — no longer missing |
 | FAQ (standalone) | Only on Demo | — | — | — | — | — | Extract + JSON-LD in D/H |
 | Privacy / Terms | **Missing** | — | — | — | — | — | Launch blocker for paid traffic — PR E |
 | Blog | **Missing** | — | — | — | — | — | Defer post-launch unless SEO push |
@@ -50,8 +50,7 @@
 | `PricingCard` | `components/pricing-card.tsx` | Tier card |
 | `SectionHeading` | `components/section-heading.tsx` | Page section titles |
 | `HowItWorksSteps` | `components/how-it-works-steps.tsx` | 5-step flow |
-| `FeatureGrid` | `components/feature-grid.tsx` | (available; usage verify) |
-| Home sections | `components/home/*` | Hero visual, cards, stats, trust |
+| Home sections | `components/home/homepage-sections.tsx` | Hero, pillars, trust, weekly approval, pricing teaser — the actual rendered homepage (see `app/page.tsx`) |
 | Demo FAQ / GBP mock | `components/demo/*` | Demo page support |
 | AI demo flow | `components/ai-demo/*` | `/ai-demo` |
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
-import { isAdminUserId } from "@/lib/admin/isAdminUser";
+import { requireAdminUser } from "@/lib/admin/requireAdminUser";
 import { parseTriggerRecommendationExecutionRequestBody } from "@/lib/admin/triggerRecommendationExecutionRequest";
 import { executeRecommendationForUser } from "@/lib/recommendation-execution/engine";
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
@@ -24,18 +23,8 @@ import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
  * Only ever creates a content_approvals draft -- never queues or publishes anything.
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!isAdminUserId(user.id)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = await requireAdminUser();
+  if ("error" in auth) return auth.error;
 
   let body: unknown;
   try {
