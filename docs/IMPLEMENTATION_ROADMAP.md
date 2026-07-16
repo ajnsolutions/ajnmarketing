@@ -1,0 +1,125 @@
+# Project Magic — Implementation Roadmap
+
+**Companion to:** [`MAGIC_BLUEPRINT.md`](./MAGIC_BLUEPRINT.md)  
+**Constraint:** No schedule activation; `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains false until explicit ops approval. No silent auto-publish.
+
+---
+
+## Phase overview
+
+| Phase | Focus | Depends on |
+|---|---|---|
+| **A** | Public experience | Manifesto + voice |
+| **B** | Onboarding | A messaging |
+| **C** | Customer dashboard | Health model, nav philosophy |
+| **D** | Marketing workflow | C, trust/styles (light) |
+| **E** | Results & Marketing Health | C |
+| **F** | Admin operating console | Ops needs |
+| **G** | Trust progression | D + E data |
+| **H** | Autonomous Head of Marketing | G + strict gates |
+
+---
+
+## Phase A — Public experience
+
+- **Scope:** Head-of-Marketing positioning across public site; demo as proof; confidence/simplicity/guarantee; StoryBrand alignment; local + online messaging; factual AI-search education without ranking claims.  
+- **Dependencies:** Voice doc; existing homepage/demo foundations.  
+- **Risk:** Overclaiming; drifting into AI-tool marketing.  
+- **Acceptance:** Five-second clarity; demo → signup path obvious; no fabricated proof; Privacy/Terms linked when pages exist.
+
+---
+
+## Phase B — Onboarding
+
+- **Scope:** Emotion-first onboarding (“I’m learning…”); minimal steps to first value; GBP connect clarity; end with “I’ll take it from here.”  
+- **Dependencies:** A copy patterns.  
+- **Risk:** Still too many fields; dead ends.  
+- **Acceptance:** New owner reaches first meaningful insight/approval path without support call.
+
+---
+
+## Phase C — Customer dashboard
+
+- **Scope:** Recompose home around Health + attention + done summary; begin nav consolidation toward Dashboard/Marketing/Results/Business.  
+- **Dependencies:** Marketing Health v1 rules; nav philosophy.  
+- **Risk:** Big-bang redesign; losing power users.  
+- **Acceptance:** Four questions answerable in 15 seconds; no placeholder peers in primary nav without honesty.
+
+---
+
+## Phase D — Marketing workflow
+
+- **Scope:** Make weekly approval the hero loop; clearer Marketing area; reduce Content/Approvals/Publishing confusion; keep explicit approve → queue → publish.  
+- **Dependencies:** C shell.  
+- **Risk:** Breaking approval safety.  
+- **Acceptance:** Owner completes weekly review in minutes; zero accidental publishes.
+
+---
+
+## Phase E — Results & Marketing Health
+
+- **Scope:** Ship Marketing Health states + explanations; demote raw analytics; celebrate outcomes.  
+- **Dependencies:** Signal availability (GBP, approvals, reviews, failures).  
+- **Risk:** Arbitrary scoring distrust.  
+- **Acceptance:** State always has plain-English why + next step; no letter-grade hero UI.
+
+---
+
+## Phase F — Admin operating console
+
+- **Scope:** Expand allowlisted admin beyond seed ops page: customer health, AI health, pilot, operations, support tools — still separate from customer nav.  
+- **Dependencies:** Auth allowlist patterns.  
+- **Risk:** Leaking admin links to customers.  
+- **Acceptance:** Non-admin sees zero admin chrome; admins can operate pilot without DB console.
+
+---
+
+## Phase G — Trust progression
+
+- **Scope:** Productize stages + management styles; visible promotion/demotion; magic moment copy; still bounded by safety.  
+- **Dependencies:** Approval history metrics; D/E.  
+- **Risk:** Premature autonomy.  
+- **Acceptance:** Style changes never bypass publish gates; promotions are earned and reversible.
+
+---
+
+## Phase H — Autonomous Head of Marketing
+
+- **Scope:** Highest-autonomy behaviors for Trusted HoM / future Executive Partner — only with explicit style, trust stage, and ops-approved schedule/publish policies.  
+- **Dependencies:** G + production readiness + schedule activation decision.  
+- **Risk:** Highest — trust destruction if wrong.  
+- **Acceptance:** Written policy; kill switch; auditability; cron gate flipped only with explicit approval; no silent expansion of publish scope.
+
+---
+
+## Cross-cutting design rules (all phases)
+
+From the manifesto — enforced in review:
+
+- Never expose internal systems as customer IA.  
+- Never require unnecessary decisions.  
+- Every screen has one primary action.  
+- Every page answers “What should I do next?”  
+- Every interaction should reduce anxiety.  
+- Every feature should feel like the Head of Marketing is working behind the scenes.  
+- Magical without pretending magic.
+
+---
+
+## Suggested sequencing for near-term engineering
+
+1. Keep shipping Phase A polish on public + demo (already partially landed).  
+2. Phase B onboarding calm pass.  
+3. Phase C/E thin slice: Health badge + attention list on home (before full nav rewrite).  
+4. Phase D workflow clarity.  
+5. Phase F admin as needed for pilot scale.  
+6. Phase G/H only after trust metrics exist and ops signs off.
+
+---
+
+## Out of scope for this blueprint PR
+
+- Implementing UI/IA changes  
+- Activating Trigger.dev schedules  
+- Changing approval or publishing semantics  
+- Multi-business agency console (noted as future)
