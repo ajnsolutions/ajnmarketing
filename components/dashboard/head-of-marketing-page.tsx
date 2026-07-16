@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 
@@ -138,6 +139,8 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
           )}
         </div>
       </section>
+
+      <HeadOfMarketingJournalSection journal={briefing.journal} />
 
       <details className="mt-8 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-sm shadow-sm ring-1 ring-slate-900/[0.03]">
         <summary className="cursor-pointer font-semibold text-navy-900">

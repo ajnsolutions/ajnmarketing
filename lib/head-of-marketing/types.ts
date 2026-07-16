@@ -1,3 +1,5 @@
+import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
+
 export type MarketingHealthState =
   | "excellent"
   | "healthy"
@@ -65,6 +67,8 @@ export type HeadOfMarketingBriefing = {
   isEarlyCustomer: boolean;
   businessName: string;
   cadence: BriefingCadenceSupport;
+  /** Day-by-day narrative window into HoM work — not an audit log. */
+  journal: HeadOfMarketingJournal;
 };
 
 /** Customer-facing primary nav — one answer to “what next?” */
