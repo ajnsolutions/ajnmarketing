@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient, isSupabaseServiceRoleConfigured } from "@/lib/supabase/service";
-import { isAdminUserId } from "@/lib/admin/isAdminUser";
+import { requireAdminUser } from "@/lib/admin/requireAdminUser";
 import {
   addPilotIssueRecord,
   buildAssistedPilotDashboard,
@@ -21,22 +20,8 @@ import {
 import { toSafeUserErrorMessage } from "@/lib/security/safe-error-message";
 import { ATTACH_DECLARATIVE_PRODUCTION_CRONS } from "@/lib/trigger/scheduleActivation";
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) } as const;
-  }
-  if (!isAdminUserId(user.id)) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
-  }
-  return { user } as const;
-}
-
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdminUser();
   if ("error" in auth) return auth.error;
 
   if (!isSupabaseServiceRoleConfigured()) {
@@ -57,7 +42,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdminUser();
   if ("error" in auth) return auth.error;
 
   if (!isSupabaseServiceRoleConfigured()) {

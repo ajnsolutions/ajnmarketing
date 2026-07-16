@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient, isSupabaseServiceRoleConfigured } from "@/lib/supabase/service";
-import { isAdminUserId } from "@/lib/admin/isAdminUser";
+import { requireAdminUser } from "@/lib/admin/requireAdminUser";
 import { buildOpsDashboardSummary } from "@/lib/ops-dashboard/service";
 import { evaluateOpsAlerts } from "@/lib/production-alerts/evaluate";
 import { runProductionHealthChecks } from "@/lib/production-health/service";
@@ -9,23 +8,8 @@ import { runWorkflowValidationHarness } from "@/lib/workflow-validation/harness"
 import { getFailureInjectionState } from "@/lib/failure-injection/gate";
 import { ATTACH_DECLARATIVE_PRODUCTION_CRONS } from "@/lib/trigger/scheduleActivation";
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) } as const;
-  }
-  if (!isAdminUserId(user.id)) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
-  }
-  return { user } as const;
-}
-
 export async function GET(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdminUser();
   if ("error" in auth) return auth.error;
 
   const url = new URL(request.url);
