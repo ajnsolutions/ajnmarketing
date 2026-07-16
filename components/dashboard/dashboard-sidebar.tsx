@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { dashboardNavItems, focusedDashboardNavHrefs } from "./dashboard-nav";
+import {
+  advancedDashboardNavItems,
+  primaryDashboardNavItems,
+} from "./dashboard-nav";
 
 export function DashboardSidebar({
   mobileOpen,
@@ -15,23 +18,12 @@ export function DashboardSidebar({
   focusedNav?: boolean;
 }) {
   const pathname = usePathname();
-  const items = focusedNav
-    ? dashboardNavItems
-        .filter((item) =>
-          (focusedDashboardNavHrefs as readonly string[]).includes(item.href),
-        )
-        .map((item) =>
-          item.href === "/dashboard/command-center"
-            ? { ...item, label: "Home", href: "/dashboard" }
-            : item,
-        )
-    : dashboardNavItems;
-
-  const homeHref = focusedNav ? "/dashboard" : "/dashboard/command-center";
+  const primaryItems = primaryDashboardNavItems;
+  const showAdvanced = !focusedNav;
 
   const sidebarLogo = (
     <Link
-      href={homeHref}
+      href="/dashboard"
       onClick={onNavigate}
       className="block w-full transition-opacity hover:opacity-90"
     >
@@ -47,43 +39,53 @@ export function DashboardSidebar({
     </Link>
   );
 
+  function renderLink(item: { href: string; label: string; icon: React.ReactNode }) {
+    const active =
+      item.href === "/dashboard"
+        ? pathname === "/dashboard"
+        : pathname.startsWith(item.href);
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        className={`flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
+          active
+            ? "bg-white text-[#081426] shadow-sm"
+            : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
+        }`}
+      >
+        <span className={active ? "text-brand-600" : "text-slate-500"}>{item.icon}</span>
+        {item.label}
+      </Link>
+    );
+  }
+
   const nav = (
     <div className="flex flex-1 flex-col px-3 py-5">
       <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {focusedNav ? "Getting started" : "Main"}
       </p>
-      <nav className="flex flex-col gap-2">
-        {items.map((item) => {
-          const active =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : item.href === "/dashboard/command-center"
-                ? pathname === "/dashboard" ||
-                  pathname.startsWith("/dashboard/command-center")
-                : pathname.startsWith(item.href);
+      <nav className="flex flex-col gap-2">{primaryItems.map(renderLink)}</nav>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={`flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
-                active
-                  ? "bg-white text-[#081426] shadow-sm"
-                  : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
-              }`}
-            >
-              <span className={active ? "text-brand-600" : "text-slate-500"}>
-                {item.icon}
-              </span>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+      {showAdvanced && (
+        <details className="mt-6 group">
+          <summary className="cursor-pointer list-none px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-2">
+              More tools
+              <span className="text-slate-600 transition-transform group-open:rotate-90">›</span>
+            </span>
+          </summary>
+          <nav className="mt-3 flex flex-col gap-2">
+            {advancedDashboardNavItems.map(renderLink)}
+          </nav>
+        </details>
+      )}
+
       {focusedNav && (
         <p className="mt-6 px-3 text-xs leading-5 text-slate-500">
-          More options appear as your marketing setup matures. Nothing important is locked away.
+          More tools appear as your setup matures. Nothing important is locked away.
         </p>
       )}
     </div>
@@ -92,9 +94,7 @@ export function DashboardSidebar({
   return (
     <>
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-[#081426] lg:flex">
-        <div className="border-b border-white/10 px-4 py-5">
-          {sidebarLogo}
-        </div>
+        <div className="border-b border-white/10 px-4 py-5">{sidebarLogo}</div>
         {nav}
         <div className="mt-auto border-t border-white/10 px-4 py-4">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">

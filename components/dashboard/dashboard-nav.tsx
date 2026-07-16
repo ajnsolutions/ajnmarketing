@@ -6,27 +6,59 @@ export type DashboardNavItem = {
   icon: ReactNode;
 };
 
-/** Early post-onboarding: calm subset — full nav returns after setup matures. */
+const iconHome = (
+  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 11.5 12 4l8 7.5M6 10.5V20h4v-5h4v5h4V10.5" />
+  </svg>
+);
+
+const iconApprovals = (
+  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l2 2 4-4" />
+  </svg>
+);
+
+const iconGbp = (
+  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+  </svg>
+);
+
+const iconSettings = (
+  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z" />
+  </svg>
+);
+
+/** Primary customer nav — ONE place for “what next?” plus support destinations. */
+export const primaryDashboardNavItems: DashboardNavItem[] = [
+  { label: "Your Head of Marketing", href: "/dashboard", icon: iconHome },
+  { label: "This Week", href: "/dashboard/approvals", icon: iconApprovals },
+  { label: "Google Profile", href: "/dashboard/google-business-profile", icon: iconGbp },
+  { label: "Business Settings", href: "/dashboard/settings", icon: iconSettings },
+];
+
+/** Early post-onboarding: same calm primary set. */
 export const focusedDashboardNavHrefs = [
-  "/dashboard/command-center",
-  "/dashboard/google-business-profile",
-  "/dashboard/marketing-recommendations",
+  "/dashboard",
   "/dashboard/approvals",
+  "/dashboard/google-business-profile",
   "/dashboard/settings",
 ] as const;
 
-export const dashboardNavItems: DashboardNavItem[] = [
+/** Advanced tools — progressive disclosure only (routes still work). */
+export const advancedDashboardNavItems: DashboardNavItem[] = [
   {
-    label: "Command Center",
+    label: "Detailed workspace",
     href: "/dashboard/command-center",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 11.5 12 4l8 7.5M6 10.5V20h4v-5h4v5h4V10.5" />
-      </svg>
-    ),
+    icon: iconHome,
   },
   {
-    label: "Today's Tasks",
+    label: "What I'm working on",
     href: "/dashboard/tasks",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
@@ -36,18 +68,7 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "Approval Center",
-    href: "/dashboard/approvals",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    label: "Publishing",
+    label: "What I'm preparing",
     href: "/dashboard/publishing",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
@@ -56,62 +77,29 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "Google Business Profile",
-    href: "/dashboard/google-business-profile",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Website Analysis",
-    href: "/dashboard/website-analysis",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10M8 7V5m8 2V5M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Brand Voice",
-    href: "/dashboard/brand-voice",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M8 8h8M8 12h6M8 16h4" />
-      </svg>
-    ),
-  },
-  {
-    label: "AI Profile",
-    href: "/dashboard/ai-profile",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 3A6.5 6.5 0 0 0 3 9.5V12h2.5A6.5 6.5 0 0 0 12 5.5V3H9.5Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 3H12v2.5A6.5 6.5 0 0 0 18.5 12H21V9.5A6.5 6.5 0 0 0 14.5 3Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 14.5V12h-2.5A6.5 6.5 0 0 1 12 18.5V21h2.5A6.5 6.5 0 0 0 21 14.5Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 21H12v-2.5A6.5 6.5 0 0 1 5.5 12H3v2.5A6.5 6.5 0 0 0 9.5 21Z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Marketing Plan",
+    label: "This month's plan",
     href: "/dashboard/marketing-plan",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 15h2m4 0h2M8 11h8" />
       </svg>
     ),
   },
   {
-    label: "Recommendations",
+    label: "What I'd recommend",
     href: "/dashboard/marketing-recommendations",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l2.2 4.5L19 8.3l-3.5 3.4.8 4.8L12 14.8 7.7 16.5l.8-4.8L5 8.3l4.8-.8L12 3Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5 20h14" />
+      </svg>
+    ),
+  },
+  {
+    label: "What's improving",
+    href: "/dashboard/analytics",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M4 19h16M8 17v-5M12 17V8M16 17v-3" />
       </svg>
     ),
   },
@@ -135,20 +123,20 @@ export const dashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "Market Context",
-    href: "/dashboard/market-context",
+    label: "Website analysis",
+    href: "/dashboard/website-analysis",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-10M21 9v6h-6" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10" />
       </svg>
     ),
   },
   {
-    label: "Analytics",
-    href: "/dashboard/analytics",
+    label: "Brand voice",
+    href: "/dashboard/brand-voice",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M4 19h16M8 17v-5M12 17V8M16 17v-3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M8 8h8M8 12h6M8 16h4" />
       </svg>
     ),
   },
@@ -171,14 +159,10 @@ export const dashboardNavItems: DashboardNavItem[] = [
       </svg>
     ),
   },
-  {
-    label: "Settings",
-    href: "/dashboard/settings",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z" />
-      </svg>
-    ),
-  },
+];
+
+/** Full flat list retained for any legacy consumers; primary experience uses split nav. */
+export const dashboardNavItems: DashboardNavItem[] = [
+  ...primaryDashboardNavItems,
+  ...advancedDashboardNavItems,
 ];

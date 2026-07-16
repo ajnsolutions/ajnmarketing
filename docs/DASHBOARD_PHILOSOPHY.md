@@ -50,7 +50,7 @@ Command Center aggregates useful signals but currently reads like an internal op
 
 **Magic target:** keep the *data*, change the *story* — Health + attention + done-for-you narrative.
 
-New customers get a getting-started path; established customers get the calm weekly home.
+**Shipped:** `/dashboard` is “Your Head of Marketing” (presentation orchestrator over existing context). Command Center remains available under More tools as the detailed workspace. New customers still get First Five Minutes when Google isn’t connected.
 
 ---
 

@@ -126,12 +126,10 @@ export function buildFirstDaysHomeModel(input: {
   };
 }
 
-/** Hrefs kept in focused early-customer navigation. */
+/** Hrefs kept in focused early-customer navigation (aligned with HoM primary). */
 export const FOCUSED_NAV_HREFS = [
   "/dashboard",
-  "/dashboard/command-center",
   "/dashboard/google-business-profile",
-  "/dashboard/marketing-recommendations",
   "/dashboard/approvals",
   "/dashboard/settings",
 ] as const;
