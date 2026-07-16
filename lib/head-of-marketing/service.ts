@@ -51,6 +51,12 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     planJson?.executiveSummary?.trim() ||
     planJson?.marketingThemes?.[0]?.trim() ||
     null;
+  const marketingThemes = (planJson?.marketingThemes ?? [])
+    .map((theme) => theme.trim())
+    .filter(Boolean);
+  const businessGoals = (planJson?.businessGoals ?? [])
+    .map((goal) => goal.trim())
+    .filter(Boolean);
 
   const seasonalCampaign = planJson?.seasonalCampaigns?.[0];
   const seasonalHint = seasonalCampaign
@@ -76,6 +82,8 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     businessHealth,
     weeklyWins,
     planSummary,
+    marketingThemes,
+    businessGoals,
     seasonalHint,
     topPriorityTitle,
     upcomingCalendar,

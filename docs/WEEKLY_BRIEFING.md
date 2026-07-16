@@ -35,13 +35,14 @@ Tone: professional, calm, confident, helpful. Never technical. Never guilt-induc
 ## Information hierarchy
 
 1. Greeting + relationship continuity (real history only)  
-2. **This Week** — what I handled  
-3. **What I noticed** — signals worth knowing  
-4. **What I'd recommend next** — one primary recommendation + why + expected benefit  
-5. **Marketing Health** — Excellent / Healthy / Needs Attention / At Risk + why  
-6. **Next Week** — what I'll be working on  
-7. **Time respect** — estimated review minutes or “Nothing to review”  
-8. **One primary CTA** (or a calm Magic Moment)
+2. **This Month's Focus** — what we're working toward (see [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md))  
+3. **This Week** — what I handled  
+4. **What I noticed** — signals worth knowing  
+5. **What I'd recommend next** — one primary recommendation + why + expected benefit  
+6. **Marketing Health** — Excellent / Healthy / Needs Attention / At Risk + why (references the monthly focus)  
+7. **Next Week** — what I'll be working on  
+8. **Time respect** — estimated review minutes or “Nothing to review”  
+9. **One primary CTA** (or a calm Magic Moment)
 
 ---
 
@@ -61,7 +62,8 @@ Tone: professional, calm, confident, helpful. Never technical. Never guilt-induc
 - **Reads** existing command-center context, health scoring helpers, plan calendar, approvals/publishing/GBP stats, open recommendation counts  
 - **Does not** call or rewrite recommendation, analytics, publishing, or planning engines  
 - **Does not** invent a fourth decision system  
-- **Also builds** the [Head of Marketing Journal](./HEAD_OF_MARKETING_JOURNAL.md) (`briefing.journal`) from the same signals, via `buildHeadOfMarketingJournal` — a narrative companion surfaced through progressive disclosure on this same experience, never a second decision center
+- **Also builds** the [Head of Marketing Journal](./HEAD_OF_MARKETING_JOURNAL.md) (`briefing.journal`) from the same signals, via `buildHeadOfMarketingJournal` — a narrative companion surfaced through progressive disclosure on this same experience, never a second decision center  
+- **Also builds** [Monthly Focus](./MONTHLY_FOCUS.md) (`briefing.monthlyFocus`) from plan themes/goals and the same live signals — shared direction for the month, not a planning engine
 
 Engines remain the single source of truth. The briefing summarizes.
 

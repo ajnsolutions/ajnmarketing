@@ -21,3 +21,4 @@ Implementation notes (post-blueprint):
 - MEET_YOUR_HEAD_OF_MARKETING.md — conversation philosophy + progressive setup introduction
 - WEEKLY_BRIEFING.md — primary customer communication / HoM check-in
 - HEAD_OF_MARKETING_JOURNAL.md — narrative window into HoM work (not an audit log)
+- MONTHLY_FOCUS.md — living “what we’re working toward this month” (not a traditional plan)

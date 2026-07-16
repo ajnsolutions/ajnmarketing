@@ -1,4 +1,5 @@
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
+import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 
 export type MarketingHealthState =
   | "excellent"
@@ -69,6 +70,8 @@ export type HeadOfMarketingBriefing = {
   cadence: BriefingCadenceSupport;
   /** Day-by-day narrative window into HoM work — not an audit log. */
   journal: HeadOfMarketingJournal;
+  /** Living monthly priorities — not a traditional marketing plan document. */
+  monthlyFocus: MonthlyFocus;
 };
 
 /** Customer-facing primary nav — one answer to “what next?” */
