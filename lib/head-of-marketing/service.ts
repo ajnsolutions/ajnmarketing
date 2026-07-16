@@ -3,13 +3,14 @@ import "server-only";
 import { loadCommandCenterContextForCurrentUser } from "@/lib/command-center/context";
 import {
   buildTaskPriorities,
+  buildUpcomingCalendar,
   computeBusinessHealthScores,
   computeWeeklyWins,
 } from "@/lib/command-center/scoring";
 import { getDashboardSessionContext } from "@/lib/dashboard/session-context";
 import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
-import { buildHeadOfMarketingBriefing } from "@/lib/head-of-marketing/briefing";
+import { buildWeeklyBriefing } from "@/lib/head-of-marketing/weeklyBriefing";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 
 async function countOpenRecommendations(businessProfileId: string): Promise<number> {
@@ -25,8 +26,8 @@ async function countOpenRecommendations(businessProfileId: string): Promise<numb
 }
 
 /**
- * Presentation/orchestration entrypoint.
- * Reuses command-center context loaders and scoring — does not rewrite engines.
+ * Weekly Briefing / Head of Marketing presentation entrypoint.
+ * Reuses command-center context + scoring — does not rewrite engines.
  */
 export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOfMarketingBriefing | null> {
   const [session, profile, context] = await Promise.all([
@@ -40,6 +41,9 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const businessHealth = computeBusinessHealthScores(context);
   const weeklyWins = computeWeeklyWins(context);
   const priorities = buildTaskPriorities(context);
+  const upcomingCalendar = buildUpcomingCalendar(
+    context.planData.plan?.plan_json?.thirtyDayCalendar,
+  );
   const openRecommendations = await countOpenRecommendations(profile.id);
 
   const planJson = context.planData.plan?.plan_json;
@@ -48,14 +52,20 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     planJson?.marketingThemes?.[0]?.trim() ||
     null;
 
+  const seasonalCampaign = planJson?.seasonalCampaigns?.[0];
+  const seasonalHint = seasonalCampaign
+    ? `${seasonalCampaign.title}${seasonalCampaign.timing ? ` (${seasonalCampaign.timing})` : ""}`
+    : null;
+
   const topPriorityTitle =
     priorities.high[0]?.title ?? priorities.medium[0]?.title ?? null;
 
-  return buildHeadOfMarketingBriefing({
+  return buildWeeklyBriefing({
     userName: session.userName,
     businessName: session.businessName,
     websiteUrl: profile.website,
     voiceNotes: profile.voice_notes,
+    profileCreatedAt: profile.created_at ?? null,
     gbpConnected: Boolean(context.gbpData.connected),
     unansweredReviews: context.gbpData.reviewSummary.unansweredCount ?? 0,
     pendingApprovals: context.approvalStats.pending ?? 0,
@@ -66,6 +76,9 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     businessHealth,
     weeklyWins,
     planSummary,
+    seasonalHint,
     topPriorityTitle,
+    upcomingCalendar,
+    competitorWatchMessage: null,
   });
 }

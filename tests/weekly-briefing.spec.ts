@@ -7,23 +7,23 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("One Head of Marketing source ships unified briefing and demoted nav peers", async () => {
-  const page = readFileSync(
+test("Weekly Briefing ships on Head of Marketing surface without new nav destination", async () => {
+  const pageSource = readFileSync(
     join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
     "utf8",
   );
-  expect(page).toContain("Your Head of Marketing");
-  expect(page).toContain("Weekly Briefing");
-  expect(page).toContain("This Week");
-  expect(page).toContain("More tools");
+  expect(pageSource).toContain("Weekly Briefing");
+  expect(pageSource).toContain("This Week");
+  expect(pageSource).toContain("What I noticed");
+  expect(pageSource).toContain("Next Week");
+  expect(pageSource).toContain("timeRespectLabel");
 
   const nav = readFileSync(
     join(process.cwd(), "components/dashboard/dashboard-nav.tsx"),
     "utf8",
   );
   expect(nav).toContain("Your Head of Marketing");
-  expect(nav).toContain("primaryDashboardNavItems");
-  expect(nav).toContain("advancedDashboardNavItems");
+  expect(nav).not.toContain('label: "Weekly Briefing"');
 
   const gate = readFileSync(
     join(process.cwd(), "lib/trigger/scheduleActivation.ts"),

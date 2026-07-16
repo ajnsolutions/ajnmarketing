@@ -79,6 +79,7 @@ test("briefing unifies one primary CTA and Magic Moments", () => {
     businessName: "Acme Plumbing",
     websiteUrl: "https://acme.example",
     voiceNotes: "",
+    profileCreatedAt: "2026-06-01T00:00:00.000Z",
     gbpConnected: true,
     unansweredReviews: 0,
     pendingApprovals: 3,
@@ -88,16 +89,21 @@ test("briefing unifies one primary CTA and Magic Moments", () => {
     businessHealth: healthyScores,
     weeklyWins: { ...emptyWins, posts: 2, views: 120 },
     planSummary: "Focus on local trust this month.",
+    seasonalHint: null,
     topPriorityTitle: null,
+    upcomingCalendar: [],
+    competitorWatchMessage: null,
     now: new Date("2026-07-16T09:00:00"),
   });
 
   assert.match(briefing.greeting, /Sean/);
-  assert.equal(briefing.primaryAction.kind, "review_week");
+  assert.equal(briefing.experienceTitle, "Weekly Briefing");
+  assert.equal(briefing.primaryAction.kind, "approve_weekly_package");
   assert.equal(briefing.primaryAction.label, "Review This Week");
-  assert.ok(briefing.accomplishments.some((line) => /published/i.test(line)));
-  assert.ok(briefing.recommendation);
+  assert.ok(briefing.thisWeek.some((line) => /Published/i.test(line)));
+  assert.ok(briefing.recommendation?.expectedBenefit);
   assert.ok(briefing.estimatedReviewMinutes >= 2);
+  assert.equal(briefing.cadence.activeCadence, "weekly");
 });
 
 test("clear briefing celebrates instead of shaming", () => {
@@ -106,6 +112,7 @@ test("clear briefing celebrates instead of shaming", () => {
     businessName: "Acme",
     websiteUrl: "https://acme.example",
     voiceNotes: "",
+    profileCreatedAt: "2026-07-01T00:00:00.000Z",
     gbpConnected: true,
     unansweredReviews: 0,
     pendingApprovals: 0,
@@ -115,12 +122,16 @@ test("clear briefing celebrates instead of shaming", () => {
     businessHealth: { ...healthyScores, overall: 90 },
     weeklyWins: emptyWins,
     planSummary: null,
+    seasonalHint: null,
     topPriorityTitle: null,
+    upcomingCalendar: [],
+    competitorWatchMessage: null,
     now: new Date("2026-07-16T15:00:00"),
   });
 
   assert.equal(briefing.primaryAction.kind, "none");
-  assert.match(briefing.magicMoment ?? "", /enjoy your day|I've got this|let you know/i);
+  assert.match(briefing.magicMoment ?? "", /enjoy your week|under control|let you know/i);
+  assert.equal(briefing.timeRespectLabel, "Nothing to review");
   assert.equal(briefing.health.state, "excellent");
 });
 
@@ -157,12 +168,13 @@ test("One Head of Marketing docs and UI ship expected copy", () => {
     "utf8",
   );
   assert.match(page, /Your Head of Marketing/);
+  assert.match(page, /Weekly Briefing/);
   assert.match(page, /primaryAction\.label/);
   assert.match(page, /More tools/);
-  assert.match(page, /I've got this/);
 
   const service = readFileSync(join(root, "lib/head-of-marketing/service.ts"), "utf8");
   assert.match(service, /loadCommandCenterContextForCurrentUser/);
+  assert.match(service, /buildWeeklyBriefing/);
   assert.equal(service.includes("runMarketingDecisionEngine"), false);
   assert.equal(service.includes("generateCommandCenterInsights"), false);
 });
