@@ -6,6 +6,8 @@
 **Companions:** [`PUBLIC_PAGE_INVENTORY.md`](./PUBLIC_PAGE_INVENTORY.md) · [`PUBLIC_UX_IMPLEMENTATION_PLAN.md`](./PUBLIC_UX_IMPLEMENTATION_PLAN.md)
 
 > **Update (Phase 1 homepage redesign):** Messaging, nav IA, Features/About/Contact, six-step workflow, weekly approval + AI-search sections, and SEO primitives shipped on `redesign-public-homepage-phase1`. Privacy/Terms and real testimonials remain follow-ups.
+>
+> **Note (2026-07-16, architecture review):** This audit is a point-in-time snapshot from before the Phase 1 redesign above — sections below (e.g. the "Primary nav" description) describe the *pre-redesign* site and are now historical. For the current primary nav and page inventory, see `lib/site-content.ts` (`navLinks`) and the up-to-date [`PUBLIC_PAGE_INVENTORY.md`](./PUBLIC_PAGE_INVENTORY.md) table.
 
 ---
 
