@@ -115,7 +115,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
     const prepared = input.publishingReadyOrScheduled;
     candidates.push({
       category: "publishing",
-      eventKind: prepared > 0 ? "completed_work" : "completed_work",
+      eventKind: "completed_work",
       priority: 80,
       paragraphs: [
         prepared > 0

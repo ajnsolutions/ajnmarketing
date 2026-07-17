@@ -101,9 +101,9 @@ test("proactive presence reassures on a clear healthy week", () => {
     now: new Date("2026-07-16T09:00:00"),
   });
 
-  assert.match(presence.primary.message, /Good morning/i);
   assert.match(presence.primary.message, /on track|attention today/i);
   assert.equal(presence.primary.purpose, "reassure");
+  assert.equal(/Good morning|Good afternoon|Good evening/i.test(presence.primary.message), false);
 });
 
 test("proactive presence requests a meaningful decision without fear language", () => {

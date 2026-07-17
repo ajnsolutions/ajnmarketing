@@ -22,13 +22,6 @@ export type ProactiveInput = {
   now?: Date;
 };
 
-function timeGreeting(now = new Date()): "Good morning" | "Good afternoon" | "Good evening" {
-  const hour = now.getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 function focusTheme(monthlyFocus: MonthlyFocus): string {
   const first = monthlyFocus.priorities[0]?.label?.trim();
   if (!first) return "your marketing";
@@ -38,17 +31,17 @@ function focusTheme(monthlyFocus: MonthlyFocus): string {
 /**
  * Pick one primary proactive moment.
  * Hierarchy: meaningful decision → opportunity → celebration → progress → reassurance.
- * Never invents urgency.
+ * Never invents urgency. Avoids time-of-day greeting (page header already greets).
  */
-function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
-  const hello = timeGreeting(now);
+function buildPrimary(input: ProactiveInput): ProactiveMoment {
   const theme = focusTheme(input.monthlyFocus);
 
   if (input.primaryActionKind === "connect_google" || !input.gbpConnected) {
     return {
       purpose: "decision",
       label: "Needs your opinion",
-      message: `${hello}! I'd like us to connect Google when you have a moment so I can keep improving your local visibility.`,
+      message:
+        "I'd like us to connect Google when you have a moment so I can keep improving your local visibility.",
     };
   }
 
@@ -58,8 +51,8 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
       label: "Needs your opinion",
       message:
         input.publishingReadyOrScheduled > 0
-          ? `${hello}! I finished preparing next week's content — when you have a few minutes, I'd like your opinion.`
-          : `${hello}! I've prepared a few things for your opinion this week.`,
+          ? "I finished preparing next week's content — when you have a few minutes, I'd like your opinion."
+          : "I've prepared a few things for your opinion this week.",
     };
   }
 
@@ -67,7 +60,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "opportunity",
       label: "Opportunity",
-      message: `${hello}! I noticed a seasonal opportunity we should prepare for (${input.seasonalHint}).`,
+      message: `I noticed a seasonal opportunity we should prepare for (${input.seasonalHint}).`,
     };
   }
 
@@ -75,7 +68,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "celebrate",
       label: "Celebration",
-      message: `${hello}! Marketing Health looks excellent — everything is on track.`,
+      message: "Marketing Health looks excellent — everything is on track.",
     };
   }
 
@@ -84,7 +77,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "celebrate",
       label: "Celebration",
-      message: `${hello}! We received ${n} new review${n === 1 ? "" : "s"} this week.`,
+      message: `We received ${n} new review${n === 1 ? "" : "s"} this week.`,
     };
   }
 
@@ -92,7 +85,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "celebrate",
       label: "Progress",
-      message: `${hello}! Search visibility improved — I'm seeing steady profile interest.`,
+      message: "Search visibility improved — I'm seeing steady profile interest.",
     };
   }
 
@@ -100,7 +93,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "reassure",
       label: "Progress",
-      message: `${hello}! I've been working on ${theme}, and I finished preparing content for the week ahead.`,
+      message: `I've been working on ${theme}, and I finished preparing content for the week ahead.`,
     };
   }
 
@@ -108,7 +101,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "reassure",
       label: "Progress",
-      message: `${hello}! I've been learning your business and working on ${theme}.`,
+      message: `I've been learning your business and working on ${theme}.`,
     };
   }
 
@@ -116,7 +109,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "reassure",
       label: "Reassurance",
-      message: `${hello}! Everything is on track. Nothing needs your attention today.`,
+      message: "Everything is on track. Nothing needs your attention today.",
     };
   }
 
@@ -124,7 +117,8 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
     return {
       purpose: "opportunity",
       label: "Observation",
-      message: `${hello}! I'd recommend a calm look at a couple of items when you have a moment — nothing to stress about.`,
+      message:
+        "I'd recommend a calm look at a couple of items when you have a moment — nothing to stress about.",
     };
   }
 
@@ -132,7 +126,7 @@ function buildPrimary(input: ProactiveInput, now: Date): ProactiveMoment {
   return {
     purpose: "reassure",
     label: "Progress",
-    message: `${hello}! I'm focusing on the foundations that make ${theme} possible.`,
+    message: `I'm focusing on the foundations that make ${theme} possible.`,
   };
 }
 
@@ -204,8 +198,7 @@ function buildMoreUpdates(input: ProactiveInput, primary: ProactiveMoment): stri
  * Reuses Weekly Briefing / Monthly Focus / Health / wins signals — no new engines.
  */
 export function buildProactivePresence(input: ProactiveInput): ProactivePresence {
-  const now = input.now ?? new Date();
-  const primary = buildPrimary(input, now);
+  const primary = buildPrimary(input);
   const celebrations = buildCelebrations(input).filter(
     (c) => !primary.message.toLowerCase().includes(c.message.slice(0, 20).toLowerCase()),
   );
