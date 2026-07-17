@@ -78,6 +78,8 @@ It should **preview** the Head-of-Marketing story, not mirror the authenticated 
 
 ## 5. Migration stance from current IA
 
-**Shipped (One Head of Marketing):** Primary customer nav is now small — Your Head of Marketing, This Week, Google Profile, Business Settings — with former “what next?” peers (Plan, Tasks, Recommendations, Command Center, Analytics, …) under progressive disclosure (“More tools”). Routes remain; nothing is deleted. Details: [`ONE_HEAD_OF_MARKETING.md`](./ONE_HEAD_OF_MARKETING.md).
+**Shipped (One Head of Marketing):** Primary customer nav became small with former “what next?” peers under progressive disclosure (“More tools”). Routes remain; nothing is deleted. Details: [`ONE_HEAD_OF_MARKETING.md`](./ONE_HEAD_OF_MARKETING.md).
 
-**Still ahead:** fuller grouping into Marketing / Results / Business shells, and removing any remaining placeholder peers from advanced lists when they are not real.
+**Shipped (Great Simplification):** Primary destinations are now **Your Head of Marketing · Results · Library · Settings**. This Week and Google Profile are contextual / More tools; Analytics and Content are presentation-aliased to Results and Library. Details: [`GREAT_SIMPLIFICATION.md`](./GREAT_SIMPLIFICATION.md).
+
+**Still ahead:** deeper Results outcome stories, Library create nesting, and management-style control of how much advanced detail appears.

@@ -75,17 +75,24 @@ export function CommandCenterQuickActions() {
   }
 
   const actions = [
-    { label: "Generate Content", href: "/dashboard/content/generator" },
-    { label: "Refresh Website Analysis", onClick: runWebsiteAnalysisRefresh },
-    { label: "Refresh Marketing Plan", href: "/dashboard/marketing-plan" },
-    { label: "Sync Google Business", onClick: runSyncGoogle },
-    { label: "Open Approval Center", href: "/dashboard/approvals" },
-    { label: "Open Publishing Queue", href: "/dashboard/publishing" },
+    { label: "Create something new", href: "/dashboard/content/generator" },
+    { label: "Refresh website understanding", onClick: runWebsiteAnalysisRefresh },
+    { label: "This month's plan", href: "/dashboard/marketing-plan" },
+    { label: "Sync Google Profile", onClick: runSyncGoogle },
+    { label: "Review This Week", href: "/dashboard/approvals" },
+    { label: "Preparing for publication", href: "/dashboard/publishing" },
   ];
 
   return (
-    <div>
-      <div className="flex flex-wrap gap-2">
+    <details className="rounded-xl border border-slate-200/80 bg-white px-4 py-3 ring-1 ring-slate-900/[0.03]">
+      <summary className="cursor-pointer text-sm font-semibold text-navy-900">
+        Advanced actions
+      </summary>
+      <p className="mt-2 text-sm text-text-muted">
+        Prefer Your Head of Marketing for the weekly check-in. These tools stay available when you
+        need them.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
         {actions.map((action) =>
           action.href ? (
             <Link
@@ -103,9 +110,9 @@ export function CommandCenterQuickActions() {
               onClick={() => void action.onClick?.()}
               className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
             >
-              {busy === "sync" && action.label === "Sync Google Business"
+              {busy === "sync" && action.label === "Sync Google Profile"
                 ? "Syncing..."
-                : busy === "analysis" && action.label === "Refresh Website Analysis"
+                : busy === "analysis" && action.label === "Refresh website understanding"
                   ? "Refreshing..."
                   : action.label}
             </button>
@@ -113,7 +120,7 @@ export function CommandCenterQuickActions() {
         )}
       </div>
       {message && <p className="mt-3 text-sm text-rose-600">{message}</p>}
-    </div>
+    </details>
   );
 }
 

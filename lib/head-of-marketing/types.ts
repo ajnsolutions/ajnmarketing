@@ -74,11 +74,11 @@ export type HeadOfMarketingBriefing = {
   monthlyFocus: MonthlyFocus;
 };
 
-/** Customer-facing primary nav — one answer to “what next?” */
+/** Customer-facing primary nav — Great Simplification four destinations. */
 export const HOM_PRIMARY_NAV_HREFS = [
   "/dashboard",
-  "/dashboard/approvals",
-  "/dashboard/google-business-profile",
+  "/dashboard/results",
+  "/dashboard/library",
   "/dashboard/settings",
 ] as const;
 
@@ -87,18 +87,20 @@ export const HOM_PRIMARY_NAV_HREFS = [
  * Shown under progressive disclosure (“More tools”).
  */
 export const HOM_ADVANCED_NAV_HREFS = [
+  "/dashboard/approvals",
+  "/dashboard/google-business-profile",
   "/dashboard/command-center",
   "/dashboard/tasks",
   "/dashboard/marketing-plan",
   "/dashboard/marketing-recommendations",
   "/dashboard/publishing",
-  "/dashboard/content",
   "/dashboard/reviews",
-  "/dashboard/analytics",
   "/dashboard/website-analysis",
   "/dashboard/brand-voice",
   "/dashboard/ai-profile",
   "/dashboard/market-context",
   "/dashboard/notifications",
   "/dashboard/billing",
+  "/dashboard/content",
+  "/dashboard/analytics",
 ] as const;

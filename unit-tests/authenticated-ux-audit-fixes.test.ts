@@ -20,7 +20,7 @@ test("Approval Center no longer claims automatic publishing", () => {
   assert.equal(source.includes("From AI draft to published — automatically"), false);
   assert.match(source, /Ready to Publish/);
   assert.match(source, /before anything publishes/);
-  assert.match(source, /Review pending/);
+  assert.match(source, /Review This Week/);
 });
 
 test("Onboarding GBP step links to the real connect flow", () => {

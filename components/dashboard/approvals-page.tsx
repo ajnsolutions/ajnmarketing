@@ -218,7 +218,7 @@ function ApprovalCalendar({ items }: { items: ContentApproval[] }) {
     return (
       <DashboardEmptyState
         title="No items scheduled this week"
-        description="Generate content and send items to the Approval Center to see them here."
+        description="I'll bring drafts here when something needs your opinion."
         actionLabel="Generate content"
         actionHref="/dashboard/content/generator"
       />
@@ -358,24 +358,25 @@ export function ApprovalsPage({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            Approval Center
+            This Week
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Review and approve everything AJN AI has prepared for your business.
+            Here&apos;s what I&apos;d like your opinion on. One calm review — then I&apos;ll handle
+            the rest.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/dashboard/approvals/delivery"
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-          >
-            Preview Email/SMS Delivery
-          </Link>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
           <Link
             href="/dashboard/approvals?view=pending"
             className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
           >
-            Review pending
+            Review This Week
+          </Link>
+          <Link
+            href="/dashboard/approvals/delivery"
+            className="text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
+          >
+            Preview email delivery
           </Link>
         </div>
       </div>
@@ -436,7 +437,7 @@ export function ApprovalsPage({
           {aiPriorities.length === 0 ? (
             <DashboardEmptyState
               title="No pending approvals"
-              description="Generate content to send items to the Approval Center."
+              description="I'll prepare drafts when there's something worth your opinion."
               actionLabel="Generate content"
               actionHref="/dashboard/content/generator"
             />

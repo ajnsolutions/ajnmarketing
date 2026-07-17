@@ -94,12 +94,18 @@ function RecommendationCard({ recommendation }: { recommendation: AiRecommendati
   );
 }
 
-export function AnalyticsPage({ pageData }: { pageData: AnalyticsPageData | null }) {
+export function AnalyticsPage({
+  pageData,
+  experience = "results",
+}: {
+  pageData: AnalyticsPageData | null;
+  experience?: "results" | "analytics";
+}) {
   if (!pageData) {
     return (
       <DashboardEmptyState
-        title="Sign in to view analytics intelligence"
-        description="Analytics intelligence combines Google Business Profile insights, publishing history, and review performance into AI learning signals."
+        title="Sign in to view your results"
+        description="I'll show visibility, reviews, engagement, and progress once your workspace is connected."
       />
     );
   }
@@ -107,18 +113,21 @@ export function AnalyticsPage({ pageData }: { pageData: AnalyticsPageData | null
   const { feedback, snapshots, recommendations, contentPerformance } = pageData;
   const latestSnapshot = feedback.latestSnapshot ?? snapshots[0] ?? null;
   const hasData = feedback.available || snapshots.length > 0;
+  const isResults = experience === "results";
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            Analytics Intelligence
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
+            {isResults ? "What's improving" : "Results"}
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
+            Results
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Google Business Profile performance, publishing outcomes, and review signals transformed
-            into AI learning feedback for your marketing planner, content generator, and command
-            center. Existing Google Business Profile dashboards remain unchanged.
+            Visibility, reviews, engagement, and progress over time — so you can see what&apos;s
+            working without digging through raw reports.
           </p>
         </div>
         <AnalyticsRefreshButton />
@@ -128,20 +137,20 @@ export function AnalyticsPage({ pageData }: { pageData: AnalyticsPageData | null
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Learning Summary
+              How things look
             </p>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
               {feedback.learningSummary}
             </p>
             {latestSnapshot && (
               <p className="mt-3 text-xs text-slate-400">
-                Latest snapshot: {formatAnalyticsDate(latestSnapshot.snapshot_date)}
+                Updated {formatAnalyticsDate(latestSnapshot.snapshot_date)}
               </p>
             )}
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Opportunity Score
+              Opportunity
             </p>
             <p className="mt-2 text-4xl font-bold text-white">{feedback.opportunityScore}</p>
           </div>
@@ -150,9 +159,9 @@ export function AnalyticsPage({ pageData }: { pageData: AnalyticsPageData | null
 
       {!hasData && (
         <DashboardEmptyState
-          title="Analytics intelligence is warming up"
-          description="Connect Google Business Profile, sync live data, publish content, then refresh analytics intelligence."
-          actionLabel="Open Google Business Profile"
+          title="Results are warming up"
+          description="Once Google is connected and we've published together, I'll show what's improving here."
+          actionLabel="Open Google Profile"
           actionHref="/dashboard/google-business-profile"
         />
       )}
@@ -234,7 +243,7 @@ export function AnalyticsPage({ pageData }: { pageData: AnalyticsPageData | null
           </div>
 
           <SectionCard
-            title="AI Recommendations"
+            title="What I'd look at next"
             subtitle="Structured guidance stored for planner, content, and command center prompts."
           >
             {recommendations.length > 0 ? (

@@ -43,7 +43,11 @@ test("dashboard publishing page uses the read-only loader only", async () => {
     new URL("../app/dashboard/publishing/page.tsx", import.meta.url),
     "utf8"
   );
-  const contentPage = await fs.readFile(
+  const libraryPage = await fs.readFile(
+    new URL("../app/dashboard/library/page.tsx", import.meta.url),
+    "utf8"
+  );
+  const contentRedirect = await fs.readFile(
     new URL("../app/dashboard/content/page.tsx", import.meta.url),
     "utf8"
   );
@@ -51,8 +55,9 @@ test("dashboard publishing page uses the read-only loader only", async () => {
   assert.match(page, /getPublishingDashboardData/);
   assert.equal(/await\s+processDueScheduledPublishingJobs/.test(page), false);
   assert.equal(/await\s+executePublishingJobById/.test(page), false);
-  assert.match(contentPage, /getPublishingDashboardData/);
-  assert.equal(/await\s+processDueScheduledPublishingJobs/.test(contentPage), false);
+  assert.match(libraryPage, /getPublishingDashboardData/);
+  assert.equal(/await\s+processDueScheduledPublishingJobs/.test(libraryPage), false);
+  assert.match(contentRedirect, /redirect\("\/dashboard\/library"\)/);
 });
 
 test("shared execution path: worker and scheduler both call executePublishingJobById", async () => {
@@ -87,6 +92,7 @@ test("no remaining page-load callers of processDueScheduledPublishingJobsForUser
     "app/api/publishing/route.ts",
     "lib/publishing-server.ts",
     "app/dashboard/publishing/page.tsx",
+    "app/dashboard/library/page.tsx",
     "app/dashboard/content/page.tsx",
     "lib/command-center/context.ts",
     "lib/publishing-queue-server.ts",

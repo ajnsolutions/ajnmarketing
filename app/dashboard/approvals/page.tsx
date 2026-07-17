@@ -2,9 +2,8 @@ import { ApprovalsPage } from "@/components/dashboard/approvals-page";
 import { getApprovalDashboardData } from "@/lib/content-approval-server";
 
 export const metadata = {
-  title: "Approval Center",
-  description:
-    "Review and approve everything AJN AI has prepared for your business.",
+  title: "This Week",
+  description: "Review what your Head of Marketing prepared for your opinion this week.",
 };
 
 export default async function ApprovalsRoute({

@@ -22,3 +22,4 @@ Implementation notes (post-blueprint):
 - WEEKLY_BRIEFING.md — primary customer communication / HoM check-in
 - HEAD_OF_MARKETING_JOURNAL.md — narrative window into HoM work (not an audit log)
 - MONTHLY_FOCUS.md — living “what we’re working toward this month” (not a traditional plan)
+- GREAT_SIMPLIFICATION.md — navigation/IA simplification sprint (presentation only)

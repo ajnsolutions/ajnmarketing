@@ -12,18 +12,16 @@ const iconHome = (
   </svg>
 );
 
-const iconApprovals = (
+const iconResults = (
   <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l2 2 4-4" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M4 19h16M8 17v-5M12 17V8M16 17v-3" />
   </svg>
 );
 
-const iconGbp = (
+const iconLibrary = (
   <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 4h10v16H7z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 8h5M9.5 12h5M9.5 16h3.5" />
   </svg>
 );
 
@@ -34,28 +32,47 @@ const iconSettings = (
   </svg>
 );
 
-/** Primary customer nav — ONE place for “what next?” plus support destinations. */
+/**
+ * Great Simplification primary nav — four destinations only.
+ * Weekly review and Google remain contextual (HoM CTA / Settings / More).
+ */
 export const primaryDashboardNavItems: DashboardNavItem[] = [
   { label: "Your Head of Marketing", href: "/dashboard", icon: iconHome },
-  { label: "This Week", href: "/dashboard/approvals", icon: iconApprovals },
-  { label: "Google Profile", href: "/dashboard/google-business-profile", icon: iconGbp },
-  { label: "Business Settings", href: "/dashboard/settings", icon: iconSettings },
+  { label: "Results", href: "/dashboard/results", icon: iconResults },
+  { label: "Library", href: "/dashboard/library", icon: iconLibrary },
+  { label: "Settings", href: "/dashboard/settings", icon: iconSettings },
 ];
 
 /** Early post-onboarding: same calm primary set. */
 export const focusedDashboardNavHrefs = [
   "/dashboard",
-  "/dashboard/approvals",
-  "/dashboard/google-business-profile",
+  "/dashboard/results",
+  "/dashboard/library",
   "/dashboard/settings",
 ] as const;
 
 /** Advanced tools — progressive disclosure only (routes still work). */
 export const advancedDashboardNavItems: DashboardNavItem[] = [
   {
-    label: "Detailed workspace",
-    href: "/dashboard/command-center",
-    icon: iconHome,
+    label: "This Week",
+    href: "/dashboard/approvals",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
+    label: "Google Profile",
+    href: "/dashboard/google-business-profile",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+      </svg>
+    ),
   },
   {
     label: "What I'm working on",
@@ -68,20 +85,11 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "What I'm preparing",
+    label: "Preparing for publication",
     href: "/dashboard/publishing",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5M5 12l7-7 7 7" />
-      </svg>
-    ),
-  },
-  {
-    label: "This month's plan",
-    href: "/dashboard/marketing-plan",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
       </svg>
     ),
   },
@@ -95,21 +103,11 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "What's improving",
-    href: "/dashboard/analytics",
+    label: "This month's plan",
+    href: "/dashboard/marketing-plan",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M4 19h16M8 17v-5M12 17V8M16 17v-3" />
-      </svg>
-    ),
-  },
-  {
-    label: "Content",
-    href: "/dashboard/content",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7 4h10v16H7z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 8h5M9.5 12h5M9.5 16h3.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
       </svg>
     ),
   },
@@ -123,15 +121,6 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "Website analysis",
-    href: "/dashboard/website-analysis",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10" />
-      </svg>
-    ),
-  },
-  {
     label: "Brand voice",
     href: "/dashboard/brand-voice",
     icon: (
@@ -141,23 +130,18 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "Notifications",
-    href: "/dashboard/notifications",
+    label: "Website analysis",
+    href: "/dashboard/website-analysis",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10" />
       </svg>
     ),
   },
   {
-    label: "Billing",
-    href: "/dashboard/billing",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16v8H4z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 11h16M8 15h3" />
-      </svg>
-    ),
+    label: "Detailed workspace",
+    href: "/dashboard/command-center",
+    icon: iconHome,
   },
 ];
 
