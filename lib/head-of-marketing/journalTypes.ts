@@ -1,3 +1,5 @@
+import type { ActivityEventKind } from "@/lib/head-of-marketing/proactiveTypes";
+
 /**
  * Internal journal categories — not shown as customer taxonomy.
  * Narrative is primary; categories support future filtering/styles.
@@ -33,6 +35,8 @@ export type HeadOfMarketingJournalEntry = {
   paragraphs: string[];
   /** Internal only */
   category: JournalCategory;
+  /** Timeline event kind — chronological storytelling, not a notification taxonomy */
+  eventKind: ActivityEventKind;
 };
 
 export type HeadOfMarketingJournal = {
@@ -40,4 +44,6 @@ export type HeadOfMarketingJournal = {
   entries: HeadOfMarketingJournalEntry[];
   closing: string | null;
   detail: JournalDetailSupport;
+  /** Customer-facing section title for progressive disclosure */
+  timelineTitle: "Recent Activity";
 };

@@ -50,9 +50,10 @@ Voice patterns: I noticed… / I prepared… / I’m monitoring… / I’m learn
 On Your Head of Marketing:
 
 1. Greeting + **Weekly Briefing** (decision surface — see [`WEEKLY_BRIEFING.md`](./WEEKLY_BRIEFING.md))  
-2. **This Month’s Focus** — shared direction (see [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md))  
-3. **Journal** — progressive disclosure (“While you were busy”)  
-4. More tools — advanced paths  
+2. **Proactive presence** — one calm primary moment (see [`PROACTIVE_HEAD_OF_MARKETING.md`](./PROACTIVE_HEAD_OF_MARKETING.md))  
+3. **This Month’s Focus** — shared direction (see [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md))  
+4. **Recent Activity (Journal)** — progressive disclosure (“While you were busy”) with activity event kinds  
+5. More tools — advanced paths  
 
 The Journal supports the Weekly Briefing and reinforces Monthly Focus; it does **not** become another “what should I do next?” center, and it never replaces or duplicates the briefing. One primary CTA remains on the briefing.
 

@@ -1,5 +1,6 @@
 import type { CommandCenterBusinessHealth, CommandCenterWeeklyWins } from "@/lib/command-center/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
+import type { ActivityEventKind } from "@/lib/head-of-marketing/proactiveTypes";
 import type {
   HeadOfMarketingJournal,
   HeadOfMarketingJournalEntry,
@@ -37,6 +38,7 @@ const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as c
 
 type Candidate = {
   category: JournalCategory;
+  eventKind: ActivityEventKind;
   paragraphs: string[];
   priority: number;
 };
@@ -67,6 +69,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (input.isEarlyCustomer || !input.gbpConnected) {
     candidates.push({
       category: "learning",
+      eventKind: "observation",
       priority: 100,
       paragraphs: [
         "I'm learning how your business shows up online.",
@@ -78,6 +81,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (input.websiteUrl?.trim()) {
     candidates.push({
       category: "website",
+      eventKind: "observation",
       priority: 40,
       paragraphs: [
         "I'm learning from your website so my recommendations stay true to your business.",
@@ -88,6 +92,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (input.seasonalHint) {
     candidates.push({
       category: "planning",
+      eventKind: "recommendation",
       priority: 85,
       paragraphs: [
         `I prepared content ideas based on upcoming seasonal demand (${input.seasonalHint}).`,
@@ -97,6 +102,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   } else if (input.planSummary) {
     candidates.push({
       category: "planning",
+      eventKind: "progress",
       priority: 70,
       paragraphs: [
         "I'm planning the week around what we already set out to accomplish this month.",
@@ -109,6 +115,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
     const prepared = input.publishingReadyOrScheduled;
     candidates.push({
       category: "publishing",
+      eventKind: prepared > 0 ? "completed_work" : "completed_work",
       priority: 80,
       paragraphs: [
         prepared > 0
@@ -123,6 +130,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
     if (input.unansweredReviews > 0) {
       candidates.push({
         category: "reviews",
+        eventKind: "decision_requested",
         priority: 90,
         paragraphs: [
           "I'm watching your Google reviews closely.",
@@ -132,6 +140,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
     } else {
       candidates.push({
         category: "reviews",
+        eventKind: wins.reviews >= 3 ? "celebration" : "progress",
         priority: 75,
         paragraphs: [
           memory
@@ -146,6 +155,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (wins.views > 0 && input.gbpConnected) {
     candidates.push({
       category: "search_visibility",
+      eventKind: wins.views > 100 ? "milestone" : "observation",
       priority: 60,
       paragraphs: [
         "I'm monitoring your search visibility.",
@@ -157,6 +167,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (input.openRecommendations > 0 && !input.seasonalHint) {
     candidates.push({
       category: "market_trends",
+      eventKind: "recommendation",
       priority: 65,
       paragraphs: [
         "I noticed a few opportunities worth a calm look.",
@@ -168,6 +179,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (input.healthState === "excellent" || input.healthState === "healthy") {
     candidates.push({
       category: "marketing_health",
+      eventKind: input.healthState === "excellent" ? "celebration" : "progress",
       priority: 55,
       paragraphs: [
         input.healthState === "excellent"
@@ -179,6 +191,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   } else if (input.healthState === "needs_attention") {
     candidates.push({
       category: "marketing_health",
+      eventKind: "observation",
       priority: 88,
       paragraphs: [
         "I'm watching a couple of items so nothing slips.",
@@ -188,6 +201,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   } else {
     candidates.push({
       category: "marketing_health",
+      eventKind: "progress",
       priority: 95,
       paragraphs: [
         "I'm focused on getting the foundations steady for you.",
@@ -199,6 +213,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (input.pendingApprovals > 0) {
     candidates.push({
       category: "community",
+      eventKind: "decision_requested",
       priority: 92,
       paragraphs: [
         "I've prepared your Weekly Briefing.",
@@ -210,6 +225,7 @@ function buildCandidates(input: JournalInput, now: Date): Candidate[] {
   if (candidates.length === 0) {
     candidates.push({
       category: "monitoring",
+      eventKind: "observation",
       priority: 50,
       paragraphs: [
         "Everything is running smoothly.",
@@ -237,6 +253,7 @@ export function buildHeadOfMarketingJournal(input: JournalInput): HeadOfMarketin
     dayLabel: DAY_LABELS[Math.min(index, DAY_LABELS.length - 1)]!,
     paragraphs: candidate.paragraphs,
     category: candidate.category,
+    eventKind: candidate.eventKind,
   }));
 
   const intro = input.isEarlyCustomer
@@ -257,6 +274,7 @@ export function buildHeadOfMarketingJournal(input: JournalInput): HeadOfMarketin
     entries,
     closing,
     detail: DETAIL,
+    timelineTitle: "Recent Activity",
   };
 }
 

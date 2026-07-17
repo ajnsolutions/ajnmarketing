@@ -44,12 +44,13 @@ Marketing Plan, Tasks, Recommendations, Command Center, Assisted Pilot, and Anal
 Landing feels like checking in with a Head of Marketing via the **Weekly Briefing** (same `/dashboard` surface — see [`WEEKLY_BRIEFING.md`](./WEEKLY_BRIEFING.md)):
 
 - Greeting + Marketing Health  
+- **Proactive presence** — one calm primary moment (+ More updates) — see [`PROACTIVE_HEAD_OF_MARKETING.md`](./PROACTIVE_HEAD_OF_MARKETING.md)  
 - **This Month’s Focus** — shared priorities for the month — see [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md)  
 - This Week / What I noticed / What I’d recommend / Next Week  
 - Estimated review time  
 - **One** primary CTA (`Review This Week` or connect Google or calm “nothing needed”)  
 - Magic Moments when clear (“Everything is under control”, “Go enjoy your week”)  
-- **Journal** (progressive disclosure): day-by-day narrative of quiet work — see [`HEAD_OF_MARKETING_JOURNAL.md`](./HEAD_OF_MARKETING_JOURNAL.md)
+- **Recent Activity / Journal** (progressive disclosure): day-by-day narrative with activity kinds — see [`HEAD_OF_MARKETING_JOURNAL.md`](./HEAD_OF_MARKETING_JOURNAL.md)
 
 Early customers still get First Five Minutes setup when Google isn't connected.
 
