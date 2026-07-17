@@ -20,6 +20,6 @@ test("Magic first-five-minutes source ships calm Head of Marketing onboarding", 
     join(process.cwd(), "components/dashboard/first-days-home.tsx"),
     "utf8",
   );
-  expect(home).toContain("Setup progress");
+  expect(home).toContain("Getting to know your business");
   expect(home).toContain("Everything is underway");
 });
