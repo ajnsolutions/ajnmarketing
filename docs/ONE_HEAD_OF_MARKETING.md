@@ -57,17 +57,17 @@ Early customers still get First Five Minutes setup when Google isn't connected.
 
 ## Navigation simplification
 
-**Primary nav**
+**Primary nav** (Great Simplification)
 
 - Your Head of Marketing  
-- This Week (approvals)  
-- Google Profile  
-- Business Settings  
+- Results  
+- Library  
+- Settings  
 
 **Progressive disclosure**
 
-- “More tools” reveals Plan, Tasks, Recommendations, Publishing, Analytics, Command Center, etc.  
-- No functionality removed — only demoted from equal peer status.
+- “More tools” reveals This Week, Google Profile, Plan, Tasks, Recommendations, Preparing for publication, Detailed workspace, etc.  
+- No functionality removed — only demoted from equal peer status. See [`GREAT_SIMPLIFICATION.md`](./GREAT_SIMPLIFICATION.md).
 
 Customer language examples:
 

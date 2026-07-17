@@ -323,9 +323,9 @@ test("empty state: copy describes analysis honestly, without implying an active 
     "components/dashboard/marketing-recommendations-page.tsx",
     "utf-8"
   );
-  assert.match(source, /No recommendations yet/);
-  assert.match(source, /analysis of your business signals/);
-  assert.match(source, /None have been generated for your account yet/);
+  assert.match(source, /Nothing to recommend yet/);
+  assert.match(source, /Google activity, reviews, and seasonal timing/);
+  assert.match(source, /Weekly Briefing remains the calm place/);
   assert.equal(source.includes("spots timely opportunities"), false);
   assert.equal(source.includes("they'll show up here"), false);
 });

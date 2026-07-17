@@ -1,14 +1,12 @@
-import { AnalyticsPage } from "@/components/dashboard/analytics-page";
-import { getAnalyticsPageData } from "@/lib/analytics-server";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Analytics",
+  title: "Results",
   description:
-    "Google Business Profile analytics intelligence that feeds your AI marketing planner and content generator.",
+    "What's improving for your business — visibility, reviews, engagement, and Marketing Health.",
 };
 
-export default async function AnalyticsRoute() {
-  const pageData = await getAnalyticsPageData();
-
-  return <AnalyticsPage pageData={pageData} />;
+/** Canonical customer destination is Results; keep this route for deep links. */
+export default function AnalyticsRoute() {
+  redirect("/dashboard/results");
 }

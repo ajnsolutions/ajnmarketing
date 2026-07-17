@@ -144,7 +144,13 @@ test("clear briefing celebrates instead of shaming", () => {
 
 test("primary nav excludes competing decision centers", () => {
   assert.ok((HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard"));
-  assert.ok((HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard/approvals"));
+  assert.ok((HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard/results"));
+  assert.ok((HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard/library"));
+  assert.ok((HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard/settings"));
+  assert.equal(
+    (HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard/approvals"),
+    false,
+  );
   assert.equal(
     (HOM_PRIMARY_NAV_HREFS as readonly string[]).includes("/dashboard/tasks"),
     false,
@@ -162,6 +168,7 @@ test("primary nav excludes competing decision centers", () => {
   assert.ok(
     (HOM_ADVANCED_NAV_HREFS as readonly string[]).includes("/dashboard/command-center"),
   );
+  assert.ok((HOM_ADVANCED_NAV_HREFS as readonly string[]).includes("/dashboard/approvals"));
 });
 
 test("One Head of Marketing docs and UI ship expected copy", () => {

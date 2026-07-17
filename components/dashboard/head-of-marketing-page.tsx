@@ -155,12 +155,13 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
         </p>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {[
-            { href: "/dashboard/approvals", label: "Here's what needs your opinion" },
-            { href: "/dashboard/publishing", label: "Here's what I'm preparing" },
-            { href: "/dashboard/marketing-plan", label: "Here's what I'd like to accomplish this month" },
-            { href: "/dashboard/marketing-recommendations", label: "Here's what I'd recommend next" },
-            { href: "/dashboard/tasks", label: "Here's what I'm working on" },
-            { href: "/dashboard/analytics", label: "Here's what's improving" },
+            { href: "/dashboard/approvals", label: "This Week — needs your opinion" },
+            { href: "/dashboard/results", label: "Results — what's improving" },
+            { href: "/dashboard/library", label: "Library — what we've created" },
+            { href: "/dashboard/publishing", label: "Preparing for publication" },
+            { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
+            { href: "/dashboard/tasks", label: "What I'm working on" },
+            { href: "/dashboard/settings", label: "Settings" },
             { href: "/dashboard/command-center", label: "Detailed workspace (advanced)" },
           ].map((item) => (
             <li key={item.href}>

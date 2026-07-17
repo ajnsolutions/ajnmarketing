@@ -44,11 +44,11 @@ export function MarketingAgentTasksPage({ data }: { data: MarketingAgentTasksPag
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            Today&apos;s Marketing Tasks
+            What I&apos;m working on
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Your AI Marketing Agent monitors your plan, approvals, publishing queue, and business
-            intelligence to surface the highest-priority work for today.
+            The highest-priority work I&apos;m advancing for your business today — so you can see
+            progress without managing a task board.
           </p>
         </div>
         <MarketingAgentRefreshButton />
@@ -56,11 +56,11 @@ export function MarketingAgentTasksPage({ data }: { data: MarketingAgentTasksPag
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Tasks Due Today", value: String(data.stats.dueToday) },
-          { label: "High Priority", value: String(data.stats.highPriorityPending) },
-          { label: "Completed Today", value: String(data.stats.completedToday) },
+          { label: "Due today", value: String(data.stats.dueToday) },
+          { label: "High priority", value: String(data.stats.highPriorityPending) },
+          { label: "Completed today", value: String(data.stats.completedToday) },
           {
-            label: "Top Priority",
+            label: "Top focus",
             value: data.stats.topPriority?.title ?? "None yet",
           },
         ].map((item) => (
@@ -82,7 +82,7 @@ export function MarketingAgentTasksPage({ data }: { data: MarketingAgentTasksPag
 
       {data.tasks.length === 0 ? (
         <SectionCard title="Today's Tasks" subtitle="AI-recommended work for today">
-          <EmptyState message="No tasks yet. Click Refresh Tasks to let the AI Marketing Agent plan today's work." />
+          <EmptyState message="Nothing on my list yet. Refresh to see what I'm planning to work on today." />
         </SectionCard>
       ) : (
         <>
@@ -126,22 +126,22 @@ export function MarketingAgentTasksPage({ data }: { data: MarketingAgentTasksPag
 
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/dashboard/marketing-plan"
+          href="/dashboard"
           className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
         >
-          Open Marketing Plan →
+          Your Head of Marketing →
         </Link>
         <Link
           href="/dashboard/approvals"
           className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
         >
-          Open Approval Center →
+          Review This Week →
         </Link>
         <Link
           href="/dashboard/publishing"
           className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
         >
-          Open Publishing Queue →
+          Preparing for publication →
         </Link>
       </div>
     </div>

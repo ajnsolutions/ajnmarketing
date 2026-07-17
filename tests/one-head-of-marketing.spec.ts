@@ -22,6 +22,8 @@ test("One Head of Marketing source ships unified briefing and demoted nav peers"
     "utf8",
   );
   expect(nav).toContain("Your Head of Marketing");
+  expect(nav).toContain("Results");
+  expect(nav).toContain("Library");
   expect(nav).toContain("primaryDashboardNavItems");
   expect(nav).toContain("advancedDashboardNavItems");
 

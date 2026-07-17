@@ -123,14 +123,17 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
     <div className="space-y-8">
       <div>
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-          AI Marketing Command Center
+          Detailed workspace
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
           {data.businessName}
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-text-muted sm:text-base">
-          Your AI Chief Marketing Officer briefing — priorities, health, momentum, and recommended
-          actions in one place.
+          An advanced view of priorities, health, and momentum. For most weeks,{" "}
+          <Link href="/dashboard" className="font-medium text-brand-600 hover:text-brand-700">
+            Your Head of Marketing
+          </Link>{" "}
+          is the calmer place to start.
         </p>
       </div>
 
@@ -149,7 +152,7 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
         <div className="xl:col-span-2">
         <SectionCard
           title="Today's Priorities"
-          subtitle="From your AI Marketing Agent"
+          subtitle="What I'm prioritizing today"
           action="View all tasks"
           actionHref="/dashboard/tasks"
         >

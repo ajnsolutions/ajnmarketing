@@ -51,17 +51,17 @@ export function MarketingRecommendationsPage({
     <div className="space-y-8">
       <div className="max-w-3xl">
         <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-          Marketing Recommendations
+          What I&apos;d recommend
         </h1>
         <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-          Prioritized next steps based on your business signals. Generate a draft when you&apos;re
-          ready, then review it in Approval Center before anything goes live.
+          Prioritized next steps for your business. When you&apos;re ready, I&apos;ll prepare a draft
+          for your opinion before anything goes live.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Active recommendations", value: String(data.summary.activeCount) },
+          { label: "Active ideas", value: String(data.summary.activeCount) },
           {
             label: "Ready for a draft",
             value: String(data.summary.readyForDraftCount),
@@ -86,15 +86,15 @@ export function MarketingRecommendationsPage({
       </div>
 
       <SectionCard
-        title="Your prioritized recommendations"
-        subtitle="Sorted by priority. Drafts stay in Approval Center until you approve them."
+        title="Prioritized next steps"
+        subtitle="Sorted by what matters most. Drafts wait for your opinion before anything goes live."
       >
         {data.items.length === 0 ? (
           <DashboardEmptyState
-            title="No recommendations yet"
-            description="Recommendations are created from an analysis of your business signals — Google posting activity, reviews, seasonal timing, and more. None have been generated for your account yet. In the meantime, explore Market Context to see the signals AJN has gathered so far."
-            actionLabel="Open Market Context"
-            actionHref="/dashboard/market-context"
+            title="Nothing to recommend yet"
+            description="I'll surface ideas from your Google activity, reviews, and seasonal timing as soon as I have enough signal. In the meantime, your Weekly Briefing remains the calm place to check in."
+            actionLabel="Your Head of Marketing"
+            actionHref="/dashboard"
           />
         ) : (
           <div className="space-y-5">

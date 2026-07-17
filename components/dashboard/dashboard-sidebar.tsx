@@ -98,9 +98,9 @@ export function DashboardSidebar({
         {nav}
         <div className="mt-auto border-t border-white/10 px-4 py-4">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-            Customer workspace
+            Your workspace
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-300">AJN Marketing workspace</p>
+          <p className="mt-1 text-sm font-medium text-slate-300">Head of Marketing</p>
         </div>
       </aside>
 

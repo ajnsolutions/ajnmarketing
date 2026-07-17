@@ -33,7 +33,7 @@ export function MarketingAgentRefreshButton() {
         disabled={refreshing}
         className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {refreshing ? "Refreshing Tasks..." : "Refresh Tasks"}
+        {refreshing ? "Refreshing…" : "Refresh what I'm working on"}
       </button>
       {error && <p className="max-w-sm text-right text-sm text-rose-600">{error}</p>}
     </div>

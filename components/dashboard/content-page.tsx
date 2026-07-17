@@ -104,35 +104,44 @@ export function ContentPage({
   publishingStats,
   approvalStats,
   pendingApprovals,
+  experience = "library",
 }: {
   publishingItems: PublishingQueueItem[];
   publishingStats: PublishingQueueStats;
   approvalStats: ContentApprovalStats;
   pendingApprovals: ContentApproval[];
+  experience?: "library" | "content";
 }) {
   const scheduledItems = publishingItems.filter((item) => item.status === "scheduled");
+  const isLibrary = experience === "library";
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">Content</h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
+            {isLibrary ? "Everything we've created together" : "Library"}
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
+            Library
+          </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Review, approve, and schedule AI-generated content for your marketing channels.
+            Content, posts, and assets we&apos;ve prepared for your business — ready for review or
+            already on their way out.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col items-start gap-2 sm:items-end">
           <Link
             href="/dashboard/content/generator"
             className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
           >
-            Generate Content
+            Create something new
           </Link>
           <Link
             href="/dashboard/approvals"
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
+            className="text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
           >
-            Open Approval Center
+            Review This Week
           </Link>
         </div>
       </div>
@@ -194,8 +203,8 @@ export function ContentPage({
           {pendingApprovals.length === 0 ? (
             <DashboardEmptyState
               title="No content awaiting approval"
-              description="Generate content to send items to the Approval Center before they can be published."
-              actionLabel="Generate Content"
+              description="Create something new and I'll bring it here for your opinion before anything goes live."
+              actionLabel="Create something new"
               actionHref="/dashboard/content/generator"
             />
           ) : (
@@ -214,7 +223,7 @@ export function ContentPage({
                     href="/dashboard/approvals"
                     className="mt-4 inline-flex text-sm font-semibold text-brand-600 hover:text-brand-700"
                   >
-                    Review in Approval Center →
+                    Review This Week →
                   </Link>
                 </article>
               ))}
@@ -222,32 +231,32 @@ export function ContentPage({
           )}
         </SectionCard>
 
-        <SectionCard title="Next Steps" subtitle="Move content through your workflow">
+        <SectionCard title="How we work together" subtitle="A simple rhythm">
           <div className="space-y-3 text-sm leading-7 text-slate-600">
-            <p>1. Generate content with the AI Content Generator.</p>
-            <p>2. Review and approve items in the Approval Center.</p>
-            <p>3. Add approved content to the Publishing Queue.</p>
-            <p>4. Schedule or mark items as published manually.</p>
+            <p>1. I prepare drafts for your business.</p>
+            <p>2. You review what needs your opinion this week.</p>
+            <p>3. I prepare approved work for publication.</p>
+            <p>4. You enjoy the results.</p>
           </div>
           <Link
             href="/dashboard/content/generator"
             className="mt-4 inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
           >
-            Generate Content
+            Create something new
           </Link>
         </SectionCard>
       </div>
 
       <SectionCard
-        title="Publishing Queue"
-        subtitle="Ready, scheduled, published, and failed items"
+        title="Preparing for publication"
+        subtitle="Ready, scheduled, published, and anything that needs a second look"
       >
         <div className="mb-4 flex justify-end">
           <Link
             href="/dashboard/publishing"
             className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
-            Open Publishing Queue →
+            Open preparation list →
           </Link>
         </div>
         <PublishingQueuePanel
@@ -262,8 +271,8 @@ export function ContentPage({
         {scheduledItems.length === 0 ? (
           <DashboardEmptyState
             title="No scheduled content yet"
-            description="Approve content and add it to the Publishing Queue to schedule posts."
-            actionLabel="Open Publishing Queue"
+            description="Approve this week's items and I'll prepare them for publication."
+            actionLabel="Preparing for publication"
             actionHref="/dashboard/publishing"
           />
         ) : (
