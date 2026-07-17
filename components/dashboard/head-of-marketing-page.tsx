@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
+import { MonthlyFocusSection } from "@/components/dashboard/monthly-focus-section";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 
@@ -53,7 +54,9 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
         )}
       </header>
 
-      <section className="mt-10 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
+      <MonthlyFocusSection focus={briefing.monthlyFocus} />
+
+      <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
         <Section title="This Week">
           <ul className="space-y-3">
             {briefing.thisWeek.map((item) => (

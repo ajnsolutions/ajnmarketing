@@ -5,6 +5,7 @@ import type {
   CommandCenterWeeklyWins,
 } from "@/lib/command-center/types";
 import { buildHeadOfMarketingJournal } from "@/lib/head-of-marketing/journal";
+import { buildMonthlyFocus } from "@/lib/head-of-marketing/monthlyFocus";
 import { resolveMarketingHealth } from "@/lib/head-of-marketing/marketingHealth";
 import type {
   BriefingCadenceSupport,
@@ -28,6 +29,8 @@ export type WeeklyBriefingInput = {
   businessHealth: CommandCenterBusinessHealth;
   weeklyWins: CommandCenterWeeklyWins;
   planSummary: string | null;
+  marketingThemes: string[];
+  businessGoals: string[];
   seasonalHint: string | null;
   topPriorityTitle: string | null;
   upcomingCalendar: CommandCenterCalendarItem[];
@@ -336,11 +339,29 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     now: input.now,
   });
 
+  const monthlyFocus = buildMonthlyFocus({
+    gbpConnected: input.gbpConnected,
+    unansweredReviews: input.unansweredReviews,
+    openRecommendations: input.openRecommendations,
+    healthState: health.state,
+    planSummary: input.planSummary,
+    marketingThemes: input.marketingThemes,
+    businessGoals: input.businessGoals,
+    seasonalHint: input.seasonalHint,
+    isEarlyCustomer,
+    now: input.now,
+  });
+
+  const healthWithFocus = {
+    ...health,
+    reason: `${monthlyFocus.progressLine} ${health.reason}`,
+  };
+
   return {
     experienceTitle: "Weekly Briefing",
     greeting,
     lead,
-    health,
+    health: healthWithFocus,
     thisWeek: buildThisWeek(input),
     noticed: buildNoticed(input),
     recommendation: buildRecommendation(input),
@@ -354,6 +375,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     businessName: input.businessName || "your business",
     cadence: CADENCE,
     journal,
+    monthlyFocus,
   };
 }
 

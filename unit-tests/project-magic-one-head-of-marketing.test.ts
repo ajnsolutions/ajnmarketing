@@ -89,6 +89,8 @@ test("briefing unifies one primary CTA and Magic Moments", () => {
     businessHealth: healthyScores,
     weeklyWins: { ...emptyWins, posts: 2, views: 120 },
     planSummary: "Focus on local trust this month.",
+    marketingThemes: ["Local visibility"],
+    businessGoals: ["More positive reviews"],
     seasonalHint: null,
     topPriorityTitle: null,
     upcomingCalendar: [],
@@ -105,6 +107,7 @@ test("briefing unifies one primary CTA and Magic Moments", () => {
   assert.ok(briefing.estimatedReviewMinutes >= 2);
   assert.equal(briefing.cadence.activeCadence, "weekly");
   assert.ok(briefing.journal.entries.length > 0);
+  assert.equal(briefing.monthlyFocus.title, "This Month's Focus");
 });
 
 test("clear briefing celebrates instead of shaming", () => {
@@ -123,6 +126,8 @@ test("clear briefing celebrates instead of shaming", () => {
     businessHealth: { ...healthyScores, overall: 90 },
     weeklyWins: emptyWins,
     planSummary: null,
+    marketingThemes: [],
+    businessGoals: [],
     seasonalHint: null,
     topPriorityTitle: null,
     upcomingCalendar: [],

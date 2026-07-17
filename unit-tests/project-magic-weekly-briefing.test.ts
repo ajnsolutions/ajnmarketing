@@ -41,6 +41,8 @@ const baseInput = {
   businessHealth: healthyScores,
   weeklyWins: { ...emptyWins, posts: 1, reviews: 2, views: 40 },
   planSummary: "Build local trust.",
+  marketingThemes: ["Local visibility"] as string[],
+  businessGoals: ["More positive reviews"] as string[],
   seasonalHint: "Back-to-school (August)",
   topPriorityTitle: null as string | null,
   upcomingCalendar: [
