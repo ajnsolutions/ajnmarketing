@@ -201,8 +201,8 @@ export function ContentPage({
         >
           {pendingApprovals.length === 0 ? (
             <DashboardEmptyState
-              title="No content awaiting approval"
-              description="Create something new and I'll bring it here for your opinion before anything goes live."
+              title="Nothing needs your opinion yet"
+              description="Create something new and I'll bring it here before anything goes live."
               actionLabel="Create something new"
               actionHref="/dashboard/content/generator"
             />
@@ -220,7 +220,7 @@ export function ContentPage({
                   <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">{item.content}</p>
                   <Link
                     href="/dashboard/approvals"
-                    className="mt-4 inline-flex text-sm font-semibold text-brand-600 hover:text-brand-700"
+                    className="hom-focusable mt-4 inline-flex text-sm font-semibold text-brand-600 hover:text-brand-700"
                   >
                     Review This Week →
                   </Link>
@@ -239,7 +239,7 @@ export function ContentPage({
           </div>
           <Link
             href="/dashboard/content/generator"
-            className="mt-4 inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+            className="hom-focusable mt-4 inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
           >
             Create something new
           </Link>
@@ -253,7 +253,7 @@ export function ContentPage({
         <div className="mb-4 flex justify-end">
           <Link
             href="/dashboard/publishing"
-            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+            className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
             Open preparation list →
           </Link>
@@ -266,10 +266,10 @@ export function ContentPage({
         />
       </SectionCard>
 
-      <SectionCard title="Scheduled Content" subtitle="Upcoming publishing queue items">
+      <SectionCard title="Coming up" subtitle="Updates I've scheduled to go live">
         {scheduledItems.length === 0 ? (
           <DashboardEmptyState
-            title="No scheduled content yet"
+            title="Nothing scheduled yet"
             description="Approve this week's items and I'll prepare them for publication."
             actionLabel="Preparing for publication"
             actionHref="/dashboard/publishing"

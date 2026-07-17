@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 
 const FEATURE_COPY: Record<
@@ -61,14 +60,6 @@ export function DashboardFeaturePlaceholder({ title }: { title: string }) {
         </p>
       </div>
       <DashboardEmptyState {...copy} />
-      {title === "Settings" && (
-        <p className="text-center text-sm text-text-muted">
-          Prefer the main hub?{" "}
-          <Link href="/dashboard/settings" className="hom-focusable font-semibold text-brand-600">
-            Open Settings
-          </Link>
-        </p>
-      )}
     </div>
   );
 }
