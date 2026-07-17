@@ -13,7 +13,7 @@ test("Weekly Briefing ships on Head of Marketing surface without new nav destina
     "utf8",
   );
   expect(pageSource).toContain("Weekly Briefing");
-  expect(pageSource).toContain("This Week");
+  expect(pageSource).toContain("What I handled");
   expect(pageSource).toContain("What I noticed");
   expect(pageSource).toContain("Next Week");
   expect(pageSource).toContain("timeRespectLabel");

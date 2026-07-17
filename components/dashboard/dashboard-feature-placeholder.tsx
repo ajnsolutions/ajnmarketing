@@ -6,53 +6,69 @@ const FEATURE_COPY: Record<
   { title: string; description: string; actionLabel?: string; actionHref?: string }
 > = {
   Analytics: {
-    title: "Analytics coming soon",
+    title: "Results live next door",
     description:
-      "Performance analytics will appear here once your website analysis, Google Business Profile, and publishing activity are connected.",
-    actionLabel: "Open Command Center",
-    actionHref: "/dashboard/command-center",
+      "What's improving now lives under Results — visibility, reviews, engagement, and progress over time.",
+    actionLabel: "Open Results",
+    actionHref: "/dashboard/results",
   },
   "Market Context": {
-    title: "Market context coming soon",
+    title: "I'm still gathering local context",
     description:
-      "Competitive and local market insights will appear here once live monitoring is enabled for your business.",
-    actionLabel: "Open Command Center",
-    actionHref: "/dashboard/command-center",
+      "When local and seasonal signals are ready, I'll fold the useful parts into your Weekly Briefing.",
+    actionLabel: "Your Head of Marketing",
+    actionHref: "/dashboard",
   },
   Notifications: {
-    title: "Notifications coming soon",
+    title: "Notifications are coming soon",
     description:
-      "Approval updates, publishing reminders, and review alerts will appear here as workflow notifications are enabled.",
-    actionLabel: "Open Approval Center",
-    actionHref: "/dashboard/approvals",
+      "For now, your Weekly Briefing is the calm place I'll ask for your opinion — no noisy alerts.",
+    actionLabel: "Your Head of Marketing",
+    actionHref: "/dashboard",
   },
   Settings: {
-    title: "Settings coming soon",
+    title: "Settings are coming soon",
     description:
-      "Team access, notification preferences, and workspace settings will be available in a future release.",
+      "Team access and preferences will live here later. Google Profile and brand voice are available today.",
+    actionLabel: "Open Google Profile",
+    actionHref: "/dashboard/google-business-profile",
   },
   Billing: {
-    title: "Billing coming soon",
+    title: "Billing is coming soon",
     description:
-      "Subscription and invoice management will be available here when billing is enabled for your workspace.",
+      "Subscription and invoices will appear here when billing is enabled for your business.",
+    actionLabel: "Back to Settings",
+    actionHref: "/dashboard/settings",
   },
 };
 
 export function DashboardFeaturePlaceholder({ title }: { title: string }) {
   const copy = FEATURE_COPY[title] ?? {
-    title: `${title} coming soon`,
-    description: "This section will be available in a future release.",
+    title: `${title} is coming soon`,
+    description: "I'll let you know when this is ready — nothing important is locked away.",
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">{title}</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
+          Your Head of Marketing
+        </p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">{title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-text-muted sm:text-base">
-          Manage your AJN Marketing workspace from one place.
+          Configuration stays separate from your Weekly Briefing so setup never interrupts our
+          check-in.
         </p>
       </div>
       <DashboardEmptyState {...copy} />
+      {title === "Settings" && (
+        <p className="text-center text-sm text-text-muted">
+          Prefer the main hub?{" "}
+          <Link href="/dashboard/settings" className="hom-focusable font-semibold text-brand-600">
+            Open Settings
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

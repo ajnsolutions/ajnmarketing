@@ -61,7 +61,7 @@ export function buildFirstDaysHomeModel(input: {
     },
     {
       id: "gbp",
-      label: "Google Business Profile connected",
+      label: "Google Profile connected",
       complete: input.gbpConnected,
     },
     {

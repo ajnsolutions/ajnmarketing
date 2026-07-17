@@ -64,7 +64,11 @@ export function PublishingHistoryDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading && <p className="text-sm text-text-muted">Loading history...</p>}
+          {loading && (
+            <p className="text-sm text-text-muted" aria-live="polite">
+              Reviewing recent publishing activity…
+            </p>
+          )}
           {error && <p className="text-sm text-rose-600">{error}</p>}
           {!loading && history.length === 0 && (
             <p className="text-sm text-text-muted">No history entries yet.</p>

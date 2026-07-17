@@ -22,9 +22,9 @@ export function FirstDaysHome({ model }: { model: FirstDaysHomeModel }) {
       <section className="mt-10 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-navy-900">Setup progress</h2>
+            <h2 className="text-lg font-bold text-navy-900">Getting to know your business</h2>
             <p className="mt-1 text-sm text-text-muted">
-              {completedCount} of {model.setupItems.length} underway or complete
+              {completedCount} of {model.setupItems.length} steps underway or complete
             </p>
           </div>
         </div>
@@ -60,7 +60,7 @@ export function FirstDaysHome({ model }: { model: FirstDaysHomeModel }) {
         <div className="mt-8">
           {model.primaryAction.kind === "none" ? (
             <div className="rounded-xl border border-emerald-200 bg-growth-50/60 px-5 py-4">
-              <p className="text-base font-semibold text-navy-900">Nothing.</p>
+              <p className="text-base font-semibold text-navy-900">Everything looks great.</p>
               <p className="mt-1 text-sm leading-7 text-text-muted">
                 Everything is underway. I&apos;ll let you know when I need you.
               </p>
@@ -68,7 +68,7 @@ export function FirstDaysHome({ model }: { model: FirstDaysHomeModel }) {
           ) : (
             <Link
               href={model.primaryAction.href}
-              className="inline-flex rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
+              className="hom-focusable motion-safe-lift inline-flex rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
             >
               {model.primaryAction.label}
             </Link>
@@ -77,12 +77,12 @@ export function FirstDaysHome({ model }: { model: FirstDaysHomeModel }) {
       </section>
 
       <p className="mt-8 text-center text-sm text-text-muted">
-        Prefer the full workspace?{" "}
+        Need to adjust something?{" "}
         <Link
-          href="/dashboard/command-center"
-          className="font-semibold text-brand-600 hover:text-brand-700"
+          href="/dashboard/settings"
+          className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
         >
-          Open Command Center
+          Open Settings
         </Link>
       </p>
     </div>

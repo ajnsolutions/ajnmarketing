@@ -2,7 +2,7 @@ import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 
 export function MonthlyFocusSection({ focus }: { focus: MonthlyFocus }) {
   return (
-    <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
+    <section className="hom-disclose-content mt-8 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-6">
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
         What we&apos;re working toward
       </p>

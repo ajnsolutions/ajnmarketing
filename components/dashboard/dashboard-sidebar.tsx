@@ -50,7 +50,7 @@ export function DashboardSidebar({
         key={item.href}
         href={item.href}
         onClick={onNavigate}
-        className={`flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
+        className={`hom-focusable flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
           active
             ? "bg-white text-[#081426] shadow-sm"
             : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
@@ -70,14 +70,19 @@ export function DashboardSidebar({
       <nav className="flex flex-col gap-2">{primaryItems.map(renderLink)}</nav>
 
       {showAdvanced && (
-        <details className="mt-6 group">
-          <summary className="cursor-pointer list-none px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
+        <details className="group mt-6">
+          <summary className="hom-focusable cursor-pointer list-none rounded-md px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
             <span className="inline-flex items-center gap-2">
               More tools
-              <span className="text-slate-600 transition-transform group-open:rotate-90">›</span>
+              <span
+                className="text-slate-600 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
+                aria-hidden
+              >
+                ›
+              </span>
             </span>
           </summary>
-          <nav className="mt-3 flex flex-col gap-2">
+          <nav className="hom-disclose-content mt-3 flex flex-col gap-2" aria-label="More tools">
             {advancedDashboardNavItems.map(renderLink)}
           </nav>
         </details>

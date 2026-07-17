@@ -309,7 +309,7 @@ export function PublishingQueuePanel({
       )}
 
       {filteredItems.length === 0 ? (
-        <EmptyState message="No publishing queue items yet. Add approved content from the Approval Center." />
+        <EmptyState message="Nothing is preparing for publication yet. Approve This Week's items and I'll take it from there." />
       ) : showSections ? (
         <div className="space-y-8">
           {renderSection("Ready to Publish", grouped.ready)}

@@ -53,7 +53,7 @@ export function MarketingRecommendationActions({
           href="/dashboard/approvals"
           className="inline-flex rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          View Draft in Approval Center
+          Review draft This Week
         </Link>
         {linkedDraftTitle && (
           <p className="text-sm text-text-muted">
@@ -102,7 +102,7 @@ export function MarketingRecommendationActions({
             href="/dashboard/approvals"
             className="mt-1 inline-block font-semibold text-brand-700 hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           >
-            Review in Approval Center →
+            Review This Week →
           </Link>
         </div>
       )}

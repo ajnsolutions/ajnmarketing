@@ -45,11 +45,11 @@ function SectionCard({
 function StatusBadge({
   status,
 }: {
-  status: "Ready for Review" | "Approved" | "Scheduled" | "Published" | "Awaiting Approval";
+  status: "Ready for Review" | "Approved" | "Scheduled" | "Published" | "Needs your opinion";
 }) {
   const styles = {
     "Ready for Review": "bg-amber-50 text-amber-700 ring-amber-100",
-    "Awaiting Approval": "bg-amber-50 text-amber-700 ring-amber-100",
+    "Needs your opinion": "bg-amber-50 text-amber-700 ring-amber-100",
     Approved: "bg-growth-50 text-growth-500 ring-emerald-100",
     Scheduled: "bg-brand-50 text-brand-600 ring-brand-100",
     Published: "bg-slate-100 text-slate-700 ring-slate-200",
@@ -104,7 +104,7 @@ export function ContentPage({
   publishingStats,
   approvalStats,
   pendingApprovals,
-  experience = "library",
+  experience: _experience = "library",
 }: {
   publishingItems: PublishingQueueItem[];
   publishingStats: PublishingQueueStats;
@@ -112,34 +112,34 @@ export function ContentPage({
   pendingApprovals: ContentApproval[];
   experience?: "library" | "content";
 }) {
+  void _experience;
   const scheduledItems = publishingItems.filter((item) => item.status === "scheduled");
-  const isLibrary = experience === "library";
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-            {isLibrary ? "Everything we've created together" : "Library"}
+            Your Head of Marketing
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
             Library
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Content, posts, and assets we&apos;ve prepared for your business — ready for review or
+            Everything we&apos;ve created together — content, posts, and assets ready for review or
             already on their way out.
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <Link
             href="/dashboard/content/generator"
-            className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
+            className="hom-focusable motion-safe-lift inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
           >
             Create something new
           </Link>
           <Link
             href="/dashboard/approvals"
-            className="text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
+            className="hom-focusable text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
           >
             Review This Week
           </Link>
@@ -148,9 +148,9 @@ export function ContentPage({
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Awaiting Approval"
+          label="Needs your opinion"
           value={String(approvalStats.pending)}
-          helper="Needs review"
+          helper="This Week"
           trend="neutral"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -172,7 +172,7 @@ export function ContentPage({
         <KpiCard
           label="Scheduled"
           value={String(publishingStats.scheduled)}
-          helper="Publishing queue"
+          helper="Preparing to go live"
           trend="up"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -195,9 +195,8 @@ export function ContentPage({
 
       <div className="grid gap-6 xl:grid-cols-3">
         <SectionCard
-          title="Pending Approvals"
-          subtitle="Content waiting for review before publishing"
-          action="View all"
+          title="Waiting for your opinion"
+          subtitle="Drafts ready for a calm look before anything goes live"
           className="xl:col-span-2"
         >
           {pendingApprovals.length === 0 ? (
@@ -216,7 +215,7 @@ export function ContentPage({
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <h3 className="font-semibold text-navy-900">{item.title}</h3>
-                    <StatusBadge status="Awaiting Approval" />
+                    <StatusBadge status="Needs your opinion" />
                   </div>
                   <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">{item.content}</p>
                   <Link
