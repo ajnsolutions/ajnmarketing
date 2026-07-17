@@ -128,7 +128,7 @@ test("Weekly Briefing docs and orchestration stay presentation-only", () => {
     "utf8",
   );
   assert.match(page, /Weekly Briefing/);
-  assert.match(page, /This Week/);
+  assert.match(page, /What I handled|This Week/);
   assert.match(page, /Next Week/);
   assert.match(page, /timeRespectLabel/);
 });

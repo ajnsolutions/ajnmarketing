@@ -14,7 +14,7 @@ test("One Head of Marketing source ships unified briefing and demoted nav peers"
   );
   expect(page).toContain("Your Head of Marketing");
   expect(page).toContain("Weekly Briefing");
-  expect(page).toContain("This Week");
+  expect(page).toContain("What I handled");
   expect(page).toContain("More tools");
 
   const nav = readFileSync(

@@ -37,7 +37,7 @@ export function SettingsHub() {
     <div className="mx-auto max-w-3xl space-y-8">
       <header>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-          Configuration
+          Your Head of Marketing
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">Settings</h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-text-muted">
@@ -51,7 +51,7 @@ export function SettingsHub() {
           <li key={item.href}>
             <Link
               href={item.href}
-              className="flex flex-col gap-1 px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
+              className="hom-focusable flex flex-col gap-1 px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
             >
               <span className="text-sm font-semibold text-navy-900">{item.label}</span>
               <span className="text-sm leading-6 text-text-muted">{item.description}</span>
@@ -62,7 +62,10 @@ export function SettingsHub() {
 
       <p className="text-sm leading-7 text-text-muted">
         Looking for this week&apos;s review? Start from{" "}
-        <Link href="/dashboard" className="font-medium text-brand-600 hover:text-brand-700">
+        <Link
+          href="/dashboard"
+          className="hom-focusable font-medium text-brand-600 hover:text-brand-700"
+        >
           Your Head of Marketing
         </Link>
         .

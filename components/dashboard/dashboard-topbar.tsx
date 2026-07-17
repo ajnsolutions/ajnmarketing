@@ -22,7 +22,7 @@ export function DashboardTopbar({
             type="button"
             aria-label="Open menu"
             onClick={onMenuClick}
-            className="inline-flex rounded-xl border border-slate-200 bg-white p-2 text-navy-900 shadow-sm transition-colors hover:bg-slate-50 lg:hidden"
+            className="hom-focusable inline-flex rounded-xl border border-slate-200 bg-white p-2 text-navy-900 shadow-sm transition-colors hover:bg-slate-50 lg:hidden"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
@@ -58,7 +58,7 @@ export function DashboardTopbar({
           <Link
             href="/dashboard/notifications"
             aria-label="Notifications"
-            className="relative inline-flex rounded-xl border border-slate-200 bg-white p-2.5 text-navy-900 shadow-sm transition-colors hover:bg-slate-50"
+            className="hom-focusable relative inline-flex rounded-xl border border-slate-200 bg-white p-2.5 text-navy-900 shadow-sm transition-colors hover:bg-slate-50"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17H9m10-2.5a6.5 6.5 0 0 0-13 0V18a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3.5Z" />
@@ -67,7 +67,8 @@ export function DashboardTopbar({
 
           <Link
             href="/dashboard/settings"
-            className="inline-flex max-w-[220px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition-colors hover:bg-slate-50 sm:gap-3 sm:pr-4"
+            aria-label={`Settings for ${userName}`}
+            className="hom-focusable inline-flex max-w-[220px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition-colors hover:bg-slate-50 sm:gap-3 sm:pr-4"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#081426] text-xs font-bold text-white">
               {userInitials}

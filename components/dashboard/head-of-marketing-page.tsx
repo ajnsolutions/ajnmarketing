@@ -59,7 +59,7 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
       <MonthlyFocusSection focus={briefing.monthlyFocus} />
 
       <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
-        <Section title="This Week">
+        <Section title="What I handled">
           <ul className="space-y-3">
             {briefing.thisWeek.map((item) => (
               <li key={item} className="flex items-start gap-3 text-sm leading-6 text-navy-900">
@@ -133,7 +133,7 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link
                 href={briefing.primaryAction.href}
-                className="inline-flex rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
+                className="hom-focusable motion-safe-lift inline-flex rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
               >
                 {briefing.primaryAction.label}
               </Link>
@@ -147,33 +147,43 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
 
       <HeadOfMarketingJournalSection journal={briefing.journal} />
 
-      <details className="mt-8 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-sm shadow-sm ring-1 ring-slate-900/[0.03]">
-        <summary className="cursor-pointer font-semibold text-navy-900">
-          More tools
+      <details className="group mt-8 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-sm shadow-sm ring-1 ring-slate-900/[0.03]">
+        <summary className="hom-focusable cursor-pointer list-none font-semibold text-navy-900 marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            More tools
+            <span
+              className="text-slate-400 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
+              aria-hidden
+            >
+              ›
+            </span>
+          </span>
         </summary>
-        <p className="mt-2 text-text-muted">
-          The Weekly Briefing is your check-in. Tools below still work — they stay out of the way so
-          you have one calm place to decide what matters.
-        </p>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-          {[
-            { href: "/dashboard/approvals", label: "This Week — needs your opinion" },
-            { href: "/dashboard/publishing", label: "Preparing for publication" },
-            { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
-            { href: "/dashboard/tasks", label: "What I'm working on" },
-            { href: "/dashboard/google-business-profile", label: "Google Profile" },
-            { href: "/dashboard/command-center", label: "Detailed workspace (advanced)" },
-          ].map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className="font-medium text-brand-600 transition-colors hover:text-brand-700"
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="hom-disclose-content">
+          <p className="mt-2 text-text-muted">
+            The Weekly Briefing is your check-in. Tools below still work — they stay out of the way so
+            you have one calm place to decide what matters.
+          </p>
+          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+            {[
+              { href: "/dashboard/approvals", label: "This Week — needs your opinion" },
+              { href: "/dashboard/publishing", label: "Preparing for publication" },
+              { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
+              { href: "/dashboard/tasks", label: "What I'm working on" },
+              { href: "/dashboard/google-business-profile", label: "Google Profile" },
+              { href: "/dashboard/command-center", label: "Detailed workspace (advanced)" },
+            ].map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="hom-focusable font-medium text-brand-600 transition-colors hover:text-brand-700"
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </details>
     </div>
   );

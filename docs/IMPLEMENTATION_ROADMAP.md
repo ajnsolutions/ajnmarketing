@@ -51,7 +51,8 @@
 - **Shipped (Head of Marketing Journal):** Narrative “While you were busy” journal nested inside the Weekly Briefing via progressive disclosure (orchestration only). See [`HEAD_OF_MARKETING_JOURNAL.md`](./HEAD_OF_MARKETING_JOURNAL.md).  
 - **Shipped (Monthly Focus):** Living “This Month’s Focus” on the same HoM surface — presentation over existing plan themes/goals and signals; horizon hook for future Quarterly/Annual. See [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md).  
 - **Shipped (Great Simplification):** Primary nav → Your Head of Marketing / Results / Library / Settings; analytics→Results and content→Library presentation aliases; Settings hub; customer language + one-primary-CTA pass. See [`GREAT_SIMPLIFICATION.md`](./GREAT_SIMPLIFICATION.md).  
-- **Shipped (Proactive Head of Marketing):** Lightweight proactive presence + Journal activity event kinds + celebrations/reassurance under progressive disclosure (orchestration only). See [`PROACTIVE_HEAD_OF_MARKETING.md`](./PROACTIVE_HEAD_OF_MARKETING.md).
+- **Shipped (Proactive Head of Marketing):** Lightweight proactive presence + Journal activity event kinds + celebrations/reassurance under progressive disclosure (orchestration only). See [`PROACTIVE_HEAD_OF_MARKETING.md`](./PROACTIVE_HEAD_OF_MARKETING.md).  
+- **Shipped (Product Readiness):** Copy/a11y/loading/motion polish across primary customer destinations; walkthrough fixes; presentation only. See [`PRODUCT_READINESS.md`](./PRODUCT_READINESS.md).
 
 ---
 

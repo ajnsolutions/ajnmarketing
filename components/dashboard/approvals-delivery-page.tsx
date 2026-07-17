@@ -129,7 +129,7 @@ export function ApprovalsDeliveryPage() {
             href="/dashboard/approvals"
             className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
-            ← Back to Approval Center
+            ← Back to This Week
           </Link>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
             Email & SMS Approval Delivery
@@ -260,7 +260,7 @@ export function ApprovalsDeliveryPage() {
                     <p className="text-xs font-semibold text-brand-600">{item.type}</p>
                     <p className="mt-1 text-sm font-medium text-navy-900">{item.title}</p>
                     <p className="mt-2 text-xs text-text-muted">
-                      Approve or edit from Approval Center — not from this preview.
+                      Approve or edit from This Week — not from this preview.
                     </p>
                   </div>
                 ))}

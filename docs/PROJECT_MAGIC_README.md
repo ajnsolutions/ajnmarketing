@@ -24,3 +24,4 @@ Implementation notes (post-blueprint):
 - MONTHLY_FOCUS.md — living “what we’re working toward this month” (not a traditional plan)
 - GREAT_SIMPLIFICATION.md — navigation/IA simplification sprint (presentation only)
 - PROACTIVE_HEAD_OF_MARKETING.md — proactive presence + richer activity timeline (presentation only)
+- PRODUCT_READINESS.md — polish sprint: copy, a11y, loading, motion, walkthrough (presentation only)

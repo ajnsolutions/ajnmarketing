@@ -81,9 +81,7 @@ function RecommendationCard({ recommendation }: { recommendation: AiRecommendati
         <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
           {formatAnalyticsCategory(recommendation.category)}
         </span>
-        <span className="text-[11px] font-medium text-text-muted">
-          {Math.round(recommendation.confidence)}% confidence
-        </span>
+        <span className="text-[11px] font-medium text-text-muted">Worth a look</span>
       </div>
       <h3 className="mt-3 font-semibold text-navy-900">{recommendation.title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{recommendation.description}</p>
@@ -105,7 +103,7 @@ export function AnalyticsPage({
     return (
       <DashboardEmptyState
         title="Sign in to view your results"
-        description="I'll show visibility, reviews, engagement, and progress once your workspace is connected."
+        description="I'll show visibility, reviews, engagement, and progress once you're signed in."
       />
     );
   }
@@ -120,10 +118,10 @@ export function AnalyticsPage({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-            {isResults ? "What's improving" : "Results"}
+            Your Head of Marketing
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            Results
+            {isResults ? "Results" : "What's improving"}
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
             Visibility, reviews, engagement, and progress over time — so you can see what&apos;s
@@ -193,8 +191,8 @@ export function AnalyticsPage({
 
           <div className="grid gap-6 xl:grid-cols-2">
             <SectionCard
-              title="Top Insights"
-              subtitle="Highest-confidence signals from your latest analytics loop."
+              title="What stands out"
+              subtitle="The clearest signals from how your marketing is performing."
             >
               {feedback.topInsights.length > 0 ? (
                 <ul className="space-y-3">
@@ -208,13 +206,16 @@ export function AnalyticsPage({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-text-muted">Refresh analytics to generate insights.</p>
+                <p className="text-sm text-text-muted">
+                  Refresh results after we&apos;ve published together and I&apos;ll share what stands
+                  out.
+                </p>
               )}
             </SectionCard>
 
             <SectionCard
-              title="Performance Trends"
-              subtitle="Detected patterns across visibility, posting, reviews, and seasonality."
+              title="How things are trending"
+              subtitle="Patterns across visibility, posts, reviews, and the season."
             >
               {feedback.performanceTrends.length > 0 ? (
                 <div className="space-y-3">
@@ -225,9 +226,6 @@ export function AnalyticsPage({
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <TrendBadge direction={trend.direction} />
-                        <span className="text-[11px] font-medium text-text-muted">
-                          {Math.round(trend.confidence)}% confidence
-                        </span>
                       </div>
                       <h3 className="mt-3 font-semibold text-navy-900">{trend.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-slate-600">{trend.summary}</p>
@@ -236,7 +234,7 @@ export function AnalyticsPage({
                 </div>
               ) : (
                 <p className="text-sm text-text-muted">
-                  Trends appear after multiple snapshots are captured.
+                  Trends become clearer after a few weeks of activity together.
                 </p>
               )}
             </SectionCard>
@@ -244,7 +242,7 @@ export function AnalyticsPage({
 
           <SectionCard
             title="What I'd look at next"
-            subtitle="Structured guidance stored for planner, content, and command center prompts."
+            subtitle="Calm next steps based on what I'm seeing for your business."
           >
             {recommendations.length > 0 ? (
               <div className="grid gap-4 lg:grid-cols-2">
@@ -254,16 +252,16 @@ export function AnalyticsPage({
               </div>
             ) : (
               <p className="text-sm text-text-muted">
-                No active recommendations yet. Refresh analytics after your next Google sync or
-                publish cycle.
+                Nothing urgent to recommend yet. I&apos;ll share ideas after your next Google sync or
+                publish.
               </p>
             )}
           </SectionCard>
 
           <div className="grid gap-6 xl:grid-cols-2">
             <SectionCard
-              title="Content Winners"
-              subtitle="Published content with the strongest estimated performance."
+              title="What's working well"
+              subtitle="Published updates that are performing strongest."
             >
               {feedback.contentWinners.length > 0 ? (
                 <div className="space-y-3">
@@ -288,14 +286,14 @@ export function AnalyticsPage({
                 </div>
               ) : (
                 <p className="text-sm text-text-muted">
-                  Publish verified Google content to populate winner analysis.
+                  Once we&apos;ve published together, I&apos;ll highlight what&apos;s landing best.
                 </p>
               )}
             </SectionCard>
 
             <SectionCard
-              title="Content Underperformers"
-              subtitle="Published content that may need stronger hooks, offers, or timing."
+              title="What we can improve"
+              subtitle="Published updates that may need a stronger hook, offer, or timing."
             >
               {feedback.contentUnderperformers.length > 0 ? (
                 <div className="space-y-3">
@@ -320,54 +318,71 @@ export function AnalyticsPage({
                 </div>
               ) : (
                 <p className="text-sm text-text-muted">
-                  Underperformer detection activates once enough content performance records exist.
+                  I&apos;ll call out quieter posts once we have enough activity to be fair.
                 </p>
               )}
             </SectionCard>
           </div>
 
           {contentPerformance.length > 0 && (
-            <SectionCard
-              title="Recent Content Performance"
-              subtitle="Estimated per-post performance allocated from aggregate Google Business Profile signals."
-            >
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-text-muted">
-                      <th className="px-3 py-2 font-semibold">Content</th>
-                      <th className="px-3 py-2 font-semibold">Provider</th>
-                      <th className="px-3 py-2 font-semibold">Score</th>
-                      <th className="px-3 py-2 font-semibold">Views</th>
-                      <th className="px-3 py-2 font-semibold">Clicks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {contentPerformance.map((item) => (
-                      <tr key={item.id} className="border-b border-slate-50">
-                        <td className="px-3 py-3 font-medium text-navy-900">
-                          {String(item.metadata.title ?? "Published content")}
-                        </td>
-                        <td className="px-3 py-3 text-slate-600">{item.provider.replace(/_/g, " ")}</td>
-                        <td className="px-3 py-3 text-slate-600">{Math.round(item.performance_score)}</td>
-                        <td className="px-3 py-3 text-slate-600">{item.views.toLocaleString()}</td>
-                        <td className="px-3 py-3 text-slate-600">{item.clicks.toLocaleString()}</td>
+            <details className="rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03]">
+              <summary className="hom-focusable cursor-pointer list-none px-5 py-4 text-base font-bold tracking-tight text-navy-900 marker:content-none sm:px-6 [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-2">
+                  Recent post details
+                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                    Optional
+                  </span>
+                </span>
+              </summary>
+              <div className="hom-disclose-content border-t border-slate-100 px-5 py-4 sm:px-6 sm:py-5">
+                <p className="mb-4 text-sm text-text-muted">
+                  A closer look at recent posts — useful when you want the numbers behind the story.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-text-muted">
+                        <th className="px-3 py-2 font-semibold">Content</th>
+                        <th className="px-3 py-2 font-semibold">Channel</th>
+                        <th className="px-3 py-2 font-semibold">Score</th>
+                        <th className="px-3 py-2 font-semibold">Views</th>
+                        <th className="px-3 py-2 font-semibold">Clicks</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {contentPerformance.map((item) => (
+                        <tr key={item.id} className="border-b border-slate-50">
+                          <td className="px-3 py-3 font-medium text-navy-900">
+                            {String(item.metadata.title ?? "Published content")}
+                          </td>
+                          <td className="px-3 py-3 text-slate-600">
+                            {item.provider.replace(/_/g, " ")}
+                          </td>
+                          <td className="px-3 py-3 text-slate-600">
+                            {Math.round(item.performance_score)}
+                          </td>
+                          <td className="px-3 py-3 text-slate-600">{item.views.toLocaleString()}</td>
+                          <td className="px-3 py-3 text-slate-600">{item.clicks.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </SectionCard>
+            </details>
           )}
 
           <p className="text-sm text-text-muted">
-            Need raw Google metrics and review management? Continue using{" "}
-            <Link href="/dashboard/google-business-profile" className="font-semibold text-brand-600">
-              Google Business Profile
+            Want Google reviews or profile details? Visit{" "}
+            <Link
+              href="/dashboard/google-business-profile"
+              className="hom-focusable font-semibold text-brand-600"
+            >
+              Google Profile
             </Link>{" "}
-            and{" "}
-            <Link href="/dashboard/publishing" className="font-semibold text-brand-600">
-              Publishing
+            or{" "}
+            <Link href="/dashboard/publishing" className="hom-focusable font-semibold text-brand-600">
+              Preparing for publication
             </Link>
             .
           </p>
