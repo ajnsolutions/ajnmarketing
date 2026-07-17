@@ -6,6 +6,7 @@ import type {
 } from "@/lib/command-center/types";
 import { buildHeadOfMarketingJournal } from "@/lib/head-of-marketing/journal";
 import { buildMonthlyFocus } from "@/lib/head-of-marketing/monthlyFocus";
+import { buildProactivePresence } from "@/lib/head-of-marketing/proactive";
 import { resolveMarketingHealth } from "@/lib/head-of-marketing/marketingHealth";
 import type {
   BriefingCadenceSupport,
@@ -315,9 +316,6 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
   const estimatedReviewMinutes = estimateReviewMinutes(input);
   const name = firstNameFrom(input.userName);
   const greeting = `${timeOfDayGreeting(input.now)}, ${name}.`;
-  const lead = isEarlyCustomer
-    ? "I'm getting started on your marketing..."
-    : "While you were running your business...";
 
   const journal = buildHeadOfMarketingJournal({
     gbpConnected: input.gbpConnected,
@@ -357,10 +355,25 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     reason: `${monthlyFocus.progressLine} ${health.reason}`,
   };
 
+  const proactive = buildProactivePresence({
+    healthState: health.state,
+    gbpConnected: input.gbpConnected,
+    unansweredReviews: input.unansweredReviews,
+    pendingApprovals: input.pendingApprovals,
+    openRecommendations: input.openRecommendations,
+    publishingReadyOrScheduled: input.publishingReadyOrScheduled,
+    weeklyWins: input.weeklyWins,
+    seasonalHint: input.seasonalHint,
+    monthlyFocus,
+    isEarlyCustomer,
+    primaryActionKind: primaryAction.kind,
+    now: input.now,
+  });
+
   return {
     experienceTitle: "Weekly Briefing",
     greeting,
-    lead,
+    lead: proactive.primary.message,
     health: healthWithFocus,
     thisWeek: buildThisWeek(input),
     noticed: buildNoticed(input),
@@ -376,6 +389,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     cadence: CADENCE,
     journal,
     monthlyFocus,
+    proactive,
   };
 }
 

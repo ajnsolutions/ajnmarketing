@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
 import { MonthlyFocusSection } from "@/components/dashboard/monthly-focus-section";
+import { ProactivePresenceSection } from "@/components/dashboard/proactive-presence";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 
@@ -48,11 +49,12 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
             {briefing.health.label}
           </span>
         </div>
-        <p className="mt-4 text-lg leading-8 text-navy-900">{briefing.lead}</p>
         {briefing.relationshipMemory && (
-          <p className="mt-3 text-sm leading-7 text-text-muted">{briefing.relationshipMemory}</p>
+          <p className="mt-4 text-sm leading-7 text-text-muted">{briefing.relationshipMemory}</p>
         )}
       </header>
+
+      <ProactivePresenceSection presence={briefing.proactive} />
 
       <MonthlyFocusSection focus={briefing.monthlyFocus} />
 

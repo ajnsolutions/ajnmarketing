@@ -1,5 +1,6 @@
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
+import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
 
 export type MarketingHealthState =
   | "excellent"
@@ -72,6 +73,8 @@ export type HeadOfMarketingBriefing = {
   journal: HeadOfMarketingJournal;
   /** Living monthly priorities — not a traditional marketing plan document. */
   monthlyFocus: MonthlyFocus;
+  /** Lightweight proactive presence — one primary moment; rest via disclosure. */
+  proactive: ProactivePresence;
 };
 
 /** Customer-facing primary nav — Great Simplification four destinations. */

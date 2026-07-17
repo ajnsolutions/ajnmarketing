@@ -23,3 +23,4 @@ Implementation notes (post-blueprint):
 - HEAD_OF_MARKETING_JOURNAL.md — narrative window into HoM work (not an audit log)
 - MONTHLY_FOCUS.md — living “what we’re working toward this month” (not a traditional plan)
 - GREAT_SIMPLIFICATION.md — navigation/IA simplification sprint (presentation only)
+- PROACTIVE_HEAD_OF_MARKETING.md — proactive presence + richer activity timeline (presentation only)
