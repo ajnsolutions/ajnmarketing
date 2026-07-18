@@ -1,8 +1,8 @@
-# Marketing Memory — Proposed Data Model
+# Marketing Memory — Data Model
 
-**Type:** Design document. **No migration files are added or changed by this PR.** Every table below is a proposal for a future phase (see `MARKETING_MEMORY_ARCHITECTURE.md` §20). Column names, types, and constraints follow this repository's existing migration conventions exactly (`supabase/migrations/001`–`022`) so a future migration PR can implement this with minimal translation.
+**Type:** §1–§2 and §4 (Observations, Context Snapshots, Evidence Links) are **implemented** — see `supabase/migrations/024_marketing_memory_foundation.sql` and [`MARKETING_MEMORY_FOUNDATION.md`](./MARKETING_MEMORY_FOUNDATION.md) for the as-built design, including documented deviations from this document's original proposal. §3 and §5–§7 (Learnings, Preferences, Overrides, Decision Links) remain **proposed, future-phase design only** — no migration exists for them yet.
 
-Companion document: [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCHITECTURE.md) (read first — this document assumes its layer definitions, precedence order, and confidence model).
+Companion documents: [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCHITECTURE.md) (read first — this document assumes its layer definitions, precedence order, and confidence model) and [`MARKETING_MEMORY_FOUNDATION.md`](./MARKETING_MEMORY_FOUNDATION.md) (the Phase 1 implementation record — the authoritative source for what §1/§2/§4 actually look like in production; this document has been updated to match it, but the migration file is the ultimate source of truth).
 
 ---
 
@@ -18,96 +18,116 @@ Companion document: [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCH
 
 ---
 
-## 1. `marketing_memory_observations`
+## 1. `marketing_memory_observations` — IMPLEMENTED
 
-**Phase:** 1 (first release)
+**Phase:** 1 (first release, shipped in `024_marketing_memory_foundation.sql`)
 **Layer:** Observations
 **Lifecycle:** Append-only. Never updated or deleted except by cascade.
 
 ### Responsibility
 
-One row per factual, attributable event-plus-context snapshot. Never a conclusion — a Learning is derived *from* many Observations, never stored here.
+One row per factual, attributable event. Never a conclusion — a Learning is derived *from* many Observations, never stored here.
 
-### Candidate columns
+### As-built columns
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid pk` | |
 | `user_id` | `uuid not null` | tenant owner |
 | `business_profile_id` | `uuid not null` | tenant scope |
-| `observation_type` | `text not null` | `publishing_event \| performance_delta \| context_present \| customer_action` — a small fixed vocabulary, `check` constrained |
-| `occurred_at` | `timestamptz not null` | when the underlying real-world event happened (not `created_at`, which is when we recorded it) |
-| `source_recommendation_id` | `uuid null references marketing_recommendations(id) on delete set null` | reference, not copy |
+| `observation_type` | `text not null` | ten-value closed vocabulary — `recommendation_drafted \| recommendation_edited \| recommendation_approved \| recommendation_rejected \| recommendation_do_more_like_this \| publishing_queued \| publishing_succeeded \| publishing_failed \| performance_measured \| analytics_snapshot_captured` |
+| `source_system` | `text not null` | `recommendation-outcomes \| analytics` — diagnostic/filtering only |
 | `source_outcome_event_id` | `uuid null references recommendation_outcome_events(id) on delete set null` | reference, not copy |
-| `source_content_approval_id` | `uuid null references content_approvals(id) on delete set null` | reference |
+| `source_analytics_snapshot_id` | `uuid null references analytics_snapshots(id) on delete set null` | reference, not copy |
 | `context_snapshot_id` | `uuid null references marketing_memory_context_snapshots(id) on delete set null` | which context was active (§2) |
-| `metric_summary` | `jsonb not null default '{}'` | small, structured facts only, e.g. `{"impressions_delta_pct": 12, "baseline_window_days": 28}` — never a copy of a full analytics row |
-| `idempotency_key` | `text not null unique` | e.g. `obs:{business_profile_id}:{source_outcome_event_id}:{observation_type}` — prevents duplicate observation rows if the recording job re-runs |
+| `occurred_at` | `timestamptz not null` | when the underlying real-world event happened (not `created_at`, which is when we recorded it) |
+| `outcome_direction` | `text not null default 'unknown'` | `positive \| negative \| neutral \| mixed \| unknown` — assigned by a fixed, non-inferential rule table, see `MARKETING_MEMORY_FOUNDATION.md` §6 |
+| `location_scope` | `text null` | reserved for a future multi-location business; always null today |
+| `metric_summary` | `jsonb not null default '{}'` | small, bounded, sanitized facts only — never a copy of a full analytics row or raw provider payload (see `MARKETING_MEMORY_FOUNDATION.md` §9) |
+| `schema_version` | `smallint not null default 1` | |
+| `retention_classification` | `text not null` | `short_lived_context \| standard_operational_evidence \| long_term_audit_evidence` |
+| `idempotency_key` | `text not null unique` | `obs:{business_profile_id}:{source_type}:{source_id}` |
 | `created_at` | `timestamptz not null default now()` | |
+
+**Deviation from the original proposal**: `source_recommendation_id` and `source_content_approval_id` were **not** added as direct columns. Exactly one of `source_outcome_event_id`/`source_analytics_snapshot_id` is required (database `check` constraint `marketing_memory_observations_exactly_one_primary_source`); every other related record is captured via `marketing_memory_evidence_links` instead (§4). See `MARKETING_MEMORY_FOUNDATION.md` §2 for the full rationale.
 
 ### Indexes
 
 - `unique (idempotency_key)`
 - `index (business_profile_id, occurred_at desc)` — the primary read path (Phase 2's Learning derivation scans recent observations per business)
 - `index (observation_type)`
+- partial `index (source_outcome_event_id) where source_outcome_event_id is not null`
+- partial `index (source_analytics_snapshot_id) where source_analytics_snapshot_id is not null`
+- partial `index (context_snapshot_id) where context_snapshot_id is not null`
 
 ### RLS
 
-`select`, `insert` only for `auth.uid() = user_id`. No `update`/`delete` policy — matches `recommendation_outcome_events`' append-only precedent exactly, for the same reason: a fact, once recorded, is never edited, only superseded by a new fact.
+`select`, `insert` only for `auth.uid() = user_id`. No `update`/`delete` policy — matches `recommendation_outcome_events`' append-only precedent exactly, for the same reason: a fact, once recorded, is never edited, only superseded by a new fact. Live-verified (see `MARKETING_MEMORY_FOUNDATION.md` §12).
 
-### Example record
+### Example record (as inserted by `lib/marketing-memory/service.ts`)
 
 ```json
 {
-  "observation_type": "performance_delta",
-  "occurred_at": "2026-06-11T09:00:00Z",
-  "source_recommendation_id": "6c9f...",
+  "observation_type": "recommendation_approved",
+  "source_system": "recommendation-outcomes",
   "source_outcome_event_id": "a1b2...",
+  "source_analytics_snapshot_id": null,
   "context_snapshot_id": "f00d...",
-  "metric_summary": { "impressions_delta_pct": 12, "calls_delta_pct": -4, "baseline_window_days": 28 },
-  "idempotency_key": "obs:9e21...:a1b2...:performance_delta"
+  "occurred_at": "2026-06-11T09:00:00Z",
+  "outcome_direction": "positive",
+  "metric_summary": {},
+  "retention_classification": "long_term_audit_evidence",
+  "idempotency_key": "obs:9e21...:recommendation_outcome_event:a1b2..."
 }
 ```
 
 ---
 
-## 2. `marketing_memory_context_snapshots`
+## 2. `marketing_memory_context_snapshots` — IMPLEMENTED
 
-**Phase:** 1 (first release)
+**Phase:** 1 (first release, shipped in `024_marketing_memory_foundation.sql`)
 **Layer:** Observations (the "what conditions surrounded it" half)
-**Lifecycle:** Append-only.
+**Lifecycle:** Append-only. One row is reused per business per UTC calendar day (idempotent get-or-create), not one row per observation.
 
 ### Responsibility
 
-Captures which `market_context_items` (and, in the future, sports/entertainment or political/civic signals) were active at the moment an Observation was recorded — without copying their full content. This is the normalization boundary described in the architecture doc's §14, materialized as a table.
+Captures which `market_context_items` were active near the moment an Observation was recorded — without copying their full content. This is the normalization boundary described in the architecture doc's §14, materialized as a table.
 
-### Candidate columns
+### As-built columns
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid pk` | |
 | `user_id` | `uuid not null` | |
 | `business_profile_id` | `uuid not null` | |
-| `captured_at` | `timestamptz not null` | when this snapshot was taken (matches the related observation's `occurred_at` window) |
-| `context_item_ids` | `uuid[] not null default '{}'` | references into existing `market_context_items` — **not copied** |
-| `impact_direction` | `text null` | `positive \| negative \| neutral \| unknown` — classified at snapshot time if determinable, else `unknown` |
+| `captured_at` | `timestamptz not null` | the real-world moment this snapshot describes conditions for |
+| `context_item_ids` | `uuid[] not null default '{}'` | references into existing `market_context_items` — **not copied**; bounded to 5 items, ±3-day window, ordered by `relevance_score` |
+| `context_summary` | `jsonb not null default '{}'` | small, deterministic calendar facts only — `dayOfWeek`, `month`, `season`, `contextItemCount` |
+| `impact_direction` | `text not null default 'unknown'` | `positive \| negative \| neutral \| unknown` — always `unknown` in Phase 1 (classification is Learning-layer work) |
 | `observed_vs_forecast` | `text not null default 'observed'` | `observed \| forecast` |
-| `idempotency_key` | `text not null unique` | e.g. `ctx:{business_profile_id}:{captured_at_iso}` |
+| `retention_classification` | `text not null default 'short_lived_context'` | always `short_lived_context` in Phase 1 |
+| `valid_from` | `timestamptz not null` | |
+| `valid_until` | `timestamptz null` | |
+| `expires_at` | `timestamptz not null` | hard retention boundary, default `captured_at + 180 days` |
+| `idempotency_key` | `text not null unique` | `ctx:{business_profile_id}:{utc-date}` — one snapshot per business per day |
 | `created_at` | `timestamptz not null default now()` | |
+
+**Deviation from the original proposal**: added `retention_classification`, `valid_from`, `valid_until`, and a required (not optional) `expires_at` — the original proposal's idempotency key was per-observation (`ctx:{business_profile_id}:{captured_at_iso}`); the as-built key is per-business-per-day, since reusing one snapshot across a day's observations is both cheaper and avoids near-duplicate rows. See `MARKETING_MEMORY_FOUNDATION.md` §4 and §8.
 
 ### Indexes
 
 - `unique (idempotency_key)`
 - `index (business_profile_id, captured_at desc)`
 - `gin index (context_item_ids)` — matches the existing GIN-index precedent on `marketing_recommendations.related_opportunity_ids`
+- `index (expires_at)` — backs the Phase 1 retention diagnostic query
 
 ### RLS
 
-`select`, `insert` only — append-only, same rationale as §1.
+`select`, `insert` only — append-only, same rationale as §1. Live-verified.
 
 ---
 
-## 3. `marketing_memory_learnings`
+## 3. `marketing_memory_learnings` — PROPOSED (not yet implemented)
 
 **Phase:** 2
 **Layer:** Learnings
@@ -171,43 +191,53 @@ Standard `select/insert/update` for `auth.uid() = user_id`. **No `delete` policy
 
 ---
 
-## 4. `marketing_memory_evidence_links`
+## 4. `marketing_memory_evidence_links` — IMPLEMENTED (redesigned for Phase 1)
 
-**Phase:** 2
-**Layer:** Evidence attribution (spans Observations → Learnings)
+**Phase:** 1 (first release, shipped in `024_marketing_memory_foundation.sql`) — **elevated from the original Phase 2 proposal**; see the deviation note below.
+**Layer:** Evidence attribution (Observations → their source records)
 **Lifecycle:** Append-only.
 
 ### Responsibility
 
-Polymorphic join between a Learning and every piece of evidence that supports or contradicts it — the concrete mechanism behind "what evidence supports/would weaken this."
+Polymorphic join between an **observation** and every source record it references — the concrete mechanism behind "where did this evidence come from."
 
-### Candidate columns
+### Deviation from the original proposal
+
+The original data-model document scoped this table to Phase 2, anchored on `learning_id` (a Learning citing its supporting/contradicting evidence). Since no Learnings exist yet, this implementation anchors the table on **`observation_id`** instead — every observation's related source records (the recommendation, a content approval, a publishing job) beyond its one direct typed FK (§1) are recorded here. The `contribution` field (`supporting | contradicting | neutral`) is **not implemented** in Phase 1 either — that's a Learning-layer judgment about whether a piece of evidence helps or hurts a claim, which doesn't apply to a plain observation citing its own source records. It is replaced by `link_type` (`primary_source | related_source`), a purely structural distinction. A future Phase 2 migration can add a nullable `learning_id` column and a `contribution` column without renaming or breaking this table. See `MARKETING_MEMORY_FOUNDATION.md` §2 and §5 for the full rationale.
+
+### As-built columns
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid pk` | |
 | `user_id` | `uuid not null` | |
 | `business_profile_id` | `uuid not null` | |
-| `learning_id` | `uuid not null references marketing_memory_learnings(id) on delete cascade` | |
-| `source_type` | `text not null` | `observation \| recommendation \| outcome_event \| analytics_snapshot \| context_item \| override` — `check` constrained |
-| `source_id` | `uuid not null` | polymorphic id — no FK constraint possible across the six source tables; validity enforced at the application layer, matching how `market_context_items.metadata` already stores loosely-typed provenance without a hard FK |
-| `contribution` | `text not null` | `supporting \| contradicting \| neutral` |
-| `idempotency_key` | `text not null unique` | `{learning_id}:{source_type}:{source_id}` |
+| `observation_id` | `uuid not null references marketing_memory_observations(id) on delete cascade` | |
+| `source_type` | `text not null` | `recommendation \| recommendation_outcome_event \| content_approval \| publishing_job \| analytics_snapshot \| market_context_item (reserved) \| monthly_focus (reserved)` — `check` constrained |
+| `source_id` | `uuid not null` | polymorphic id — no FK constraint possible across six source tables; validity enforced at the application layer (`lib/marketing-memory/types.ts`'s `MarketingMemorySourceEntityTypes`), matching how `market_context_items.metadata` already stores loosely-typed provenance without a hard FK |
+| `link_type` | `text not null default 'related_source'` | `primary_source \| related_source` |
+| `idempotency_key` | `text not null unique` | `{observation_id}:{source_type}:{source_id}` |
 | `created_at` | `timestamptz not null default now()` | |
 
 ### Indexes
 
 - `unique (idempotency_key)`
-- `index (learning_id)`
+- `index (observation_id)`
 - `index (source_type, source_id)`
 
 ### RLS
 
-`select`, `insert` only — append-only.
+`select`, `insert` only — append-only. Live-verified, including the `source_type` check constraint rejecting an unsupported value.
+
+### What Phase 1 actually populates
+
+- Outcome-event-derived observations: `recommendation_outcome_event` (`primary_source`), `recommendation` (`related_source`, always), `content_approval` (`related_source`, when present), `publishing_job` (`related_source`, when present).
+- Analytics-snapshot-derived observations: `analytics_snapshot` (`primary_source`) only.
+- `market_context_item` links are **not** populated here in Phase 1 — that relationship is already fully captured by `context_snapshots.context_item_ids` (§2); duplicating it as individual rows here would be the exact "duplicate storage" pattern the architecture self-review warns against.
 
 ---
 
-## 5. `marketing_memory_preferences`
+## 5. `marketing_memory_preferences` — PROPOSED (not yet implemented)
 
 **Phase:** 3
 **Layer:** Customer Preferences
@@ -257,7 +287,7 @@ Standard `select/insert/update` for `auth.uid() = user_id`. `delete` intentional
 
 ---
 
-## 6. `marketing_memory_overrides`
+## 6. `marketing_memory_overrides` — PROPOSED (not yet implemented)
 
 **Phase:** 3
 **Layer:** Customer Preferences (specifically, the override sub-type) / Outcomes (an override is also evidence of what happened after a Decision)
@@ -295,7 +325,7 @@ Records every time a customer's actual choice diverged from (or explicitly confi
 
 ---
 
-## 7. `marketing_memory_decision_links`
+## 7. `marketing_memory_decision_links` — PROPOSED (not yet implemented)
 
 **Phase:** 4
 **Layer:** Decisions
@@ -333,42 +363,42 @@ An audit-trail record of one `MarketingDirectorDecision` (from `lib/marketing-di
 
 ---
 
-## 8. Relationships diagram
+## 8. Relationships diagram (as-built through Phase 1)
 
 ```
-business_profiles ──┬── marketing_memory_observations ──┬── context_snapshot_id → marketing_memory_context_snapshots
-                     │        │                          ├── source_recommendation_id → marketing_recommendations (existing)
-                     │        │                          ├── source_outcome_event_id  → recommendation_outcome_events (existing)
-                     │        │                          └── source_content_approval_id → content_approvals (existing)
+business_profiles ──┬── marketing_memory_observations ──── context_snapshot_id → marketing_memory_context_snapshots
+                     │        │  (exactly one of the two below is set, DB-enforced)         │ context_item_ids[] → market_context_items (existing, referenced not copied)
+                     │        ├── source_outcome_event_id  → recommendation_outcome_events (existing)
+                     │        └── source_analytics_snapshot_id → analytics_snapshots (existing)
                      │        │
-                     │        └──(many)──▶ marketing_memory_evidence_links ──▶ marketing_memory_learnings
-                     │                            (source_type/source_id polymorphic)      │
-                     │                                                                       │ recurrence_pattern
-                     │                                                                       │ confidence_level
-                     ├── marketing_memory_preferences ◀── promoted_from_override_id ─┐        │
-                     │                                                                 │        │
-                     └── marketing_memory_overrides ──── promoted_to_preference_id ──┘        │
-                                    │                                                            │
-                                    └── decision_link_id ─────▶ marketing_memory_decision_links ◀┘
-                                                                          │
-                                                                          └── source_recommendation_id → marketing_recommendations (existing)
+                     │        └──(1..4 rows)──▶ marketing_memory_evidence_links
+                     │                                (observation_id anchor; source_type/source_id polymorphic:
+                     │                                 recommendation | content_approval | publishing_job |
+                     │                                 recommendation_outcome_event | analytics_snapshot,
+                     │                                 all → their existing tables)
+                     │
+                     │   [Phase 2, not yet implemented] marketing_memory_learnings
+                     │   [Phase 3, not yet implemented] marketing_memory_preferences / marketing_memory_overrides
+                     │   [Phase 4, not yet implemented] marketing_memory_decision_links
 ```
+
+The original proposal's Learning-anchored evidence graph (`evidence_links.learning_id → marketing_memory_learnings`) remains the intended Phase 2 shape; a future migration adds a nullable `learning_id` column alongside `observation_id` rather than replacing it.
 
 ---
 
 ## 9. First-release vs. future scope summary
 
-| Entity | Phase | Depends on |
-|---|---|---|
-| `marketing_memory_observations` | 1 | `marketing_recommendations`, `recommendation_outcome_events`, `content_approvals` (existing) |
-| `marketing_memory_context_snapshots` | 1 | `market_context_items` (existing) |
-| `marketing_memory_learnings` | 2 | Phase 1 entities |
-| `marketing_memory_evidence_links` | 2 | Phase 1 + `marketing_memory_learnings` |
-| `marketing_memory_preferences` | 3 | none (can ship independently of Phases 1–2) |
-| `marketing_memory_overrides` | 3 | `marketing_memory_preferences`; `decision_link_id` FK nullable until Phase 4 |
-| `marketing_memory_decision_links` | 4 | `marketing_memory_learnings`, `marketing_memory_preferences`, `marketing_recommendations` (existing) |
+| Entity | Phase | Status | Depends on |
+|---|---|---|---|
+| `marketing_memory_observations` | 1 | **Implemented** | `recommendation_outcome_events`, `analytics_snapshots` (existing) |
+| `marketing_memory_context_snapshots` | 1 | **Implemented** | `market_context_items` (existing) |
+| `marketing_memory_evidence_links` | 1 (elevated from the original Phase 2 proposal) | **Implemented**, observation-anchored | Phase 1 `marketing_memory_observations` |
+| `marketing_memory_learnings` | 2 | Proposed only | Phase 1 entities |
+| `marketing_memory_preferences` | 3 | Proposed only | none (can ship independently of Phases 1–2) |
+| `marketing_memory_overrides` | 3 | Proposed only | `marketing_memory_preferences`; `decision_link_id` FK nullable until Phase 4 |
+| `marketing_memory_decision_links` | 4 | Proposed only | `marketing_memory_learnings`, `marketing_memory_preferences`, `marketing_recommendations` (existing) |
 
-**No migration is included in this PR.** This table exists so a future implementation PR can translate directly into `supabase/migrations/0XX_marketing_memory_*.sql` files, phased exactly as listed.
+`marketing_memory_observations`, `marketing_memory_context_snapshots`, and `marketing_memory_evidence_links` were shipped together in `supabase/migrations/024_marketing_memory_foundation.sql`. `marketing_memory_learnings`, `marketing_memory_preferences`, `marketing_memory_overrides`, and `marketing_memory_decision_links` remain design proposals for later phases — no migration exists for them yet.
 
 ---
 
@@ -376,7 +406,7 @@ business_profiles ──┬── marketing_memory_observations ──┬── 
 
 Two patterns are used, matching existing precedent exactly:
 
-- **High-frequency, system-written tables** (`observations`, `context_snapshots`, `evidence_links`, `decision_links`) use a single `idempotency_key text unique` column — matching `recommendation_outcome_events`' proven pattern for tables written by background/automated processes that might retry.
-- **Low-frequency, "at most one active" tables** (`learnings`, `preferences`) use a **partial unique index** scoped to `status = 'active'` / `is_active = true` — matching `content_approvals_active_recommendation_idx`'s proven pattern for "only one current X," while still allowing unlimited historical rows to accumulate for audit purposes.
+- **High-frequency, system-written tables** (`observations`, `context_snapshots`, `evidence_links`, and the future `decision_links`) use a single `idempotency_key text unique` column — matching `recommendation_outcome_events`' proven pattern for tables written by background/automated processes that might retry. As implemented: `observations` keys on `{business_profile_id}:{source_type}:{source_id}` (one observation per authoritative source event); `context_snapshots` keys on `{business_profile_id}:{utc-date}` (one snapshot reused per business per day, a get-or-create rather than a strict "first write wins" pattern); `evidence_links` keys on `{observation_id}:{source_type}:{source_id}` and is written via `upsert(..., { ignoreDuplicates: true })` rather than a plain insert, so one already-existing row in a batch never fails its siblings. Live-verified against the real database — see `MARKETING_MEMORY_FOUNDATION.md` §12.
+- **Low-frequency, "at most one active" tables** (future `learnings`, `preferences`) use a **partial unique index** scoped to `status = 'active'` / `is_active = true` — matching `content_approvals_active_recommendation_idx`'s proven pattern for "only one current X," while still allowing unlimited historical rows to accumulate for audit purposes. Not yet implemented (Phase 2/3).
 
-`overrides` uses a best-effort `idempotency_key` (not a hard business-uniqueness guarantee) since overrides are rare, user-initiated, single-shot events where duplicate-prevention matters less than for automated writes.
+Future `overrides` will use a best-effort `idempotency_key` (not a hard business-uniqueness guarantee) since overrides are rare, user-initiated, single-shot events where duplicate-prevention matters less than for automated writes.

@@ -6,6 +6,8 @@ import type {
   RecommendationOutcomeEventType,
   RecommendationOutcomeFilter,
 } from "@/lib/recommendation-outcomes/types";
+import { recordObservationForOutcomeEvent } from "@/lib/marketing-memory/service";
+import { classifyError } from "@/lib/marketing-memory/metadata";
 
 function mapEventRow(row: Record<string, unknown>): RecommendationOutcomeEvent {
   return {
@@ -78,7 +80,26 @@ export async function insertRecommendationOutcomeEvent(
     return { event: null, duplicate: false, error: { message: "No row returned from insert." } };
   }
 
-  return { event: mapEventRow(data as Record<string, unknown>), duplicate: false };
+  const event = mapEventRow(data as Record<string, unknown>);
+
+  // Marketing Memory Phase 1: best-effort, non-blocking evidence recording. This is a
+  // pure side effect of an outcome event that already, successfully, persisted above —
+  // its own internal try/catch never throws, but this outer catch is a deliberate
+  // second layer of defense so a memory-recording regression can never surface as a
+  // failure of the authoritative outcome-event write itself. See
+  // docs/MARKETING_MEMORY_FOUNDATION.md.
+  try {
+    await recordObservationForOutcomeEvent(supabase, event);
+  } catch (err) {
+    console.error("[MarketingMemory]", {
+      event: "ingestion_failed",
+      businessProfileId: event.business_profile_id,
+      result: "error",
+      errorClass: classifyError(err),
+    });
+  }
+
+  return { event, duplicate: false };
 }
 
 export async function getOutcomeEventsForRecommendation(
