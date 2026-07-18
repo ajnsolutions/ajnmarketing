@@ -14,6 +14,12 @@ import type {
   HeadOfMarketingPrimaryAction,
   WeeklyBriefingRecommendation,
 } from "@/lib/head-of-marketing/types";
+import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
+import { resolveMarketingDirectorDecision } from "@/lib/marketing-director/resolveDecision";
+import type {
+  MarketingDirectorCandidate,
+  MarketingDirectorTopRecommendationDetail,
+} from "@/lib/marketing-director/types";
 
 export type WeeklyBriefingInput = {
   userName: string;
@@ -36,8 +42,22 @@ export type WeeklyBriefingInput = {
   topPriorityTitle: string | null;
   upcomingCalendar: CommandCenterCalendarItem[];
   competitorWatchMessage: string | null;
+  /** Ranked, active recommendations for this business (already scored upstream) — see
+   * lib/marketing-director/types.ts. Defaults to empty when the caller has none loaded. */
+  candidateRecommendations?: MarketingDirectorCandidate[];
+  /** Existing recommendation-presentation explainability for candidateRecommendations[0],
+   * when already fetched by the caller. Never recomputed here. */
+  topRecommendationDetail?: MarketingDirectorTopRecommendationDetail | null;
   now?: Date;
 };
+
+/** Plain-language Monthly Focus theme reused across the reassurance/opportunity copy
+ * both here and in the Marketing Director decision — never a second planning concept. */
+function focusTheme(monthlyFocus: MonthlyFocus): string {
+  const first = monthlyFocus.priorities[0]?.label?.trim();
+  if (!first) return "your marketing";
+  return first.charAt(0).toLowerCase() + first.slice(1);
+}
 
 const CADENCE: BriefingCadenceSupport = {
   supportedStyles: ["hands_on", "weekly", "monthly", "trusted"],
@@ -223,42 +243,6 @@ function buildRelationshipMemory(
   return `Since we began working together in ${monthLabel}, I've been building on what we already know.`;
 }
 
-function buildPrimaryAction(input: WeeklyBriefingInput): HeadOfMarketingPrimaryAction {
-  if (!input.gbpConnected) {
-    return {
-      kind: "connect_google",
-      label: "Finish Google connection",
-      href: "/dashboard/google-business-profile/connect",
-    };
-  }
-  if (input.pendingApprovals > 0) {
-    return {
-      kind: "approve_weekly_package",
-      label: "Review This Week",
-      href: "/dashboard/approvals",
-    };
-  }
-  if (input.openRecommendations > 0) {
-    return {
-      kind: "review_recommendation",
-      label: "Review Recommendation",
-      href: "/dashboard/marketing-recommendations",
-    };
-  }
-  if (input.unansweredReviews > 0) {
-    return {
-      kind: "review_week",
-      label: "Review This Week",
-      href: "/dashboard/approvals",
-    };
-  }
-  return {
-    kind: "none",
-    label: "Nothing needs your attention today",
-    href: "/dashboard",
-  };
-}
-
 function estimateReviewMinutes(input: WeeklyBriefingInput): number {
   if (!input.gbpConnected) return 2;
   const items = input.pendingApprovals + Math.min(input.unansweredReviews, 2);
@@ -312,7 +296,6 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     openRecommendations: input.openRecommendations,
   });
 
-  const primaryAction = buildPrimaryAction(input);
   const estimatedReviewMinutes = estimateReviewMinutes(input);
   const name = firstNameFrom(input.userName);
   const greeting = `${timeOfDayGreeting(input.now)}, ${name}.`;
@@ -355,6 +338,30 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     reason: `${monthlyFocus.progressLine} ${health.reason}`,
   };
 
+  // Single shared decision — buildPrimaryAction's CTA and the proactive presence's
+  // primary moment are both thin consumers of this one value from here on. Neither
+  // independently decides what matters most anymore. See
+  // lib/marketing-director/resolveDecision.ts and docs/MARKETING_DIRECTOR_FOUNDATION.md.
+  const decision = resolveMarketingDirectorDecision(
+    {
+      gbpConnected: input.gbpConnected,
+      pendingApprovals: input.pendingApprovals,
+      unansweredReviews: input.unansweredReviews,
+      openRecommendations: input.openRecommendations,
+      publishingReadyOrScheduled: input.publishingReadyOrScheduled,
+      healthState: health.state,
+      weeklyWins: input.weeklyWins,
+      seasonalHint: input.seasonalHint,
+      focusTheme: focusTheme(monthlyFocus),
+      isEarlyCustomer,
+      candidateRecommendations: input.candidateRecommendations ?? [],
+      topRecommendationDetail: input.topRecommendationDetail ?? null,
+    },
+    input.now,
+  );
+
+  const primaryAction: HeadOfMarketingPrimaryAction = decision.primaryAction;
+
   const proactive = buildProactivePresence({
     healthState: health.state,
     gbpConnected: input.gbpConnected,
@@ -366,7 +373,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     seasonalHint: input.seasonalHint,
     monthlyFocus,
     isEarlyCustomer,
-    primaryActionKind: primaryAction.kind,
+    decision,
     now: input.now,
   });
 

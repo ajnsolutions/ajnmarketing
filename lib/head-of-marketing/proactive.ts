@@ -2,8 +2,14 @@ import type { CommandCenterWeeklyWins } from "@/lib/command-center/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type {
+  MarketingDirectorDecision,
+  MarketingDirectorDecisionType,
+} from "@/lib/marketing-director/types";
+import { MarketingDirectorDecisionTypes } from "@/lib/marketing-director/types";
+import type {
   ProactiveCelebration,
   ProactiveMoment,
+  ProactiveMomentPurpose,
   ProactivePresence,
 } from "@/lib/head-of-marketing/proactiveTypes";
 
@@ -18,115 +24,38 @@ export type ProactiveInput = {
   seasonalHint: string | null;
   monthlyFocus: MonthlyFocus;
   isEarlyCustomer: boolean;
-  primaryActionKind: "review_week" | "approve_weekly_package" | "review_recommendation" | "connect_google" | "none";
+  /**
+   * The single shared decision computed once by weeklyBriefing.ts via
+   * resolveMarketingDirectorDecision — this module no longer independently decides
+   * what's most important. See lib/marketing-director/resolveDecision.ts.
+   */
+  decision: MarketingDirectorDecision;
   now?: Date;
 };
 
-function focusTheme(monthlyFocus: MonthlyFocus): string {
-  const first = monthlyFocus.priorities[0]?.label?.trim();
-  if (!first) return "your marketing";
-  return first.charAt(0).toLowerCase() + first.slice(1);
-}
+/** Maps the shared decision's type to this module's own presentational voice — a fixed
+ * lookup, not a precedence decision. The decision itself already decided what matters;
+ * this only picks which tone-of-voice bucket to render it in. */
+const PURPOSE_BY_DECISION_TYPE: Record<MarketingDirectorDecisionType, ProactiveMomentPurpose> = {
+  [MarketingDirectorDecisionTypes.MEANINGFUL_DECISION]: "decision",
+  [MarketingDirectorDecisionTypes.APPROVAL_NEEDED]: "decision",
+  [MarketingDirectorDecisionTypes.HIGH_VALUE_RECOMMENDATION]: "opportunity",
+  [MarketingDirectorDecisionTypes.OPPORTUNITY]: "opportunity",
+  [MarketingDirectorDecisionTypes.REASSURANCE]: "reassure",
+  [MarketingDirectorDecisionTypes.CELEBRATION]: "celebrate",
+};
 
 /**
- * Pick one primary proactive moment.
- * Hierarchy: meaningful decision → opportunity → celebration → progress → reassurance.
- * Never invents urgency. Avoids time-of-day greeting (page header already greets).
+ * Thin formatter — adapts the shared Marketing Director decision into this surface's
+ * presentation shape. Does not reprioritize, does not apply a separate precedence
+ * model, does not choose a different primary item, and does not invent rationale beyond
+ * what the decision already carries.
  */
-function buildPrimary(input: ProactiveInput): ProactiveMoment {
-  const theme = focusTheme(input.monthlyFocus);
-
-  if (input.primaryActionKind === "connect_google" || !input.gbpConnected) {
-    return {
-      purpose: "decision",
-      label: "Needs your opinion",
-      message:
-        "I'd like us to connect Google when you have a moment so I can keep improving your local visibility.",
-    };
-  }
-
-  if (input.pendingApprovals > 0 || input.primaryActionKind === "approve_weekly_package" || input.primaryActionKind === "review_week") {
-    return {
-      purpose: "decision",
-      label: "Needs your opinion",
-      message:
-        input.publishingReadyOrScheduled > 0
-          ? "I finished preparing next week's content — when you have a few minutes, I'd like your opinion."
-          : "I've prepared a few things for your opinion this week.",
-    };
-  }
-
-  if (input.seasonalHint) {
-    return {
-      purpose: "opportunity",
-      label: "Opportunity",
-      message: `I noticed a seasonal opportunity we should prepare for (${input.seasonalHint}).`,
-    };
-  }
-
-  if (input.healthState === "excellent") {
-    return {
-      purpose: "celebrate",
-      label: "Celebration",
-      message: "Marketing Health looks excellent — everything is on track.",
-    };
-  }
-
-  if (input.weeklyWins.reviews > 0) {
-    const n = input.weeklyWins.reviews;
-    return {
-      purpose: "celebrate",
-      label: "Celebration",
-      message: `We received ${n} new review${n === 1 ? "" : "s"} this week.`,
-    };
-  }
-
-  if (input.weeklyWins.views > 40) {
-    return {
-      purpose: "celebrate",
-      label: "Progress",
-      message: "Search visibility improved — I'm seeing steady profile interest.",
-    };
-  }
-
-  if (input.publishingReadyOrScheduled > 0) {
-    return {
-      purpose: "reassure",
-      label: "Progress",
-      message: `I've been working on ${theme}, and I finished preparing content for the week ahead.`,
-    };
-  }
-
-  if (input.isEarlyCustomer) {
-    return {
-      purpose: "reassure",
-      label: "Progress",
-      message: `I've been learning your business and working on ${theme}.`,
-    };
-  }
-
-  if (input.healthState === "healthy") {
-    return {
-      purpose: "reassure",
-      label: "Reassurance",
-      message: "Everything is on track. Nothing needs your attention today.",
-    };
-  }
-
-  if (input.healthState === "needs_attention") {
-    return {
-      purpose: "opportunity",
-      label: "Observation",
-      message:
-        "I'd recommend a calm look at a couple of items when you have a moment — nothing to stress about.",
-    };
-  }
-
-  // at_risk — still calm, no fear language
+function derivePrimaryMoment(decision: MarketingDirectorDecision): ProactiveMoment {
   return {
-    purpose: "reassure",
-    label: "Progress",
-    message: `I'm focusing on the foundations that make ${theme} possible.`,
+    purpose: PURPOSE_BY_DECISION_TYPE[decision.decisionType],
+    label: decision.title,
+    message: decision.summary,
   };
 }
 
@@ -198,7 +127,7 @@ function buildMoreUpdates(input: ProactiveInput, primary: ProactiveMoment): stri
  * Reuses Weekly Briefing / Monthly Focus / Health / wins signals — no new engines.
  */
 export function buildProactivePresence(input: ProactiveInput): ProactivePresence {
-  const primary = buildPrimary(input);
+  const primary = derivePrimaryMoment(input.decision);
   const celebrations = buildCelebrations(input).filter(
     (c) => !primary.message.toLowerCase().includes(c.message.slice(0, 20).toLowerCase()),
   );

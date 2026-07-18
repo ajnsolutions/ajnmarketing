@@ -25,3 +25,5 @@ Implementation notes (post-blueprint):
 - GREAT_SIMPLIFICATION.md — navigation/IA simplification sprint (presentation only)
 - PROACTIVE_HEAD_OF_MARKETING.md — proactive presence + richer activity timeline (presentation only)
 - PRODUCT_READINESS.md — polish sprint: copy, a11y, loading, motion, walkthrough (presentation only)
+- MARKETING_DIRECTOR_ARCHITECTURE.md — decision-pipeline architecture review + orchestration design (analysis only)
+- MARKETING_DIRECTOR_FOUNDATION.md — shared decision composition layer consolidating duplicate primary-decision authority (orchestration only)
