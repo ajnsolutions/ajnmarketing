@@ -11,8 +11,19 @@ import {
 import { buildHeadOfMarketingJournal } from "../lib/head-of-marketing/journal.ts";
 import { buildWeeklyBriefing } from "../lib/head-of-marketing/weeklyBriefing.ts";
 import { ACTIVITY_EVENT_LABELS } from "../lib/head-of-marketing/proactiveTypes.ts";
+import { resolveMarketingDirectorDecision } from "../lib/marketing-director/resolveDecision.ts";
+import type { MarketingDirectorInput } from "../lib/marketing-director/types.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Mirrors exactly how weeklyBriefing.ts computes the shared decision, so these direct
+ * buildProactivePresence tests exercise the same single-decision path production does. */
+function decisionFor(input: Omit<MarketingDirectorInput, "focusTheme"> & { focusTheme?: string }, now: Date) {
+  return resolveMarketingDirectorDecision(
+    { candidateRecommendations: [], topRecommendationDetail: null, focusTheme: "your marketing", ...input },
+    now,
+  );
+}
 
 const monthlyFocusStub = {
   title: "This Month's Focus" as const,
@@ -86,8 +97,9 @@ test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false for Proactive HoM", () =
 });
 
 test("proactive presence reassures on a clear healthy week", () => {
-  const presence = buildProactivePresence({
-    healthState: "healthy",
+  const now = new Date("2026-07-16T09:00:00");
+  const raw = {
+    healthState: "healthy" as const,
     gbpConnected: true,
     unansweredReviews: 0,
     pendingApprovals: 0,
@@ -95,10 +107,13 @@ test("proactive presence reassures on a clear healthy week", () => {
     publishingReadyOrScheduled: 0,
     weeklyWins: emptyWins,
     seasonalHint: null,
-    monthlyFocus: monthlyFocusStub,
     isEarlyCustomer: false,
-    primaryActionKind: "none",
-    now: new Date("2026-07-16T09:00:00"),
+  };
+  const presence = buildProactivePresence({
+    ...raw,
+    monthlyFocus: monthlyFocusStub,
+    decision: decisionFor(raw, now),
+    now,
   });
 
   assert.match(presence.primary.message, /on track|attention today/i);
@@ -107,8 +122,9 @@ test("proactive presence reassures on a clear healthy week", () => {
 });
 
 test("proactive presence requests a meaningful decision without fear language", () => {
-  const presence = buildProactivePresence({
-    healthState: "needs_attention",
+  const now = new Date("2026-07-16T14:00:00");
+  const raw = {
+    healthState: "needs_attention" as const,
     gbpConnected: true,
     unansweredReviews: 0,
     pendingApprovals: 3,
@@ -116,10 +132,13 @@ test("proactive presence requests a meaningful decision without fear language", 
     publishingReadyOrScheduled: 2,
     weeklyWins: emptyWins,
     seasonalHint: null,
-    monthlyFocus: monthlyFocusStub,
     isEarlyCustomer: false,
-    primaryActionKind: "approve_weekly_package",
-    now: new Date("2026-07-16T14:00:00"),
+  };
+  const presence = buildProactivePresence({
+    ...raw,
+    monthlyFocus: monthlyFocusStub,
+    decision: decisionFor(raw, now),
+    now,
   });
 
   assert.equal(presence.primary.purpose, "decision");
@@ -135,8 +154,9 @@ test("proactive presence requests a meaningful decision without fear language", 
 });
 
 test("excellent health celebrates without gamification spam", () => {
-  const presence = buildProactivePresence({
-    healthState: "excellent",
+  const now = new Date("2026-07-16T09:00:00");
+  const raw = {
+    healthState: "excellent" as const,
     gbpConnected: true,
     unansweredReviews: 0,
     pendingApprovals: 0,
@@ -144,10 +164,13 @@ test("excellent health celebrates without gamification spam", () => {
     publishingReadyOrScheduled: 0,
     weeklyWins: { ...emptyWins, reviews: 4, views: 120 },
     seasonalHint: null,
-    monthlyFocus: monthlyFocusStub,
     isEarlyCustomer: false,
-    primaryActionKind: "none",
-    now: new Date("2026-07-16T09:00:00"),
+  };
+  const presence = buildProactivePresence({
+    ...raw,
+    monthlyFocus: monthlyFocusStub,
+    decision: decisionFor(raw, now),
+    now,
   });
 
   assert.equal(presence.primary.purpose, "celebrate");

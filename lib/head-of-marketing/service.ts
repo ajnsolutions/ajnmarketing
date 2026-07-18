@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadCommandCenterContextForCurrentUser } from "@/lib/command-center/context";
 import {
   buildTaskPriorities,
@@ -12,9 +13,18 @@ import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 import { buildWeeklyBriefing } from "@/lib/head-of-marketing/weeklyBriefing";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
+import { getActiveMarketingRecommendationsForUser } from "@/lib/marketing-decisions/persistence";
+import { formatRecommendedActionType } from "@/lib/marketing-decisions/ui";
+import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
+import type {
+  MarketingDirectorCandidate,
+  MarketingDirectorTopRecommendationDetail,
+} from "@/lib/marketing-director/types";
 
-async function countOpenRecommendations(businessProfileId: string): Promise<number> {
-  const supabase = await createClient();
+async function countOpenRecommendations(
+  supabase: SupabaseClient,
+  businessProfileId: string,
+): Promise<number> {
   const { count, error } = await supabase
     .from("marketing_recommendations")
     .select("id", { count: "exact", head: true })
@@ -26,10 +36,66 @@ async function countOpenRecommendations(businessProfileId: string): Promise<numb
 }
 
 /**
+ * Loads the active (open/in_progress) recommendation set for one business — already
+ * ranked by the existing marketing-decisions + recommendation-learning engines, never
+ * rescored here — plus the existing recommendation-presentation explainability package
+ * (the same one the Approval Center already shows) for the top-ranked one only. Skipped
+ * entirely when there is nothing open, so the common "nothing pending" path stays cheap.
+ * See lib/marketing-director/resolveDecision.ts, which consumes this output.
+ */
+async function loadMarketingDirectorCandidates(
+  userId: string,
+  businessProfileId: string,
+  supabase: SupabaseClient,
+): Promise<{
+  candidates: MarketingDirectorCandidate[];
+  topDetail: MarketingDirectorTopRecommendationDetail | null;
+}> {
+  const active = (await getActiveMarketingRecommendationsForUser(supabase, userId)).filter(
+    (recommendation) => recommendation.business_profile_id === businessProfileId,
+  );
+
+  if (active.length === 0) {
+    return { candidates: [], topDetail: null };
+  }
+
+  const candidates: MarketingDirectorCandidate[] = active.map((recommendation) => ({
+    id: recommendation.id,
+    actionTypeLabel: formatRecommendedActionType(recommendation.recommended_action_type),
+    status: recommendation.status,
+    urgency: recommendation.urgency,
+  }));
+
+  const top = active[0]!;
+  const decisionPackage = await getRecommendationDecisionPackageForUser(userId, top.id, supabase);
+
+  const topDetail: MarketingDirectorTopRecommendationDetail | null = decisionPackage
+    ? {
+        recommendationId: decisionPackage.recommendationId,
+        title: decisionPackage.title,
+        whyNow: decisionPackage.whyNow,
+        expectedBenefit: decisionPackage.expectedBenefit,
+        confidenceLabel: decisionPackage.confidenceLabel,
+      }
+    : null;
+
+  console.info("[MarketingDirector]", {
+    scope: "marketing-director",
+    businessProfileId,
+    candidateCount: candidates.length,
+    topRecommendationId: top.id,
+    hasExplainability: Boolean(topDetail),
+  });
+
+  return { candidates, topDetail };
+}
+
+/**
  * Weekly Briefing / Head of Marketing presentation entrypoint.
  * Reuses command-center context + scoring — does not rewrite engines.
  */
 export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOfMarketingBriefing | null> {
+  const supabase = await createClient();
   const [session, profile, context] = await Promise.all([
     getDashboardSessionContext(),
     getBusinessProfileForUser(),
@@ -44,7 +110,12 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const upcomingCalendar = buildUpcomingCalendar(
     context.planData.plan?.plan_json?.thirtyDayCalendar,
   );
-  const openRecommendations = await countOpenRecommendations(profile.id);
+  const openRecommendations = await countOpenRecommendations(supabase, profile.id);
+
+  const { candidates: candidateRecommendations, topDetail: topRecommendationDetail } =
+    openRecommendations > 0
+      ? await loadMarketingDirectorCandidates(profile.user_id, profile.id, supabase)
+      : { candidates: [], topDetail: null };
 
   const planJson = context.planData.plan?.plan_json;
   const planSummary =
@@ -88,5 +159,7 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     topPriorityTitle,
     upcomingCalendar,
     competitorWatchMessage: null,
+    candidateRecommendations,
+    topRecommendationDetail,
   });
 }
