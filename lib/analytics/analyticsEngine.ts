@@ -37,6 +37,8 @@ import { measurementWindowKey } from "@/lib/recommendation-outcomes/idempotency"
 import { AuditActions, logAuditEvent } from "@/lib/audit-log-server";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { recordObservationForAnalyticsSnapshot } from "@/lib/marketing-memory/service";
+import { classifyError } from "@/lib/marketing-memory/metadata";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -229,6 +231,23 @@ export async function captureSnapshotForUser(
         gbpData.insights.websiteClicks + gbpData.insights.phoneCalls
       )
     : 0;
+
+  if (snapshot) {
+    // Marketing Memory Phase 1: best-effort, non-blocking evidence recording. Never
+    // allowed to affect this function's return value — a memory-recording failure must
+    // never be mistaken for a failed analytics capture. See
+    // docs/MARKETING_MEMORY_FOUNDATION.md.
+    try {
+      await recordObservationForAnalyticsSnapshot(supabase, snapshot);
+    } catch (err) {
+      console.error("[MarketingMemory]", {
+        event: "ingestion_failed",
+        businessProfileId,
+        result: "error",
+        errorClass: classifyError(err),
+      });
+    }
+  }
 
   if (snapshot) {
     await logAuditEvent(supabase, {

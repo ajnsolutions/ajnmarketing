@@ -27,5 +27,6 @@ Implementation notes (post-blueprint):
 - PRODUCT_READINESS.md — polish sprint: copy, a11y, loading, motion, walkthrough (presentation only)
 - MARKETING_DIRECTOR_ARCHITECTURE.md — decision-pipeline architecture review + orchestration design (analysis only)
 - MARKETING_DIRECTOR_FOUNDATION.md — shared decision composition layer consolidating duplicate primary-decision authority (orchestration only)
-- MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (analysis only, no schema changes)
-- MARKETING_MEMORY_DATA_MODEL.md — field-level proposed schema for Marketing Memory entities (design only, no migrations)
+- MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (analysis; Phase 1 now implemented, see MARKETING_MEMORY_FOUNDATION.md)
+- MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phase 1 entities implemented; Phases 2-4 remain proposals)
+- MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)
