@@ -374,6 +374,10 @@ The design in §8 is deliberately data-composition-only so it can absorb future 
 
 None of these require touching `marketing-decisions`, `recommendation-learning`, `recommendation-execution`, `recommendation-outcomes`, or `publishing` — by design, they are all pure consumers of the Marketing Director's output, which is itself a pure consumer of those five systems' already-stable outputs.
 
+### 10.1 Marketing Memory (reviewed and designed separately)
+
+A durable evidence layer beneath the Marketing Director — observations, learnings, customer preferences, decisions, outcomes — has been reviewed and designed (analysis only, no schema or code changes) in [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCHITECTURE.md) and [`MARKETING_MEMORY_DATA_MODEL.md`](./MARKETING_MEMORY_DATA_MODEL.md). Its proposed `MarketingMemoryEvidencePackage` is an additional *optional* input to `resolveMarketingDirectorDecision`, following the same pattern `topRecommendationDetail` already established — it supplies evidence only and does not become a second decision authority (§8.2 above still holds unchanged).
+
 ---
 
 ## 11. Verification

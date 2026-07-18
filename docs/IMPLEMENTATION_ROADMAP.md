@@ -133,3 +133,9 @@ From the manifesto — enforced in review:
 - Activating Trigger.dev schedules  
 - Changing approval or publishing semantics  
 - Multi-business agency console (noted as future)
+
+---
+
+## Marketing Memory (cross-cutting, feeds Phase D/E/H)
+
+A durable evidence layer — observations, learnings, customer preferences, decisions, outcomes — sitting beneath the Marketing Director (§8 of [`MARKETING_DIRECTOR_ARCHITECTURE.md`](./MARKETING_DIRECTOR_ARCHITECTURE.md)) so recommendations can eventually cite real history instead of only current-cycle signals. Reviewed and designed (no schema/code changes) in [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCHITECTURE.md) and [`MARKETING_MEMORY_DATA_MODEL.md`](./MARKETING_MEMORY_DATA_MODEL.md); its own 6-phase plan (observation foundation → learnings/confidence → preferences/overrides → Marketing Director consumption → customer-facing explainability → seasonal/community expansion) runs independently of A–H above and does not block or reorder them.
