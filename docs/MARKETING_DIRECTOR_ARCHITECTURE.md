@@ -5,6 +5,8 @@
 **Type:** Architecture review and design exercise. **No implementation.** No production code, schema, API, or Trigger.dev changes in this PR.
 **Framing:** Project Magic V1 is complete — Your Head of Marketing, Meet Your Head of Marketing, Weekly Briefing, Recent Activity, Monthly Focus, Marketing Health, Results, Library, and Product Readiness polish are all shipped. The customer-facing *relationship* is built. This document asks the next question: how does AJN Marketing evolve from a system that **generates** recommendations into one that **demonstrates sound marketing judgment** — and where does that judgment layer belong so it doesn't become a fourth competing brain?
 
+> **Update (2026-07-17, `project-magic-marketing-director-foundation`):** §9's Phases 1–3 are implemented — `lib/marketing-director/` exists, and both `buildPrimaryAction` and the proactive presence's primary moment are now thin consumers of one shared `resolveMarketingDirectorDecision` call. Phases 4–5 remain future work. See [`MARKETING_DIRECTOR_FOUNDATION.md`](./MARKETING_DIRECTOR_FOUNDATION.md) for what shipped.
+
 ---
 
 ## 1. Executive Summary
@@ -347,19 +349,15 @@ This is a **design sketch for discussion, not a spec to implement.** Exact field
 
 ## 9. Migration Strategy
 
-Non-breaking, additive, reversible at every step. **No step in this section is implemented by this PR** — this is the plan for future work.
+Non-breaking, additive, reversible at every step.
 
-**Phase 0 (this PR):** Document only. No code.
+**Phase 0 (`project-magic-decision-architecture-review`):** Document only. No code. ✅ Done.
 
-**Phase 1 — Build the module in isolation.** Create `lib/marketing-director/` as a pure function library with full unit test coverage, called by nothing yet. Verify its output against real recommendation/outcome data in a debug/admin route (mirroring the existing `lib/recommendation-learning/debug.ts` pattern), never on a customer-facing path. Zero customer-visible change.
+**✅ IMPLEMENTED (`project-magic-marketing-director-foundation`) — Phases 1–3, combined into one PR:** `lib/marketing-director/` was built as a pure function library (`resolveDecision.ts` + `types.ts`) with full unit test coverage, and — rather than landing as a silent unconsumed field first — `buildPrimaryAction` and `proactive.ts`'s primary-moment function were migrated to consume the shared decision in the same PR, each verified output-identical to its prior behavior against the full existing test suite plus a new end-to-end regression test proving the two can no longer disagree. See [`MARKETING_DIRECTOR_FOUNDATION.md`](./MARKETING_DIRECTOR_FOUNDATION.md) for exactly what shipped, the precedence model as implemented, and known limitations. (The originally-planned intermediate "silent field, not yet consumed" step was judged unnecessary once full before/after test parity was established directly — the risk profile is the same either way, and skipping it avoided a throwaway intermediate commit.)
 
-**Phase 2 — Wire in as an additional, silent field.** Add `decision: MarketingDirectorDecision` to `WeeklyBriefingInput`/`HeadOfMarketingBriefing`, computed in `service.ts` alongside the existing `openRecommendations` count, but **not yet consumed** by `buildPrimaryAction`/`buildPrimary`. This proves the wiring and data availability without touching presentation logic. Still zero customer-visible change.
+**Phase 4 (next) — Feed `journal.ts` and `monthlyFocus.ts`'s ordering from the same decision/candidate data**, so Recent Activity and Monthly Focus can never visibly contradict the stated top priority. Lower risk than the implemented phase since these are narrative/listing surfaces, not the primary CTA. Not implemented in this PR — see `MARKETING_DIRECTOR_FOUNDATION.md`'s "Known limitations."
 
-**Phase 3 — Migrate `buildPrimaryAction` and `proactive.ts`'s `buildPrimary` to consume `decision.topAction`** instead of independently re-deriving it, one function at a time, each behind its own test suite asserting identical output for the same fixture inputs before/after. This is the first phase that could theoretically change customer-visible copy, so it should ship with the same "Claude review" checklist pattern used in `WEEKLY_BRIEFING.md`/`PROACTIVE_HEAD_OF_MARKETING.md` (presentation-only, no duplicated logic, no new decision center, existing engines remain source of truth).
-
-**Phase 4 — Feed `journal.ts` and `monthlyFocus.ts`'s ordering from the same decision weights**, so Recent Activity and Monthly Focus can never visibly contradict the stated top priority. Lower risk than Phase 3 since these are narrative/listing surfaces, not the primary CTA.
-
-**Phase 5 (separate decision, not sequenced here) — Resolve the disconnected systems** flagged in §5.2: retire or explicitly fold `analytics/recommendationEngine.ts`'s output in as a Marketing Director input signal (rather than a silent fourth list), and revisit the three-competing-systems finding from `ARCHITECTURE_REVIEW_2026.md` (Recommendations/Tasks/Marketing Plan) now that a real consolidation point exists to fold them into.
+**Phase 5 (separate decision, not sequenced here) — Resolve the disconnected systems** flagged in §5.2: retire or explicitly fold `analytics/recommendationEngine.ts`'s output in as a Marketing Director input signal (rather than a silent fourth list), and revisit the three-competing-systems finding from `ARCHITECTURE_REVIEW_2026.md` (Recommendations/Tasks/Marketing Plan) now that a real consolidation point exists to fold them into. Not implemented in this PR.
 
 At every phase, `marketing-decisions`, `recommendation-learning`, `recommendation-execution`, `recommendation-outcomes`, and `publishing` remain completely unchanged — this migration only ever adds a consumer on top of their existing outputs.
 

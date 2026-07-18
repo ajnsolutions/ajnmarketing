@@ -52,7 +52,8 @@
 - **Shipped (Monthly Focus):** Living “This Month’s Focus” on the same HoM surface — presentation over existing plan themes/goals and signals; horizon hook for future Quarterly/Annual. See [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md).  
 - **Shipped (Great Simplification):** Primary nav → Your Head of Marketing / Results / Library / Settings; analytics→Results and content→Library presentation aliases; Settings hub; customer language + one-primary-CTA pass. See [`GREAT_SIMPLIFICATION.md`](./GREAT_SIMPLIFICATION.md).  
 - **Shipped (Proactive Head of Marketing):** Lightweight proactive presence + Journal activity event kinds + celebrations/reassurance under progressive disclosure (orchestration only). See [`PROACTIVE_HEAD_OF_MARKETING.md`](./PROACTIVE_HEAD_OF_MARKETING.md).  
-- **Shipped (Product Readiness):** Copy/a11y/loading/motion polish across primary customer destinations; walkthrough fixes; presentation only. See [`PRODUCT_READINESS.md`](./PRODUCT_READINESS.md).
+- **Shipped (Product Readiness):** Copy/a11y/loading/motion polish across primary customer destinations; walkthrough fixes; presentation only. See [`PRODUCT_READINESS.md`](./PRODUCT_READINESS.md).  
+- **Shipped (Marketing Director Intelligence — Foundation):** Architecture review (see [`MARKETING_DIRECTOR_ARCHITECTURE.md`](./MARKETING_DIRECTOR_ARCHITECTURE.md)) followed by a shared decision composition layer (`lib/marketing-director/`) that both `buildPrimaryAction` and the proactive presence's primary moment now consume — consolidates duplicate decision authority without adding a new engine. See [`MARKETING_DIRECTOR_FOUNDATION.md`](./MARKETING_DIRECTOR_FOUNDATION.md).
 
 ---
 
