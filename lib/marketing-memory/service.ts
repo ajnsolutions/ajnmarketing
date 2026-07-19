@@ -322,3 +322,117 @@ export async function recordObservationForAnalyticsSnapshot(
     return { recorded: false, duplicate: false, observationId: null };
   }
 }
+
+/**
+ * Records one factual observation when a Campaign Intelligence campaign completes.
+ * Evidence only — never writes learnings. Best-effort and non-blocking.
+ */
+export async function recordObservationForCampaignCompletion(
+  supabase: SupabaseClient,
+  campaign: {
+    id: string;
+    user_id: string;
+    business_profile_id: string;
+    campaign_type: string;
+    objective: string;
+    metrics: Record<string, unknown>;
+    updated_at?: string;
+  }
+): Promise<MarketingMemoryIngestionResult> {
+  try {
+    const observationType = MarketingMemoryObservationTypes.CAMPAIGN_COMPLETED;
+    const outcomeDirection = outcomeDirectionForObservationType(observationType);
+    const retentionClassification = retentionClassificationForObservationType(observationType);
+    const occurredAt = new Date(campaign.updated_at ?? Date.now());
+
+    const contextSnapshotId = await resolveContextSnapshotForObservation(supabase, {
+      userId: campaign.user_id,
+      businessProfileId: campaign.business_profile_id,
+      occurredAt,
+    });
+
+    const idempotencyKey = buildObservationIdempotencyKey(
+      campaign.business_profile_id,
+      "campaign",
+      campaign.id
+    );
+
+    const result = await insertMarketingMemoryObservation(supabase, {
+      userId: campaign.user_id,
+      businessProfileId: campaign.business_profile_id,
+      observationType,
+      sourceSystem: MarketingMemorySourceSystems.CAMPAIGN_INTELLIGENCE,
+      sourceOutcomeEventId: null,
+      sourceAnalyticsSnapshotId: null,
+      sourceCampaignId: campaign.id,
+      contextSnapshotId,
+      occurredAt: occurredAt.toISOString(),
+      outcomeDirection,
+      locationScope: null,
+      metricSummary: sanitizeMetricSummary({
+        campaignType: campaign.campaign_type,
+        objective: campaign.objective,
+        ...campaign.metrics,
+      }),
+      retentionClassification,
+      idempotencyKey,
+    });
+
+    if (result.duplicate) {
+      logMarketingMemoryEvent({
+        event: "observation_deduplicated",
+        businessProfileId: campaign.business_profile_id,
+        observationType,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+      });
+      return { recorded: false, duplicate: true, observationId: null };
+    }
+
+    if (!result.observation) {
+      logMarketingMemoryEvent({
+        event: "ingestion_failed",
+        businessProfileId: campaign.business_profile_id,
+        observationType,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        result: "error",
+        errorClass: result.error?.code ?? "unknown",
+      });
+      return { recorded: false, duplicate: false, observationId: null };
+    }
+
+    logMarketingMemoryEvent({
+      event: "observation_inserted",
+      businessProfileId: campaign.business_profile_id,
+      observationType,
+      sourceType: "campaign",
+      sourceId: campaign.id,
+      observationId: result.observation.id,
+    });
+
+    await recordEvidenceLinksSafely(
+      supabase,
+      campaign.user_id,
+      campaign.business_profile_id,
+      result.observation.id,
+      [
+        {
+          sourceType: MarketingMemorySourceEntityTypes.CAMPAIGN,
+          sourceId: campaign.id,
+          linkType: MarketingMemoryLinkTypes.PRIMARY_SOURCE,
+        },
+      ]
+    );
+
+    return { recorded: true, duplicate: false, observationId: result.observation.id };
+  } catch (err) {
+    logMarketingMemoryEvent({
+      event: "ingestion_failed",
+      businessProfileId: campaign.business_profile_id,
+      result: "error",
+      errorClass: classifyError(err),
+    });
+    return { recorded: false, duplicate: false, observationId: null };
+  }
+}

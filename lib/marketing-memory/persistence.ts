@@ -23,6 +23,7 @@ function mapObservationRow(row: Record<string, unknown>): MarketingMemoryObserva
     source_analytics_snapshot_id: row.source_analytics_snapshot_id
       ? String(row.source_analytics_snapshot_id)
       : null,
+    source_campaign_id: row.source_campaign_id ? String(row.source_campaign_id) : null,
     context_snapshot_id: row.context_snapshot_id ? String(row.context_snapshot_id) : null,
     occurred_at: String(row.occurred_at),
     outcome_direction: row.outcome_direction as MarketingMemoryOutcomeDirection,
@@ -42,6 +43,7 @@ export type InsertObservationInput = {
   sourceSystem: MarketingMemorySourceSystem;
   sourceOutcomeEventId: string | null;
   sourceAnalyticsSnapshotId: string | null;
+  sourceCampaignId?: string | null;
   contextSnapshotId: string | null;
   occurredAt: string;
   outcomeDirection: MarketingMemoryOutcomeDirection;
@@ -76,6 +78,7 @@ export async function insertMarketingMemoryObservation(
       source_system: input.sourceSystem,
       source_outcome_event_id: input.sourceOutcomeEventId,
       source_analytics_snapshot_id: input.sourceAnalyticsSnapshotId,
+      source_campaign_id: input.sourceCampaignId ?? null,
       context_snapshot_id: input.contextSnapshotId,
       occurred_at: input.occurredAt,
       outcome_direction: input.outcomeDirection,

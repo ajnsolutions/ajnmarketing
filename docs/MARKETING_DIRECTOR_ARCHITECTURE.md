@@ -382,6 +382,10 @@ A durable evidence layer beneath the Marketing Director — observations, learni
 
 The Executive Briefing Engine ([`EXECUTIVE_BRIEFING_ENGINE.md`](./EXECUTIVE_BRIEFING_ENGINE.md)) turns the already-resolved Marketing Director decision plus existing briefing signals into a short structured Morning Brief (Weekly/Monthly types supported, not yet surfaced). It **explains** MD priorities; it does not re-rank recommendations or invent actions. Composition stays inside `buildWeeklyBriefing` so there is still exactly one `resolveMarketingDirectorDecision` call per briefing load.
 
+### 10.3 Campaign Intelligence Engine (execution only)
+
+The Campaign Intelligence Engine ([`CAMPAIGN_INTELLIGENCE_ENGINE.md`](./CAMPAIGN_INTELLIGENCE_ENGINE.md)) executes multi-step campaigns **after** Marketing Director decides that a campaign should exist (type, objective, priority). The engine never self-initiates, never creates recommendations, and never overrides Director priority. Completion feeds Marketing Memory as observations only. `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`.
+
 ---
 
 ## 11. Verification

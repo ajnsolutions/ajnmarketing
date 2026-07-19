@@ -1,3 +1,4 @@
+import type { CampaignDashboardCard } from "@/lib/campaign-intelligence/campaign-types";
 import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
@@ -87,6 +88,11 @@ export type HeadOfMarketingBriefing = {
     weeklyStrategy: ExecutiveBrief;
     monthlyExecutive: ExecutiveBrief;
   };
+  /**
+   * Active Campaign Intelligence execution plans. Empty until Marketing Director
+   * initiates a campaign. Never contains independently invented recommendations.
+   */
+  campaigns: CampaignDashboardCard[];
 };
 
 /** Customer-facing primary nav — Great Simplification four destinations. */

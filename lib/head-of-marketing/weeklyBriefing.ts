@@ -438,6 +438,8 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     proactive,
     executiveBrief: executiveBriefs.morning,
     executiveBriefs,
+    /** Filled by the HoM service from Campaign Intelligence — empty in pure composition. */
+    campaigns: [],
   };
 }
 
