@@ -23,6 +23,7 @@ import { formatRecommendedActionType } from "@/lib/marketing-decisions/ui";
 import { buildMarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidencePackage";
 import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
+import { getCampaignDashboardForBusiness } from "@/lib/campaign-intelligence/campaign-service";
 
 async function countOpenRecommendations(
   supabase: SupabaseClient,
@@ -142,11 +143,14 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const topPriorityTitle =
     priorities.high[0]?.title ?? priorities.medium[0]?.title ?? null;
 
-  // Batch: open-count + memory evidence in parallel (no N+1 preference/learning loops).
-  const [openRecommendations, memoryEvidence] = await Promise.all([
+  // Batch: open-count + memory evidence + campaigns in parallel (no N+1 loops).
+  const [openRecommendations, memoryEvidence, campaigns] = await Promise.all([
     countOpenRecommendations(supabase, profile.id),
     buildMarketingMemoryEvidencePackage(supabase, profile.user_id, profile.id, {
       activeGoals,
+    }),
+    getCampaignDashboardForBusiness(profile.user_id, profile.id, {
+      supabaseClient: supabase,
     }),
   ]);
 
@@ -160,7 +164,7 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
         )
       : { candidates: [], topDetail: null };
 
-  return buildWeeklyBriefing({
+  const briefing = buildWeeklyBriefing({
     userName: session.userName,
     businessName: session.businessName,
     websiteUrl: profile.website,
@@ -186,4 +190,6 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     topRecommendationDetail,
     memoryEvidence,
   });
+
+  return { ...briefing, campaigns };
 }
