@@ -90,6 +90,10 @@ Reserved for later (not implemented here):
 
 None of these activate schedules. Manual APIs and dashboard load remain the only entrypoints.
 
+## Relationship to Strategic Marketing Calendar
+
+The Strategic Marketing Calendar ([`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md)) may display campaign spans and dated timeline steps. Campaign Intelligence remains authoritative; the calendar never invents or mutates steps.
+
 ## Explicit non-goals (this phase)
 
 - No LLM / ML
