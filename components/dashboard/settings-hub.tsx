@@ -12,6 +12,11 @@ const SETTINGS_LINKS = [
     description: "How I write and speak on behalf of your business.",
   },
   {
+    href: "/dashboard/marketing-preferences",
+    label: "Marketing preferences",
+    description: "Standing instructions I should remember (days to avoid, context to skip).",
+  },
+  {
     href: "/dashboard/website-analysis",
     label: "Website understanding",
     description: "What I've learned from your website so far.",

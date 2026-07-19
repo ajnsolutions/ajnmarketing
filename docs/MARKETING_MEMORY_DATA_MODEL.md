@@ -1,6 +1,6 @@
 # Marketing Memory — Data Model
 
-**Type:** §1–§2 and §4 (Observations, Context Snapshots, Evidence Links) are **implemented** — see `supabase/migrations/024_marketing_memory_foundation.sql` and [`MARKETING_MEMORY_FOUNDATION.md`](./MARKETING_MEMORY_FOUNDATION.md) for the as-built design, including documented deviations from this document's original proposal. §3 and §5–§7 (Learnings, Preferences, Overrides, Decision Links) remain **proposed, future-phase design only** — no migration exists for them yet.
+**Type:** §1–§4 (Observations, Context Snapshots, Learnings, Evidence Links) and §5–§6 (Preferences, Overrides) are **implemented** — see migrations `024`–`026` and [`MARKETING_MEMORY_FOUNDATION.md`](./MARKETING_MEMORY_FOUNDATION.md) / [`MARKETING_MEMORY_LEARNINGS.md`](./MARKETING_MEMORY_LEARNINGS.md) / [`MARKETING_MEMORY_PREFERENCES.md`](./MARKETING_MEMORY_PREFERENCES.md) for as-built design and documented deviations. §7 (Decision Links) remains **proposed, Phase 4 only**.
 
 Companion documents: [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCHITECTURE.md) (read first — this document assumes its layer definitions, precedence order, and confidence model) and [`MARKETING_MEMORY_FOUNDATION.md`](./MARKETING_MEMORY_FOUNDATION.md) (the Phase 1 implementation record — the authoritative source for what §1/§2/§4 actually look like in production; this document has been updated to match it, but the migration file is the ultimate source of truth).
 
@@ -255,11 +255,11 @@ The original data-model document scoped this table to Phase 2 only, anchored sol
 
 ---
 
-## 5. `marketing_memory_preferences` — PROPOSED (not yet implemented)
+## 5. `marketing_memory_preferences` — IMPLEMENTED (Phase 3)
 
-**Phase:** 3
+**Phase:** 3 — see [`MARKETING_MEMORY_PREFERENCES.md`](./MARKETING_MEMORY_PREFERENCES.md) and `supabase/migrations/026_marketing_memory_preferences.sql`
 **Layer:** Customer Preferences
-**Lifecycle:** Mutable (a preference can be edited/disabled/re-enabled by the customer directly — this is the one entity in the model where in-place edits are appropriate, since a preference is a live instruction, not a historical fact).
+**Lifecycle:** Soft-deactivate + supersession (instruction changes create a new active row linked via `supersedes_preference_id`; rows are never hard-deleted).
 
 ### Responsibility
 
@@ -272,7 +272,10 @@ Explicit, customer-stated instructions. Never inferred, never written by a backg
 | `id` | `uuid pk` | |
 | `user_id` | `uuid not null` | |
 | `business_profile_id` | `uuid not null` | |
-| `preference_type` | `text not null` | `channel_priority \| publishing_day_restriction \| context_category_toggle \| content_tone \| approval_requirement \| custom` — fixed vocabulary |
+| `preference_type` | `text not null` | `channel_priority \| publishing_day_restriction \| context_category_toggle \| approval_requirement \| custom` — fixed vocabulary (`content_tone` deliberately excluded; Brand Voice remains authoritative) |
+| `created_by` / `updated_by` | `uuid` | actor attribution — required `created_by`; `updated_by` on deactivate/supersede |
+| `supersedes_preference_id` | `uuid null` | prior active row replaced by this one (audit chain) |
+| `active_until` | `timestamptz null` | only set by explicit customer action — never a background decay job |
 | `factor_type` | `text null` | when `preference_type = 'context_category_toggle'`, which category — e.g. `political_civic`, `sports_entertainment`, `competitor` |
 | `factor_value` | `text null` | free-form value paired with `factor_type`, e.g. a specific day name for `publishing_day_restriction` |
 | `instruction_text` | `text not null` | plain-language, e.g. "Avoid publishing on Sundays" — the canonical, customer-visible statement of the preference |
@@ -283,7 +286,7 @@ Explicit, customer-stated instructions. Never inferred, never written by a backg
 
 ### Indexes / uniqueness
 
-- `unique index on (business_profile_id, preference_type, factor_type) where is_active = true` — partial unique index, same "at most one active X" pattern as §3, preventing duplicate active preferences of the same kind (a customer can still have one *inactive* history and one *active* current statement for the same `factor_type`).
+- Partial unique index on `(business_profile_id, preference_type, coalesce(factor_type,''), coalesce(factor_value,'')) where is_active = true` — at most one active structured preference per identity; `custom` rows use a unique generated `factor_value` so multiple active custom instructions can coexist.
 - `index (business_profile_id, is_active)`
 
 ### RLS
@@ -296,7 +299,7 @@ Standard `select/insert/update` for `auth.uid() = user_id`. `delete` intentional
 {
   "preference_type": "context_category_toggle",
   "factor_type": "political_civic",
-  "factor_value": null,
+  "factor_value": "disable",
   "instruction_text": "Don't use political or civic events as marketing context.",
   "is_active": true,
   "source": "explicit_statement"
@@ -305,11 +308,11 @@ Standard `select/insert/update` for `auth.uid() = user_id`. `delete` intentional
 
 ---
 
-## 6. `marketing_memory_overrides` — PROPOSED (not yet implemented)
+## 6. `marketing_memory_overrides` — IMPLEMENTED (Phase 3)
 
-**Phase:** 3
+**Phase:** 3 — see [`MARKETING_MEMORY_PREFERENCES.md`](./MARKETING_MEMORY_PREFERENCES.md) and `supabase/migrations/026_marketing_memory_preferences.sql`
 **Layer:** Customer Preferences (specifically, the override sub-type) / Outcomes (an override is also evidence of what happened after a Decision)
-**Lifecycle:** Append-only.
+**Lifecycle:** Append-only, except a narrow update to set `promoted_to_preference_id` once (trigger-enforced).
 
 ### Responsibility
 
@@ -322,7 +325,9 @@ Records every time a customer's actual choice diverged from (or explicitly confi
 | `id` | `uuid pk` | |
 | `user_id` | `uuid not null` | |
 | `business_profile_id` | `uuid not null` | |
-| `decision_link_id` | `uuid null references marketing_memory_decision_links(id) on delete set null` | which Decision this responded to (Phase 4; nullable so Phase 3 can ship before Phase 4 exists) |
+| `decision_link_id` | `uuid null` | which Decision this responded to (Phase 4 FK not yet present — nullable column only) |
+| `created_by` | `uuid not null` | actor attribution — RLS requires `created_by = auth.uid()` on insert |
+| `factor_type` / `factor_value` | `text null` | structured detail for the override (e.g. disabled context category) |
 | `override_type` | `text not null` | `chose_different_action \| chose_different_time \| disabled_context_factor \| marked_learning_incorrect \| deferred_recommendation` — fixed vocabulary |
 | `related_learning_id` | `uuid null references marketing_memory_learnings(id) on delete set null` | set when `override_type = 'marked_learning_incorrect'` — becomes a `contradicting` evidence link candidate for that Learning |
 | `is_permanent` | `boolean not null default false` | when true, this override should be (or already was) promoted into a `marketing_memory_preferences` row |
@@ -418,11 +423,11 @@ business_profiles ──┬── marketing_memory_observations ──── con
 | `marketing_memory_context_snapshots` | 1 | **Implemented** | `market_context_items` (existing) |
 | `marketing_memory_evidence_links` | 1 (elevated), extended in Phase 2 | **Implemented**, dual-anchored (observation or learning) | Phase 1 `marketing_memory_observations`; Phase 2 `marketing_memory_learnings` |
 | `marketing_memory_learnings` | 2 | **Implemented** | Phase 1 `marketing_memory_observations`/`marketing_memory_context_snapshots`; `marketing_recommendations` (existing, for `recommendation_action_outcome`) |
-| `marketing_memory_preferences` | 3 | Proposed only | none (can ship independently of Phases 1–2) |
-| `marketing_memory_overrides` | 3 | Proposed only | `marketing_memory_preferences`; `decision_link_id` FK nullable until Phase 4 |
+| `marketing_memory_preferences` | 3 | **Implemented** | none required (ships with overrides in 026) |
+| `marketing_memory_overrides` | 3 | **Implemented** | preferences (promotion link); `decision_link_id` column nullable until Phase 4 |
 | `marketing_memory_decision_links` | 4 | Proposed only | `marketing_memory_learnings`, `marketing_memory_preferences`, `marketing_recommendations` (existing) |
 
-`marketing_memory_observations`, `marketing_memory_context_snapshots`, and `marketing_memory_evidence_links` were shipped together in `supabase/migrations/024_marketing_memory_foundation.sql`. `marketing_memory_learnings` (plus the `evidence_links` extension) shipped in `supabase/migrations/025_marketing_memory_learnings.sql`. `marketing_memory_preferences`, `marketing_memory_overrides`, and `marketing_memory_decision_links` remain design proposals for later phases — no migration exists for them yet.
+`marketing_memory_observations`, `marketing_memory_context_snapshots`, and `marketing_memory_evidence_links` shipped in `024`. `marketing_memory_learnings` (plus the `evidence_links` extension) shipped in `025`. `marketing_memory_preferences` + `marketing_memory_overrides` shipped in `026`. `marketing_memory_decision_links` remains a Phase 4 proposal.
 
 ---
 
