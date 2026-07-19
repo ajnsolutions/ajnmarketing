@@ -30,6 +30,7 @@ Implementation notes (post-blueprint):
 - MARKETING_DIRECTOR_MEMORY_INTEGRATION.md — Phase 4: Marketing Director consumes Marketing Memory evidence (optional, deterministic; MD remains sole decision-maker)
 - EXECUTIVE_BRIEFING_ENGINE.md — Phase 2 capability: structured Morning / Weekly / Monthly executive briefs that summarize MD + existing signals (no recommendation logic)
 - CAMPAIGN_INTELLIGENCE_ENGINE.md — Phase 2B: Campaign Intelligence execution layer (MD-gated plans, timelines, metrics, HoM dashboard; observations only into Marketing Memory)
+- INTERACTIVE_HEAD_OF_MARKETING.md — Phase 2C: Ask Your Head of Marketing presentation/explanation layer over MD + existing intelligence (no second recommendation engine)
 - MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (Phases 1-4 consumption implemented; decision_links persistence still future)
 - MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 tables implemented; decision links remain a proposal)
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)

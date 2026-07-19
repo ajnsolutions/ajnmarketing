@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskHeadOfMarketingPanel } from "@/components/dashboard/ask-head-of-marketing";
 import { CampaignsSection } from "@/components/dashboard/campaigns-section";
 import { ExecutiveBriefSection } from "@/components/dashboard/executive-brief-section";
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
@@ -63,6 +64,8 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
       <MonthlyFocusSection focus={briefing.monthlyFocus} />
 
       <CampaignsSection campaigns={briefing.campaigns} />
+
+      <AskHeadOfMarketingPanel />
 
       <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
         <Section title="What I handled">
