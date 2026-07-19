@@ -127,83 +127,15 @@ Captures which `market_context_items` were active near the moment an Observation
 
 ---
 
-## 3. `marketing_memory_learnings` — PROPOSED (not yet implemented)
+## 3. `marketing_memory_learnings` — IMPLEMENTED
 
-**Phase:** 2
+**Phase:** 2 (shipped in `025_marketing_memory_learnings.sql`)
 **Layer:** Learnings
-**Lifecycle:** Mutable only for status transitions (`active → historical/expired/superseded`); the substantive claim fields (`summary`, `sample_size`, etc.) are set once at creation and only ever replaced by creating a **new** row that supersedes the old one — never edited in place. This preserves the "superseded, not deleted" decay rule from the architecture doc §12.
+**Lifecycle:** Mutable — reconciliation updates a live row in place (§ "Reconciliation" in `MARKETING_MEMORY_LEARNINGS.md`); a **genuine direction reversal** supersedes the old row (status → `superseded`, `superseded_by_learning_id` set) and inserts a new one, rather than overwriting the conclusion in place.
 
 ### Responsibility
 
-A named, confidence-scored, evidence-linked pattern claim.
-
-### Candidate columns
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `uuid pk` | |
-| `user_id` | `uuid not null` | |
-| `business_profile_id` | `uuid not null` | |
-| `learning_type` | `text not null` | `timing \| weather \| calendar \| community \| sports_entertainment \| political_civic \| market_conditions \| channel_performance \| category_performance` — fixed vocabulary, `check` constrained, mirrors the architecture doc's Context Factors categories plus the existing recommendation-learning bucket dimensions |
-| `summary` | `text not null` | plain-language, template-generated per architecture §11 — never free-form causal text |
-| `confidence_level` | `text not null` | `early_signal \| developing_pattern \| strong_pattern \| confirmed_preference` — `check` constrained to exactly these four values |
-| `sample_size` | `integer not null` | count of supporting observations; `check (sample_size >= 2)` enforces the architecture doc's minimum-evidence floor |
-| `consistency` | `numeric(4,3) null` | 0–1, fraction of supporting observations that agree |
-| `date_range_start` | `date not null` | |
-| `date_range_end` | `date not null` | |
-| `comparison_baseline` | `text not null` | human-readable description, e.g. "trailing 8-week average for this business" — never a cross-tenant benchmark (see architecture §9) |
-| `recurrence_pattern` | `text not null default 'none'` | `none \| annual_month \| annual_range \| recurring_weekly` |
-| `recurrence_value` | `text null` | e.g. `"december"`, `"nov_15..jan_05"`, `"thursday"` |
-| `status` | `text not null default 'active'` | `active \| historical \| expired \| superseded` |
-| `superseded_by_learning_id` | `uuid null references marketing_memory_learnings(id) on delete set null` | set only when `status = 'superseded'` |
-| `active_until` | `timestamptz null` | null = no fixed expiry (governed by `recurrence_pattern` instead); non-null for one-time/expired-context learnings |
-| `dedupe_key` | `text not null` | e.g. `{business_profile_id}:{learning_type}:{recurrence_value}` — see uniqueness below |
-| `created_at` / `updated_at` | `timestamptz` | standard, `updated_at` trigger for `status`/`superseded_by_learning_id` transitions only |
-
-### Indexes / uniqueness
-
-- `unique index on (business_profile_id, dedupe_key) where status = 'active'` — **partial unique index**, matching the existing `content_approvals_active_recommendation_idx` "at most one active X per Y" precedent (`019_recommendation_content_link.sql`). This guarantees at most one *active* Learning per business per pattern, while still allowing historical/superseded rows to accumulate without a uniqueness conflict.
-- `index (business_profile_id, status)`
-- `index (learning_type)`
-
-### RLS
-
-Standard `select/insert/update` for `auth.uid() = user_id`. **No `delete` policy** — Learnings are never deleted, only superseded, enforcing the audit-history rule at the database layer, not just by convention.
-
-### Example record
-
-```json
-{
-  "learning_type": "timing",
-  "summary": "Posts published on Thursday mornings have historically performed better for this business.",
-  "confidence_level": "strong_pattern",
-  "sample_size": 9,
-  "consistency": 0.78,
-  "date_range_start": "2026-03-01",
-  "date_range_end": "2026-06-30",
-  "comparison_baseline": "trailing 8-week average for this business",
-  "recurrence_pattern": "recurring_weekly",
-  "recurrence_value": "thursday",
-  "status": "active",
-  "dedupe_key": "9e21...:timing:thursday"
-}
-```
-
----
-
-## 4. `marketing_memory_evidence_links` — IMPLEMENTED (redesigned for Phase 1)
-
-**Phase:** 1 (first release, shipped in `024_marketing_memory_foundation.sql`) — **elevated from the original Phase 2 proposal**; see the deviation note below.
-**Layer:** Evidence attribution (Observations → their source records)
-**Lifecycle:** Append-only.
-
-### Responsibility
-
-Polymorphic join between an **observation** and every source record it references — the concrete mechanism behind "where did this evidence come from."
-
-### Deviation from the original proposal
-
-The original data-model document scoped this table to Phase 2, anchored on `learning_id` (a Learning citing its supporting/contradicting evidence). Since no Learnings exist yet, this implementation anchors the table on **`observation_id`** instead — every observation's related source records (the recommendation, a content approval, a publishing job) beyond its one direct typed FK (§1) are recorded here. The `contribution` field (`supporting | contradicting | neutral`) is **not implemented** in Phase 1 either — that's a Learning-layer judgment about whether a piece of evidence helps or hurts a claim, which doesn't apply to a plain observation citing its own source records. It is replaced by `link_type` (`primary_source | related_source`), a purely structural distinction. A future Phase 2 migration can add a nullable `learning_id` column and a `contribution` column without renaming or breaking this table. See `MARKETING_MEMORY_FOUNDATION.md` §2 and §5 for the full rationale.
+A named, confidence-scored, evidence-linked pattern claim, derived from Phase 1 observations by `lib/marketing-memory/learningEvaluation.ts`.
 
 ### As-built columns
 
@@ -212,22 +144,108 @@ The original data-model document scoped this table to Phase 2, anchored on `lear
 | `id` | `uuid pk` | |
 | `user_id` | `uuid not null` | |
 | `business_profile_id` | `uuid not null` | |
-| `observation_id` | `uuid not null references marketing_memory_observations(id) on delete cascade` | |
-| `source_type` | `text not null` | `recommendation \| recommendation_outcome_event \| content_approval \| publishing_job \| analytics_snapshot \| market_context_item (reserved) \| monthly_focus (reserved)` — `check` constrained |
-| `source_id` | `uuid not null` | polymorphic id — no FK constraint possible across six source tables; validity enforced at the application layer (`lib/marketing-memory/types.ts`'s `MarketingMemorySourceEntityTypes`), matching how `market_context_items.metadata` already stores loosely-typed provenance without a hard FK |
-| `link_type` | `text not null default 'related_source'` | `primary_source \| related_source` |
-| `idempotency_key` | `text not null unique` | `{observation_id}:{source_type}:{source_id}` |
+| `learning_family` | `text not null` | `timing_performance \| recommendation_action_outcome` — intentionally limited to two families; see `MARKETING_MEMORY_LEARNINGS.md` §3 for why weather/event-attention are not implemented |
+| `time_dimension` | `text null` | `day_of_week \| month \| season` — only for `timing_performance`; always null for `recommendation_action_outcome` |
+| `subject_key` | `text not null` | the specific value measured: a day/month/season value, or a `recommended_action_type` value |
+| `metric_key` | `text not null` | `performance_score \| approval_rate` |
+| `direction` | `text not null` | `positive \| negative \| neutral \| inconclusive` — the Learning's own directional claim |
+| `status` | `text not null default 'emerging'` | `emerging \| active \| weakening \| inconclusive \| superseded \| archived` |
+| `confidence_level` | `text not null default 'early_signal'` | `early_signal \| developing_pattern \| strong_pattern` — **`confirmed_preference` is excluded from this check constraint entirely**, not just unused by application code |
+| `confidence_components` | `jsonb not null default '{}'` | sample size, supporting/contradicting/neutral counts, consistency, contradiction rate, effect size, recency days, seasonal recurrence count, confounder codes — everything needed to answer "what would change this" without recomputing from raw observations |
+| `sample_size` | `integer not null` | `check (sample_size >= 2)` |
+| `supporting_count` / `contradicting_count` / `neutral_count` / `excluded_count` | `integer not null default 0` | denormalized for quick filtering without parsing `confidence_components` |
+| `effect_size` | `numeric(7,4)` | signed, normalized relative effect, clamped to ±3.0 |
+| `comparison_baseline` | `text not null` | human-readable, e.g. "trailing rolling average performance score for this business" |
+| `baseline_value` / `cohort_value` | `numeric(10,4)` | the actual numbers behind `effect_size` |
+| `first_observed_at` / `last_observed_at` | `timestamptz not null` | evidence date range |
+| `evaluation_window_days` | `integer not null` | the lookback window used for this evaluation run (`EVALUATION_WINDOW_DAYS`, 180) |
+| `recurrence_pattern` | `text not null default 'none'` | `none \| annual_month \| annual_range \| recurring_weekly` |
+| `seasonal_recurrence_count` | `integer not null default 0` | distinct calendar years represented, for month/season dimensions only |
+| `confounder_codes` | `text[] not null default '{}'` | closed vocabulary, e.g. `estimated_performance_metric`, `small_sample` |
+| `summary` | `text not null` | customer-safe, correlation-aware, template-generated — never free-form |
+| `internal_rationale` | `text not null` | internal-only, may reference raw component values |
+| `learning_key` | `text not null` | deterministic: `{business_profile_id}:{learning_family}:{time_dimension\|none}:{subject_key}:{metric_key}` |
+| `superseded_by_learning_id` | `uuid null references marketing_memory_learnings(id) on delete set null` | |
+| `schema_version` | `smallint not null default 1` | |
+| `evaluated_at` / `created_at` / `updated_at` | `timestamptz` | `updated_at` trigger on every reconciliation |
+
+**Deviations from the original proposal**: `learning_type` (a single, catch-all field spanning nine categories including unimplemented families like `weather`/`sports_entertainment`/`political_civic`) is replaced by two narrower, orthogonal fields (`learning_family` + `time_dimension`), reflecting the two families actually implemented. `date_range_start`/`date_range_end` (dates) became `first_observed_at`/`last_observed_at` (timestamps, matching the timestamp granularity Phase 1 observations already use). `consistency` and `recurrence_value` were folded into `confidence_components` (consistency) and `subject_key` (recurrence value is just the subject key for timing families) rather than kept as separate top-level columns. `dedupe_key` was renamed `learning_key` for clarity, same purpose. `active_until` was dropped — decay for this phase is entirely the read-time `status` + `confidence_components.recencyDays`/`seasonalRecurrenceCount` combination (§ Recency and Decay in `MARKETING_MEMORY_LEARNINGS.md`), not a stored expiry timestamp.
+
+### Indexes / uniqueness
+
+- `unique index on (business_profile_id, learning_key) where status in ('emerging','active','weakening','inconclusive')` — the as-built partial unique index (`marketing_memory_learnings_live_key_idx`), covering four "live" statuses rather than just `active`, since `emerging`/`weakening`/`inconclusive` are equally "currently representing this pattern." Live-verified (`MARKETING_MEMORY_LEARNINGS.md` §12): a second live insert for the same key correctly fails with `23505`, and marking a row `superseded` correctly frees the slot.
+- `index (business_profile_id, status)`, `index (business_profile_id, learning_family)`, `index (learning_key)`, `index (confidence_level)`
+
+### RLS
+
+`select`/`insert`/`update` for `auth.uid() = user_id`. **No `delete` policy** — Learnings are never deleted, only superseded, enforced at the database layer. Live-verified: anonymous select returns `[]`, anonymous insert returns Postgres `42501`.
+
+### Example record (as inserted by `lib/marketing-memory/learningPersistence.ts`)
+
+```json
+{
+  "learning_family": "timing_performance",
+  "time_dimension": "day_of_week",
+  "subject_key": "thursday",
+  "metric_key": "performance_score",
+  "direction": "positive",
+  "status": "active",
+  "confidence_level": "developing_pattern",
+  "sample_size": 9,
+  "supporting_count": 7,
+  "contradicting_count": 2,
+  "comparison_baseline": "trailing rolling average performance score for this business",
+  "recurrence_pattern": "recurring_weekly",
+  "confounder_codes": ["estimated_performance_metric"],
+  "summary": "There's a developing pattern: Posts published on Thursdays have historically performed better for your business.",
+  "learning_key": "9e21...:timing_performance:day_of_week:thursday:performance_score"
+}
+```
+
+---
+
+## 4. `marketing_memory_evidence_links` — IMPLEMENTED (Phase 1 shape, extended in Phase 2)
+
+**Phase:** 1 (first shipped in `024_marketing_memory_foundation.sql`) — **elevated from the original Phase 2 proposal**, then extended (not replaced) by `025_marketing_memory_learnings.sql` to also support learning-anchored rows, exactly as promised in `MARKETING_MEMORY_FOUNDATION.md`.
+**Layer:** Evidence attribution (Observations → their source records, **and now** Learnings → their supporting/contradicting observations)
+**Lifecycle:** Append-only.
+
+### Responsibility
+
+Polymorphic join from **either an observation or a learning** to every source record it references — the concrete mechanism behind "where did this evidence come from."
+
+### Deviation from the original proposal
+
+The original data-model document scoped this table to Phase 2 only, anchored solely on `learning_id`. Phase 1 elevated it early, anchored on `observation_id` instead (see the Phase 1 write-up this section used to contain). Phase 2 (migration 025) now adds the originally-proposed `learning_id` anchor **alongside** `observation_id` — via an additive `ALTER`, not a table rewrite: `observation_id` became nullable, `learning_id` (nullable FK to `marketing_memory_learnings`) and `contribution` (nullable, `supporting | contradicting | neutral | excluded`) were added, `link_type` became nullable (meaningful only for observation-anchored rows), `source_type`'s check constraint gained `'observation'` (so a learning can cite an observation as its evidence), and a new `exactly-one-anchor` check constraint replaced the old `observation_id not null` requirement. Every Phase 1 row remains valid and untouched under the new constraints — live-verified (`MARKETING_MEMORY_LEARNINGS.md` §12).
+
+### As-built columns
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid pk` | |
+| `user_id` | `uuid not null` | |
+| `business_profile_id` | `uuid not null` | |
+| `observation_id` | `uuid null references marketing_memory_observations(id) on delete cascade` | set for Phase 1 rows; null for Phase 2 learning-anchored rows |
+| `learning_id` | `uuid null references marketing_memory_learnings(id) on delete cascade` | **new in Phase 2**; set for learning-anchored rows; null for Phase 1 rows |
+| `source_type` | `text not null` | `recommendation \| recommendation_outcome_event \| content_approval \| publishing_job \| analytics_snapshot \| market_context_item (reserved) \| monthly_focus (reserved) \| observation (new in Phase 2)` — `check` constrained |
+| `source_id` | `uuid not null` | polymorphic id — no FK constraint possible across the source tables; validity enforced at the application layer (`lib/marketing-memory/types.ts`'s `MarketingMemorySourceEntityTypes`) |
+| `link_type` | `text null default 'related_source'` | `primary_source \| related_source` — meaningful only for observation-anchored (Phase 1) rows; null for learning-anchored rows, where `contribution` carries the meaning instead |
+| `contribution` | `text null` | **new in Phase 2**: `supporting \| contradicting \| neutral \| excluded` — meaningful only for learning-anchored rows |
+| `idempotency_key` | `text not null unique` | `{observation_id}:{source_type}:{source_id}` for Phase 1 rows; `{learning_id}:{source_type}:{source_id}` for Phase 2 rows |
 | `created_at` | `timestamptz not null default now()` | |
+
+**Known limitation** (see `MARKETING_MEMORY_LEARNINGS.md` §2/§15): if a learning-anchored row's `contribution` would change on re-evaluation (an observation reclassified from supporting to contradicting), the existing row is **not** rewritten — this table stays append-only by design. The Learning row's own `supporting_count`/`contradicting_count`/`confidence_components` remain the current-state source of truth.
 
 ### Indexes
 
 - `unique (idempotency_key)`
 - `index (observation_id)`
 - `index (source_type, source_id)`
+- `index (learning_id) where learning_id is not null` — **new in Phase 2**
 
 ### RLS
 
-`select`, `insert` only — append-only. Live-verified, including the `source_type` check constraint rejecting an unsupported value.
+`select`, `insert` only — append-only, unchanged by the Phase 2 `ALTER`. Live-verified: the `exactly-one-anchor` check rejects a row with both (or neither) anchor set; a fabricated Phase-1-style `observation_id` still correctly hits the real FK constraint (`23503`), proving the anchor check didn't interfere with Phase 1's existing shape.
 
 ### What Phase 1 actually populates
 
@@ -363,7 +381,7 @@ An audit-trail record of one `MarketingDirectorDecision` (from `lib/marketing-di
 
 ---
 
-## 8. Relationships diagram (as-built through Phase 1)
+## 8. Relationships diagram (as-built through Phase 2)
 
 ```
 business_profiles ──┬── marketing_memory_observations ──── context_snapshot_id → marketing_memory_context_snapshots
@@ -371,18 +389,24 @@ business_profiles ──┬── marketing_memory_observations ──── con
                      │        ├── source_outcome_event_id  → recommendation_outcome_events (existing)
                      │        └── source_analytics_snapshot_id → analytics_snapshots (existing)
                      │        │
-                     │        └──(1..4 rows)──▶ marketing_memory_evidence_links
-                     │                                (observation_id anchor; source_type/source_id polymorphic:
+                     │        └──(1..4 rows, observation-anchored)──▶ marketing_memory_evidence_links
+                     │                                (source_type/source_id polymorphic:
                      │                                 recommendation | content_approval | publishing_job |
-                     │                                 recommendation_outcome_event | analytics_snapshot,
-                     │                                 all → their existing tables)
+                     │                                 recommendation_outcome_event | analytics_snapshot)
                      │
-                     │   [Phase 2, not yet implemented] marketing_memory_learnings
-                     │   [Phase 3, not yet implemented] marketing_memory_preferences / marketing_memory_overrides
-                     │   [Phase 4, not yet implemented] marketing_memory_decision_links
+                     └── marketing_memory_learnings (Phase 2)
+                              │  learning_family: timing_performance | recommendation_action_outcome
+                              │  superseded_by_learning_id → marketing_memory_learnings (self, on direction flip)
+                              │
+                              └──(supporting/contradicting rows, learning-anchored)──▶ marketing_memory_evidence_links
+                                       (source_type: 'observation', source_id → marketing_memory_observations,
+                                        contribution: supporting | contradicting)
+
+   [Phase 3, not yet implemented] marketing_memory_preferences / marketing_memory_overrides
+   [Phase 4, not yet implemented] marketing_memory_decision_links
 ```
 
-The original proposal's Learning-anchored evidence graph (`evidence_links.learning_id → marketing_memory_learnings`) remains the intended Phase 2 shape; a future migration adds a nullable `learning_id` column alongside `observation_id` rather than replacing it.
+`marketing_memory_evidence_links` is now a single table serving both anchors (exactly one of `observation_id`/`learning_id` set per row, DB-enforced) — see §4.
 
 ---
 
@@ -392,13 +416,13 @@ The original proposal's Learning-anchored evidence graph (`evidence_links.learni
 |---|---|---|---|
 | `marketing_memory_observations` | 1 | **Implemented** | `recommendation_outcome_events`, `analytics_snapshots` (existing) |
 | `marketing_memory_context_snapshots` | 1 | **Implemented** | `market_context_items` (existing) |
-| `marketing_memory_evidence_links` | 1 (elevated from the original Phase 2 proposal) | **Implemented**, observation-anchored | Phase 1 `marketing_memory_observations` |
-| `marketing_memory_learnings` | 2 | Proposed only | Phase 1 entities |
+| `marketing_memory_evidence_links` | 1 (elevated), extended in Phase 2 | **Implemented**, dual-anchored (observation or learning) | Phase 1 `marketing_memory_observations`; Phase 2 `marketing_memory_learnings` |
+| `marketing_memory_learnings` | 2 | **Implemented** | Phase 1 `marketing_memory_observations`/`marketing_memory_context_snapshots`; `marketing_recommendations` (existing, for `recommendation_action_outcome`) |
 | `marketing_memory_preferences` | 3 | Proposed only | none (can ship independently of Phases 1–2) |
 | `marketing_memory_overrides` | 3 | Proposed only | `marketing_memory_preferences`; `decision_link_id` FK nullable until Phase 4 |
 | `marketing_memory_decision_links` | 4 | Proposed only | `marketing_memory_learnings`, `marketing_memory_preferences`, `marketing_recommendations` (existing) |
 
-`marketing_memory_observations`, `marketing_memory_context_snapshots`, and `marketing_memory_evidence_links` were shipped together in `supabase/migrations/024_marketing_memory_foundation.sql`. `marketing_memory_learnings`, `marketing_memory_preferences`, `marketing_memory_overrides`, and `marketing_memory_decision_links` remain design proposals for later phases — no migration exists for them yet.
+`marketing_memory_observations`, `marketing_memory_context_snapshots`, and `marketing_memory_evidence_links` were shipped together in `supabase/migrations/024_marketing_memory_foundation.sql`. `marketing_memory_learnings` (plus the `evidence_links` extension) shipped in `supabase/migrations/025_marketing_memory_learnings.sql`. `marketing_memory_preferences`, `marketing_memory_overrides`, and `marketing_memory_decision_links` remain design proposals for later phases — no migration exists for them yet.
 
 ---
 
