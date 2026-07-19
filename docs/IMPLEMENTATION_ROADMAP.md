@@ -51,6 +51,8 @@
 - **Shipped (Head of Marketing Journal):** Narrative “While you were busy” journal nested inside the Weekly Briefing via progressive disclosure (orchestration only). See [`HEAD_OF_MARKETING_JOURNAL.md`](./HEAD_OF_MARKETING_JOURNAL.md).  
 - **Shipped (Executive Briefing Engine — Morning Brief):** Structured under-one-minute executive summary on the HoM dashboard; priorities explained from Marketing Director only (no new recommendation logic). Weekly/Monthly brief types built but not surfaced. See [`EXECUTIVE_BRIEFING_ENGINE.md`](./EXECUTIVE_BRIEFING_ENGINE.md).  
 - **Shipped (Campaign Intelligence Engine — Phase 2B):** Multi-step campaign execution plans initiated only via Marketing Director; declarative templates reuse existing recommendation action types; HoM Campaigns section with timeline/metrics; completion records Marketing Memory observations (not learnings). See [`CAMPAIGN_INTELLIGENCE_ENGINE.md`](./CAMPAIGN_INTELLIGENCE_ENGINE.md).  
+- **Shipped (Interactive Head of Marketing — Phase 2C):** Ask Your Head of Marketing panel — grounded, deterministic Q&A over Marketing Director / Executive Brief / Campaigns / Memory / Market Context; presentation only (no new recommendation engine, no autonomous actions). See [`INTERACTIVE_HEAD_OF_MARKETING.md`](./INTERACTIVE_HEAD_OF_MARKETING.md).  
+
 
 
 - **Shipped (Monthly Focus):** Living “This Month’s Focus” on the same HoM surface — presentation over existing plan themes/goals and signals; horizon hook for future Quarterly/Annual. See [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md).  
