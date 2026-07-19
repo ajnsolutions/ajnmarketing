@@ -97,5 +97,7 @@ None are implemented. `getExecutiveBriefForCurrentUser(briefType)` is the adapte
 ## 8. Engineering constraints
 
 - No LLM, no ML, no new providers  
-- `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`  
+- `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`
+- Strategic Marketing Calendar may surface brief `today` items as dated priority markers; it does not create a second briefing system (see [`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md)).  
+
 - No background refresh jobs  

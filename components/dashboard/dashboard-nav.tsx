@@ -112,6 +112,16 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Strategic calendar",
+    href: "/dashboard/strategic-marketing-calendar",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M6 5h12a2 2 0 0 1 2 2v13H4V7a2 2 0 0 1 2-2Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01" />
+      </svg>
+    ),
+  },
+  {
     label: "Reviews",
     href: "/dashboard/reviews",
     icon: (

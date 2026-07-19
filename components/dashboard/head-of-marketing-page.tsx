@@ -5,6 +5,7 @@ import { ExecutiveBriefSection } from "@/components/dashboard/executive-brief-se
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
 import { MonthlyFocusSection } from "@/components/dashboard/monthly-focus-section";
 import { ProactivePresenceSection } from "@/components/dashboard/proactive-presence";
+import { StrategicCalendarPreviewSection } from "@/components/dashboard/strategic-calendar-preview";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 
@@ -64,6 +65,8 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
       <MonthlyFocusSection focus={briefing.monthlyFocus} />
 
       <CampaignsSection campaigns={briefing.campaigns} />
+
+      <StrategicCalendarPreviewSection preview={briefing.calendarPreview} />
 
       <AskHeadOfMarketingPanel />
 
@@ -177,6 +180,7 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
             {[
               { href: "/dashboard/approvals", label: "This Week — needs your opinion" },
               { href: "/dashboard/publishing", label: "Preparing for publication" },
+              { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
               { href: "/dashboard/tasks", label: "What I'm working on" },
               { href: "/dashboard/google-business-profile", label: "Google Profile" },

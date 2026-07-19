@@ -386,6 +386,10 @@ The Executive Briefing Engine ([`EXECUTIVE_BRIEFING_ENGINE.md`](./EXECUTIVE_BRIE
 
 The Campaign Intelligence Engine ([`CAMPAIGN_INTELLIGENCE_ENGINE.md`](./CAMPAIGN_INTELLIGENCE_ENGINE.md)) executes multi-step campaigns **after** Marketing Director decides that a campaign should exist (type, objective, priority). The engine never self-initiates, never creates recommendations, and never overrides Director priority. Completion feeds Marketing Memory as observations only. `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`.
 
+### 10.4 Strategic Marketing Calendar (presentation only)
+
+The Strategic Marketing Calendar ([`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md)) aggregates dated Marketing Director priorities and other authoritative systems into a read-only day/week/month view. It does not reinterpret strategy, invent priorities, or mutate any source system.
+
 ---
 
 ## 11. Verification

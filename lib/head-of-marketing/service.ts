@@ -24,6 +24,14 @@ import { buildMarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evid
 import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
 import { getCampaignDashboardForBusiness } from "@/lib/campaign-intelligence/campaign-service";
+import { getContentApprovalsForUser } from "@/lib/content-approval/persistence";
+import { getLatestMarketContextBriefWithItemsForUser } from "@/lib/market-context/persistence";
+import { getPublishingQueueForUser } from "@/lib/publishing-queue/persistence";
+import { aggregateStrategicMarketingCalendar } from "@/lib/strategic-marketing-calendar/calendar-aggregator";
+import { buildCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-presentation";
+import { resolveCalendarRange } from "@/lib/strategic-marketing-calendar/calendar-range";
+import { zonedDateKey } from "@/lib/strategic-marketing-calendar/calendar-timezone";
+import type { CalendarSourceBundle } from "@/lib/strategic-marketing-calendar/calendar-dependencies";
 
 async function countOpenRecommendations(
   supabase: SupabaseClient,
@@ -143,8 +151,15 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const topPriorityTitle =
     priorities.high[0]?.title ?? priorities.medium[0]?.title ?? null;
 
-  // Batch: open-count + memory evidence + campaigns in parallel (no N+1 loops).
-  const [openRecommendations, memoryEvidence, campaigns] = await Promise.all([
+  // Batch: open-count + memory + campaigns + calendar sources (no N+1 / no second MD resolve).
+  const [
+    openRecommendations,
+    memoryEvidence,
+    campaigns,
+    publishing,
+    approvals,
+    marketBrief,
+  ] = await Promise.all([
     countOpenRecommendations(supabase, profile.id),
     buildMarketingMemoryEvidencePackage(supabase, profile.user_id, profile.id, {
       activeGoals,
@@ -152,6 +167,9 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     getCampaignDashboardForBusiness(profile.user_id, profile.id, {
       supabaseClient: supabase,
     }),
+    getPublishingQueueForUser(supabase, profile.user_id),
+    getContentApprovalsForUser(supabase, profile.user_id),
+    getLatestMarketContextBriefWithItemsForUser(supabase, profile.user_id),
   ]);
 
   const { candidates: candidateRecommendations, topDetail: topRecommendationDetail } =
@@ -191,5 +209,33 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     memoryEvidence,
   });
 
-  return { ...briefing, campaigns };
+  const withCampaigns = { ...briefing, campaigns };
+  const range = resolveCalendarRange({ view: "week", configuredTimezone: null });
+  let calendarPreview = null;
+  if (range.ok) {
+    const sources: CalendarSourceBundle = {
+      briefing: withCampaigns,
+      campaigns,
+      publishing: publishing.filter((item) => item.business_profile_id === profile.id),
+      approvals: approvals.filter((item) => item.business_profile_id === profile.id),
+      marketContextItems: (marketBrief?.items ?? []).filter(
+        (item) => item.business_profile_id === profile.id,
+      ),
+      pendingApprovalCount: context.approvalStats.pending ?? 0,
+      warnings: [],
+    };
+    const todayKey = zonedDateKey(new Date(), range.timezone);
+    const calendar = aggregateStrategicMarketingCalendar({
+      businessProfileId: profile.id,
+      view: range.view,
+      timezone: range.timezone,
+      rangeStart: range.rangeStart,
+      rangeEnd: range.rangeEnd,
+      todayKey,
+      sources,
+    });
+    calendarPreview = buildCalendarPreview(calendar, todayKey);
+  }
+
+  return { ...withCampaigns, calendarPreview };
 }

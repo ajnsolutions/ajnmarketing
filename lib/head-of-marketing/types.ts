@@ -3,6 +3,7 @@ import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
+import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
 
 export type MarketingHealthState =
   | "excellent"
@@ -93,6 +94,11 @@ export type HeadOfMarketingBriefing = {
    * initiates a campaign. Never contains independently invented recommendations.
    */
   campaigns: CampaignDashboardCard[];
+  /**
+   * Compact read-only Strategic Marketing Calendar preview (next 7 days).
+   * Aggregates existing sources — never invents schedule commitments.
+   */
+  calendarPreview: StrategicCalendarPreview | null;
 };
 
 /** Customer-facing primary nav — Great Simplification four destinations. */
@@ -115,6 +121,7 @@ export const HOM_ADVANCED_NAV_HREFS = [
   "/dashboard/marketing-plan",
   "/dashboard/marketing-recommendations",
   "/dashboard/publishing",
+  "/dashboard/strategic-marketing-calendar",
   "/dashboard/reviews",
   "/dashboard/website-analysis",
   "/dashboard/brand-voice",
