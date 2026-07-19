@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import {
   FILTER_GROUP_LABELS,
   categoriesForFilterGroups,
@@ -11,7 +11,7 @@ import {
   bucketEventsByDay,
   eventAccessibleLabel,
 } from "@/lib/strategic-marketing-calendar/calendar-presentation";
-import { addDateKeyDays } from "@/lib/strategic-marketing-calendar/calendar-timezone";
+import { addCalendarMonths, addDateKeyDays } from "@/lib/strategic-marketing-calendar/calendar-timezone";
 import { formatEventWhen } from "@/lib/strategic-marketing-calendar/calendar-timezone";
 import {
   StrategicCalendarFilterGroups,
@@ -32,8 +32,9 @@ type Props = {
 function shiftAnchor(anchor: string, view: StrategicCalendarView, direction: -1 | 1): string {
   if (view === StrategicCalendarViews.DAY) return addDateKeyDays(anchor, direction);
   if (view === StrategicCalendarViews.WEEK) return addDateKeyDays(anchor, direction * 7);
-  // month: jump ~28 days then clamp mentally via API month resolve
-  return addDateKeyDays(anchor, direction * 28);
+  // month: real calendar-month arithmetic — a fixed +/-28-day jump can fail to advance
+  // out of a 30/31-day month when starting near its beginning (see calendar-timezone.ts).
+  return addCalendarMonths(anchor, direction);
 }
 
 export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor }: Props) {
@@ -48,6 +49,17 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<StrategicMarketingCalendarEvent | null>(null);
   const [isPending, startTransition] = useTransition();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  const openEvent = useCallback((event: StrategicMarketingCalendarEvent, trigger: HTMLElement) => {
+    triggerRef.current = trigger;
+    setSelected(event);
+  }, []);
+
+  const closeEvent = useCallback(() => {
+    setSelected(null);
+  }, []);
 
   const load = useCallback(
     (next: { view: StrategicCalendarView; anchor: string; groups: StrategicCalendarFilterGroup[] }) => {
@@ -83,6 +95,18 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [selected]);
+
+  // Focus management: move focus into the dialog when it opens, and return it to the
+  // event button that triggered it when it closes — otherwise a keyboard/screen-reader
+  // user's focus is silently stranded behind the overlay, or lost entirely on close.
+  useEffect(() => {
+    if (selected) {
+      dialogRef.current?.focus();
+      return;
+    }
+    triggerRef.current?.focus();
+    triggerRef.current = null;
   }, [selected]);
 
   const buckets = useMemo(() => bucketEventsByDay(calendar, { maxPerDay: 8 }), [calendar]);
@@ -249,7 +273,7 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
                         type="button"
                         className="hom-focusable flex w-full flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                         aria-label={eventAccessibleLabel(event, calendar.timezone)}
-                        onClick={() => setSelected(event)}
+                        onClick={(clickEvent) => openEvent(event, clickEvent.currentTarget)}
                       >
                         <span>
                           <span className="block text-sm font-semibold text-navy-900">
@@ -289,13 +313,15 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center"
           role="presentation"
-          onClick={() => setSelected(null)}
+          onClick={closeEvent}
         >
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={dialogTitleId}
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            tabIndex={-1}
+            className="hom-focusable w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id={dialogTitleId} className="text-lg font-bold text-navy-900">
@@ -336,7 +362,7 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
               <button
                 type="button"
                 className="hom-focusable min-h-11 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-navy-900"
-                onClick={() => setSelected(null)}
+                onClick={closeEvent}
               >
                 Close
               </button>
