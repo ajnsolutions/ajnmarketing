@@ -13,13 +13,16 @@ import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 import { buildWeeklyBriefing } from "@/lib/head-of-marketing/weeklyBriefing";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
-import { getActiveMarketingRecommendationsForUser } from "@/lib/marketing-decisions/persistence";
-import { formatRecommendedActionType } from "@/lib/marketing-decisions/ui";
-import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
+import { orderCandidatesWithMemory } from "@/lib/marketing-director/memoryComposition";
 import type {
   MarketingDirectorCandidate,
   MarketingDirectorTopRecommendationDetail,
 } from "@/lib/marketing-director/types";
+import { getActiveMarketingRecommendationsForUser } from "@/lib/marketing-decisions/persistence";
+import { formatRecommendedActionType } from "@/lib/marketing-decisions/ui";
+import { buildMarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidencePackage";
+import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
+import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
 
 async function countOpenRecommendations(
   supabase: SupabaseClient,
@@ -47,6 +50,7 @@ async function loadMarketingDirectorCandidates(
   userId: string,
   businessProfileId: string,
   supabase: SupabaseClient,
+  memoryEvidence: MarketingMemoryEvidencePackage | null,
 ): Promise<{
   candidates: MarketingDirectorCandidate[];
   topDetail: MarketingDirectorTopRecommendationDetail | null;
@@ -59,14 +63,17 @@ async function loadMarketingDirectorCandidates(
     return { candidates: [], topDetail: null };
   }
 
-  const candidates: MarketingDirectorCandidate[] = active.map((recommendation) => ({
+  const mapped: MarketingDirectorCandidate[] = active.map((recommendation) => ({
     id: recommendation.id,
     actionTypeLabel: formatRecommendedActionType(recommendation.recommended_action_type),
+    actionType: recommendation.recommended_action_type,
     status: recommendation.status,
     urgency: recommendation.urgency,
   }));
 
-  const top = active[0]!;
+  // Same pure reorder the resolver applies — so topDetail matches the memory-aware primary.
+  const { ordered: candidates } = orderCandidatesWithMemory(mapped, memoryEvidence);
+  const top = candidates[0]!;
   const decisionPackage = await getRecommendationDecisionPackageForUser(userId, top.id, supabase);
 
   const topDetail: MarketingDirectorTopRecommendationDetail | null = decisionPackage
@@ -85,6 +92,7 @@ async function loadMarketingDirectorCandidates(
     candidateCount: candidates.length,
     topRecommendationId: top.id,
     hasExplainability: Boolean(topDetail),
+    memoryColdStart: memoryEvidence?.isColdStart ?? true,
   });
 
   return { candidates, topDetail };
@@ -110,13 +118,6 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const upcomingCalendar = buildUpcomingCalendar(
     context.planData.plan?.plan_json?.thirtyDayCalendar,
   );
-  const openRecommendations = await countOpenRecommendations(supabase, profile.id);
-
-  const { candidates: candidateRecommendations, topDetail: topRecommendationDetail } =
-    openRecommendations > 0
-      ? await loadMarketingDirectorCandidates(profile.user_id, profile.id, supabase)
-      : { candidates: [], topDetail: null };
-
   const planJson = context.planData.plan?.plan_json;
   const planSummary =
     planJson?.executiveSummary?.trim() ||
@@ -128,6 +129,10 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const businessGoals = (planJson?.businessGoals ?? [])
     .map((goal) => goal.trim())
     .filter(Boolean);
+  const profileGoals = (profile.marketing_goals ?? [])
+    .map((goal) => goal.trim())
+    .filter(Boolean);
+  const activeGoals = [...new Set([...businessGoals, ...profileGoals])];
 
   const seasonalCampaign = planJson?.seasonalCampaigns?.[0];
   const seasonalHint = seasonalCampaign
@@ -136,6 +141,24 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
 
   const topPriorityTitle =
     priorities.high[0]?.title ?? priorities.medium[0]?.title ?? null;
+
+  // Batch: open-count + memory evidence in parallel (no N+1 preference/learning loops).
+  const [openRecommendations, memoryEvidence] = await Promise.all([
+    countOpenRecommendations(supabase, profile.id),
+    buildMarketingMemoryEvidencePackage(supabase, profile.user_id, profile.id, {
+      activeGoals,
+    }),
+  ]);
+
+  const { candidates: candidateRecommendations, topDetail: topRecommendationDetail } =
+    openRecommendations > 0
+      ? await loadMarketingDirectorCandidates(
+          profile.user_id,
+          profile.id,
+          supabase,
+          memoryEvidence,
+        )
+      : { candidates: [], topDetail: null };
 
   return buildWeeklyBriefing({
     userName: session.userName,
@@ -161,5 +184,6 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     competitorWatchMessage: null,
     candidateRecommendations,
     topRecommendationDetail,
+    memoryEvidence,
   });
 }

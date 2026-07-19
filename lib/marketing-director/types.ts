@@ -13,6 +13,7 @@
 import type { CommandCenterWeeklyWins } from "@/lib/command-center/types";
 import type { MarketingHealthState, HeadOfMarketingPrimaryActionKind } from "@/lib/head-of-marketing/types";
 import type { RecommendationStatus, RecommendationUrgency } from "@/lib/marketing-decisions/types";
+import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 import type { ConfidenceLabel } from "@/lib/recommendation-presentation/types";
 
 export const MarketingDirectorDecisionTypes = {
@@ -42,6 +43,8 @@ export const DeferralReasons = {
   LOWER_PRIORITY: "lower_priority",
   NOT_TIME_SENSITIVE: "not_time_sensitive",
   BLOCKED_BY_PREREQUISITE: "blocked_by_prerequisite",
+  /** Explicit customer prohibition (e.g. prohibit_action preference) — internal only. */
+  CUSTOMER_PROHIBITION: "customer_prohibition",
   ALREADY_HANDLED: "already_handled",
   AWAITING_OUTCOME_DATA: "awaiting_outcome_data",
   OUTSIDE_MONTHLY_FOCUS: "outside_monthly_focus",
@@ -75,8 +78,27 @@ export type MarketingDirectorCandidate = {
   id: string;
   /** Customer-safe label from marketing-decisions/ui.ts's formatRecommendedActionType. */
   actionTypeLabel: string;
+  /**
+   * Raw recommended_action_type for Marketing Memory matching only — never rescored here.
+   * Optional for back-compat with callers that have not yet threaded the raw type.
+   */
+  actionType?: string;
   status: RecommendationStatus;
   urgency: RecommendationUrgency;
+};
+
+/**
+ * Internal structured memory context attached to a decision. Never exposed via
+ * toMarketingDirectorClientView — diagnostics / future progressive disclosure only.
+ */
+export type MarketingDirectorMemoryContext = {
+  preferencesApplied: string[];
+  learningsConsidered: string[];
+  contextConsidered: string[];
+  ignoredLearnings: { id: string; reason: string }[];
+  ignoredPreferences: { id: string; reason: string }[];
+  precedenceExplanation: string;
+  confidenceExplanation: string;
 };
 
 /**
@@ -116,6 +138,12 @@ export type MarketingDirectorInput = {
   /** Explainability for candidateRecommendations[0], when already fetched by the
    * caller. Never fetched or recomputed inside this module. */
   topRecommendationDetail: MarketingDirectorTopRecommendationDetail | null;
+  /**
+   * Optional Marketing Memory evidence package (Phase 4). Null / cold-start must leave
+   * decision selection identical to pre-memory behavior (aside from memoryContext).
+   * Never fetched inside this module — see lib/marketing-memory/evidencePackage.ts.
+   */
+  memoryEvidence?: MarketingMemoryEvidencePackage | null;
 };
 
 /**
@@ -147,6 +175,12 @@ export type MarketingDirectorDecision = {
   presentationPriority: number;
   /** ISO timestamp of when this decision was computed. */
   evaluatedAt: string;
+  /**
+   * Internal memory consultation record. Null only when the composer short-circuits
+   * before memory composition; normally always present (including "no evidence" empty).
+   * Never copied into MarketingDirectorClientView.
+   */
+  memoryContext: MarketingDirectorMemoryContext | null;
 };
 
 /**
@@ -187,6 +221,8 @@ export const MARKETING_DIRECTOR_FORBIDDEN_TERMS = [
   "orchestration layer",
   "adaptive weighting",
   "decision pipeline",
+  "Weight ",
+  "confidence coefficient",
   "URGENT",
   "CRITICAL",
   "WARNING",

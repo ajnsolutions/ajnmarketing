@@ -338,6 +338,8 @@ test("client-safe presentation mapping omits internal-only fields", () => {
   assert.equal((clientView as Record<string, unknown>).supportingSignals, undefined);
   assert.equal((clientView as Record<string, unknown>).presentationPriority, undefined);
   assert.equal((clientView as Record<string, unknown>).sourceRecommendationId, undefined);
+  assert.equal((clientView as Record<string, unknown>).memoryContext, undefined);
+  assert.ok(decision.memoryContext);
 });
 
 // --- Regression: one shared decision drives both presentation consumers -------------

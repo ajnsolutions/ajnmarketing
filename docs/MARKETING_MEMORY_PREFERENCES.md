@@ -16,7 +16,7 @@ This document records what Phase 3 ("customer preferences and overrides") actual
 | `app/api/marketing-memory/preferences` / `overrides` | Authenticated, tenant-scoped read/write APIs |
 | `app/dashboard/marketing-preferences` + settings hub link | Minimal additive settings surface |
 
-**Preferences and overrides do not influence Marketing Director, recommendation scoring, publishing, or Weekly Briefing behavior in this PR.** They are recorded, validated, auditable, and readable — consumption is Phase 4.
+**Preferences and overrides were recorded but not consumed in the Phase 3 PR.** Phase 4 now consults active preferences via `MarketingMemoryEvidencePackage` — see [`MARKETING_DIRECTOR_MEMORY_INTEGRATION.md`](./MARKETING_DIRECTOR_MEMORY_INTEGRATION.md). They still do not score, create, publish, or approve recommendations.
 
 ---
 
@@ -159,4 +159,4 @@ This section was rewritten during an independent Claude Code review of the merge
 - **No Phase 1 observation/audit events are recorded for preference or override writes** (`preference_created`, `override_promoted`, `factor_disabled`, etc. do not exist yet) — found during Claude Code review and intentionally left as a follow-up rather than fixed in that pass, since it requires extending migration 024's `observation_type` check constraint, which is out of scope for a fix applied on top of migration 026. See §11.
 - **Preference/override writes are not transactional across their multi-step sequences** (find-existing → deactivate → insert for supersession; insert override → insert preference → link promotion). Each step is idempotent-safe on retry (partial unique indexes and identical-content checks prevent duplicates), and the one identified failure mode (a promotion's forward link not persisting) is now logged (§11) — but a true multi-statement transaction (e.g. via a Postgres function) was not added in this review, matching the same sequential-with-documented-limitation pattern already used by Phase 2's learning reconciliation.
 - `businessProfileId` is trusted by the service layer rather than independently re-verified against the caller's `userId` — safe today because both existing API routes derive it server-side, but worth tightening (a cheap ownership check in the service functions themselves) before a third caller is added.
-- **Phase 4 — Marketing Director consumption** is the first phase that may consult preferences via `MarketingMemoryEvidencePackage`, still as optional evidence, never a second decision authority.
+- **Phase 4 — Marketing Director consumption is implemented** — see [`MARKETING_DIRECTOR_MEMORY_INTEGRATION.md`](./MARKETING_DIRECTOR_MEMORY_INTEGRATION.md). Preferences remain optional evidence only; Marketing Director is still the sole decision-maker. Persisting `marketing_memory_decision_links` remains a later additive audit step.

@@ -20,6 +20,7 @@ import type {
   MarketingDirectorCandidate,
   MarketingDirectorTopRecommendationDetail,
 } from "@/lib/marketing-director/types";
+import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 
 export type WeeklyBriefingInput = {
   userName: string;
@@ -48,6 +49,8 @@ export type WeeklyBriefingInput = {
   /** Existing recommendation-presentation explainability for candidateRecommendations[0],
    * when already fetched by the caller. Never recomputed here. */
   topRecommendationDetail?: MarketingDirectorTopRecommendationDetail | null;
+  /** Optional Marketing Memory evidence — null/omitted preserves pre-Phase-4 decisions. */
+  memoryEvidence?: MarketingMemoryEvidencePackage | null;
   now?: Date;
 };
 
@@ -356,6 +359,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
       isEarlyCustomer,
       candidateRecommendations: input.candidateRecommendations ?? [],
       topRecommendationDetail: input.topRecommendationDetail ?? null,
+      memoryEvidence: input.memoryEvidence ?? null,
     },
     input.now,
   );
