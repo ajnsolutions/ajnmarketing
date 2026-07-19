@@ -60,36 +60,50 @@ export function sortCalendarEvents(
 /**
  * Deduplicate overlapping priority markers from MD + Executive Brief.
  * Winner: marketing_director over executive_brief for the same calendar day + title.
+ *
+ * [Claude review] Title-based matching is used here deliberately, not as a shortcut:
+ * `HeadOfMarketingPrimaryAction` and `ExecutiveBriefItem` (lib/head-of-marketing/types.ts,
+ * lib/executive-briefing/types.ts) carry no shared identifier — `ExecutiveBriefItem` is
+ * just `{ text: string }` — so there is no stable id or explicit relationship to dedupe
+ * on. This is scoped as tightly as the available data allows: exact match only (not
+ * fuzzy/substring), same calendar day only, and restricted to the single
+ * `executive_priority` category. A prior version of this function additionally
+ * suppressed a `campaign_step` whenever *any* `publishing` event shared its day+title —
+ * removed during review: `CampaignTimelineStep` (lib/campaign-intelligence/campaign-types.ts)
+ * has no link to a publishing_queue/content_approval row either, and unlike the MD/Brief
+ * case, campaign step labels are per-template constants (e.g. "Publish social post")
+ * that are far more likely to accidentally collide with an unrelated publishing item's
+ * title than to correctly identify a genuine relationship — a false-positive dedupe here
+ * would hide a real, distinct calendar item. Showing both is the honest default; a real
+ * campaign-step<->publishing link should be added as an explicit relationship in a
+ * future phase, not inferred from text.
  */
 export function dedupeCalendarEvents(
   events: StrategicMarketingCalendarEvent[],
 ): StrategicMarketingCalendarEvent[] {
-  const seenPriorityKeys = new Set<string>();
-  const result: StrategicMarketingCalendarEvent[] = [];
+  // [Claude review] fix: winner selection must be explicit, not incidental. The prior
+  // implementation relied on sortCalendarEvents' general tie-break order (which compares
+  // sourceType alphabetically) to decide which duplicate survives — but "executive_brief"
+  // sorts before "marketing_director" alphabetically, so Executive Brief silently won
+  // every time, contradicting both this function's own doc comment and
+  // docs/STRATEGIC_MARKETING_CALENDAR.md's documented "MD wins" behavior. Winner
+  // selection is now a dedicated, explicit rule, independent of display order.
+  const priorityWinners = new Map<string, StrategicMarketingCalendarEvent>();
+  const other: StrategicMarketingCalendarEvent[] = [];
 
-  const sorted = sortCalendarEvents(events);
-  for (const event of sorted) {
-    if (event.category === "executive_priority") {
-      const day = event.startAt.slice(0, 10);
-      const key = `${day}|${event.title.trim().toLowerCase()}`;
-      if (seenPriorityKeys.has(key)) continue;
-      seenPriorityKeys.add(key);
+  for (const event of events) {
+    if (event.category !== "executive_priority") {
+      other.push(event);
+      continue;
     }
 
-    // Prefer publishing-queue over a campaign_step with identical title+day when both exist.
-    if (event.category === "campaign_step") {
-      const day = event.startAt.slice(0, 10);
-      const clash = result.some(
-        (existing) =>
-          existing.category === "publishing" &&
-          existing.startAt.slice(0, 10) === day &&
-          existing.title.trim().toLowerCase() === event.title.trim().toLowerCase(),
-      );
-      if (clash) continue;
+    const day = event.startAt.slice(0, 10);
+    const key = `${day}|${event.title.trim().toLowerCase()}`;
+    const existing = priorityWinners.get(key);
+    if (!existing || (existing.sourceType !== "marketing_director" && event.sourceType === "marketing_director")) {
+      priorityWinners.set(key, event);
     }
-
-    result.push(event);
   }
 
-  return sortCalendarEvents(result);
+  return sortCalendarEvents([...other, ...priorityWinners.values()]);
 }

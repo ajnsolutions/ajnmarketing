@@ -119,6 +119,19 @@ export async function getStrategicMarketingCalendarForCurrentUser(
   return { ok: true, calendar };
 }
 
+/**
+ * [Claude review] Not currently called anywhere — the Head of Marketing preview instead
+ * gets its `calendarPreview` from `getHeadOfMarketingBriefingForCurrentUser`
+ * (lib/head-of-marketing/service.ts), which builds it inline from the briefing it has
+ * already computed, so there is exactly one Marketing Director/Executive Brief resolve
+ * per HoM page load. This standalone helper independently calls
+ * `getStrategicMarketingCalendarForCurrentUser`, which itself resolves a fresh HoM
+ * briefing via `loadCalendarSources`'s `loadBriefing` — calling this on the same request
+ * as `getHeadOfMarketingBriefingForCurrentUser` would recompute the whole MD/briefing
+ * pipeline a second time. Kept for a future standalone-preview use case (e.g. an API
+ * route that returns only the preview), but do not wire it into the HoM page — use
+ * `briefing.calendarPreview` there instead.
+ */
 export async function getStrategicCalendarPreviewForCurrentUser(
   deps?: CalendarDependencies,
 ): Promise<StrategicCalendarPreview | null> {

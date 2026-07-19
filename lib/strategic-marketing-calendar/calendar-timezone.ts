@@ -47,6 +47,24 @@ export function addDateKeyDays(dateKey: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Add calendar months to a YYYY-MM-DD key, clamped to the same day-of-month (or the
+ * last day of the target month if shorter). Months are 28-31 days, so month navigation
+ * must use real calendar-month arithmetic rather than a fixed-day offset — a fixed
+ * +/-28-day jump from early in a 30/31-day month can land back in the same month,
+ * making "Next"/"Previous" appear to do nothing.
+ */
+export function addCalendarMonths(dateKey: string, months: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  // Date.UTC's month is 0-indexed; passing day 0 of the *following* target month
+  // yields the last real day of the target month, giving a safe upper bound to clamp
+  // against (mirrors calendar-range.ts's endOfMonth trick).
+  const lastDayOfTargetMonth = new Date(Date.UTC(year!, month! - 1 + months + 1, 0, 12)).getUTCDate();
+  const clampedDay = Math.min(day!, lastDayOfTargetMonth);
+  const date = new Date(Date.UTC(year!, month! - 1 + months, clampedDay, 12));
+  return date.toISOString().slice(0, 10);
+}
+
 export function compareIso(a: string, b: string): number {
   return a.localeCompare(b);
 }
