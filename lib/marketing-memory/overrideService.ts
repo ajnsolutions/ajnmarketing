@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import {
   insertOverride,
+  learningBelongsToBusiness,
   linkOverrideAsContradictingEvidence,
   linkOverrideToPreference,
   listOverridesForBusiness,
@@ -24,6 +25,22 @@ export type OverrideServiceResult<T> =
 
 async function resolveClient(supabaseClient?: SupabaseClient): Promise<SupabaseClient> {
   return supabaseClient ?? (await createClient());
+}
+
+/** Structured, secret-free server log — mirrors the `console.info/error("[Scope]",
+ * {...})` convention already established in lib/marketing-memory/service.ts. */
+function logOverrideEvent(line: {
+  event: string;
+  businessProfileId: string;
+  overrideId?: string;
+  preferenceId?: string;
+  result?: "success" | "error";
+}): void {
+  if (line.result === "error") {
+    console.error("[MarketingMemoryOverrides]", line);
+  } else {
+    console.info("[MarketingMemoryOverrides]", line);
+  }
 }
 
 function instructionForPermanentOverride(input: {
@@ -99,6 +116,18 @@ export async function recordOverrideForBusiness(
   const supabase = await resolveClient(options.supabaseClient);
   const actorUserId = options.actorUserId ?? userId;
 
+  if (parsed.value.relatedLearningId) {
+    const owned = await learningBelongsToBusiness(
+      supabase,
+      userId,
+      businessProfileId,
+      parsed.value.relatedLearningId
+    );
+    if (!owned) {
+      return { ok: false, error: "relatedLearningId does not belong to this business", status: 400 };
+    }
+  }
+
   const override = await insertOverride(supabase, {
     userId,
     businessProfileId,
@@ -156,8 +185,28 @@ export async function recordOverrideForBusiness(
           created.id
         );
         if (linked) {
+          logOverrideEvent({
+            event: "override_promoted",
+            businessProfileId,
+            overrideId: override.id,
+            preferenceId: created.id,
+          });
           return { ok: true, value: { override: linked, preference } };
         }
+
+        // The preference was created (and is durable — findActivePreferenceByIdentity
+        // will find it on any retry, so upsertPreferenceWithSupersession's idempotent
+        // no-op path prevents a duplicate), but the override's own forward link could
+        // not be written. Never silently lose this: log it so it's observable, even
+        // though the response below still honestly reports override.promoted_to_
+        // preference_id as null (the response never claims a link that doesn't exist).
+        logOverrideEvent({
+          event: "override_promotion_link_failed",
+          businessProfileId,
+          overrideId: override.id,
+          preferenceId: created.id,
+          result: "error",
+        });
       }
     }
   }

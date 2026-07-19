@@ -63,7 +63,6 @@ export function MarketingMemoryPreferencesPage() {
 
   useEffect(() => {
     reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
   const activePreferences = preferences.filter((row) => row.is_active);

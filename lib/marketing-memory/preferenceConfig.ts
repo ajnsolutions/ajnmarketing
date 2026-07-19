@@ -14,6 +14,10 @@ import {
 /** Max length for customer-visible instruction_text / notes — keeps rows bounded. */
 export const MAX_INSTRUCTION_TEXT_LENGTH = 500;
 export const MAX_OVERRIDE_NOTES_LENGTH = 1000;
+/** clientRequestId is folded directly into the server-computed idempotency_key
+ * (lib/marketing-memory/preferenceIdempotency.ts) — bounded so a client can't bloat
+ * that column with an arbitrarily long token. */
+export const MAX_CLIENT_REQUEST_ID_LENGTH = 200;
 
 /**
  * Preference types this phase will accept writes for. content_tone is absent by

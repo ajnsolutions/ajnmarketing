@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   AUTHORITATIVE_EXTERNAL_SETTINGS,
+  MAX_CLIENT_REQUEST_ID_LENGTH,
   MAX_INSTRUCTION_TEXT_LENGTH,
   MAX_OVERRIDE_NOTES_LENGTH,
   PREFERENCE_CONTEXT_CATEGORY_VALUES,
@@ -229,6 +230,14 @@ export function validateRecordOverrideInput(body: unknown): OverrideValidationRe
         ? record.is_permanent
         : false;
 
+  const clientRequestId = asOptionalString(record.clientRequestId ?? record.client_request_id);
+  if (clientRequestId && clientRequestId.length > MAX_CLIENT_REQUEST_ID_LENGTH) {
+    return {
+      ok: false,
+      error: `clientRequestId must be at most ${MAX_CLIENT_REQUEST_ID_LENGTH} characters`,
+    };
+  }
+
   return {
     ok: true,
     value: {
@@ -242,7 +251,7 @@ export function validateRecordOverrideInput(body: unknown): OverrideValidationRe
           : factorValue,
       isPermanent,
       notes,
-      clientRequestId: asOptionalString(record.clientRequestId ?? record.client_request_id),
+      clientRequestId,
     },
   };
 }

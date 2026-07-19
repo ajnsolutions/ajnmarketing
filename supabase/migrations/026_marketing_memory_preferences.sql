@@ -164,7 +164,14 @@ create table if not exists public.marketing_memory_preferences (
   updated_by uuid null references auth.users (id) on delete set null,
   schema_version smallint not null default 1,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- A preference can never supersede itself. Cross-business supersession is prevented
+  -- at the application layer (supersedes_preference_id is only ever set from a row
+  -- already resolved via findActivePreferenceByIdentity, itself scoped to the same
+  -- user_id/business_profile_id) -- this constraint is the cheap, DB-level backstop for
+  -- the one case a bare FK can't rule out on its own.
+  constraint marketing_memory_preferences_no_self_supersede
+    check (supersedes_preference_id is null or supersedes_preference_id <> id)
 );
 
 -- At most one active preference per (business, type, factor_type, factor_value).
@@ -224,6 +231,46 @@ create trigger marketing_memory_preferences_updated_at
   before update on public.marketing_memory_preferences
   for each row
   execute function public.set_marketing_memory_preferences_updated_at();
+
+-- Claude review fix: the bare RLS update policy above (`with check (auth.uid() =
+-- user_id)`) only re-checks ownership of the NEW row -- it does not stop an owner from
+-- rewriting created_by, business_profile_id, preference_type, instruction_text, or the
+-- promotion/supersession links on their own row via a direct PostgREST call that
+-- bypasses lib/marketing-memory/preferencePersistence.ts entirely (which only ever
+-- updates is_active/active_until/updated_by). This guard makes that the actual,
+-- database-enforced contract, matching the same "append-only except one narrow field"
+-- pattern already used for marketing_memory_overrides above.
+create or replace function public.marketing_memory_preferences_mutation_guard()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.user_id is distinct from old.user_id
+     or new.business_profile_id is distinct from old.business_profile_id
+     or new.preference_type is distinct from old.preference_type
+     or new.factor_type is distinct from old.factor_type
+     or new.factor_value is distinct from old.factor_value
+     or new.instruction_text is distinct from old.instruction_text
+     or new.source is distinct from old.source
+     or new.promoted_from_override_id is distinct from old.promoted_from_override_id
+     or new.supersedes_preference_id is distinct from old.supersedes_preference_id
+     or new.created_by is distinct from old.created_by
+     or new.schema_version is distinct from old.schema_version
+     or new.created_at is distinct from old.created_at then
+    raise exception 'marketing_memory_preferences rows may only update is_active, active_until, and updated_by';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists marketing_memory_preferences_mutation_guard
+  on public.marketing_memory_preferences;
+
+create trigger marketing_memory_preferences_mutation_guard
+  before update on public.marketing_memory_preferences
+  for each row
+  execute function public.marketing_memory_preferences_mutation_guard();
 
 -- Reverse promotion link on overrides (circular FK, deferred until preferences exist).
 alter table public.marketing_memory_overrides

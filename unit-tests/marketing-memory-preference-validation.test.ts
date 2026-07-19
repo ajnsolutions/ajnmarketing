@@ -84,6 +84,21 @@ test("validateRecordOverrideInput: requires known category for disabled_context_
   }
 });
 
+test("validateRecordOverrideInput: bounds clientRequestId length", () => {
+  const tooLong = validateRecordOverrideInput({
+    overrideType: "deferred_recommendation",
+    clientRequestId: "x".repeat(201),
+  });
+  assert.equal(tooLong.ok, false);
+  if (!tooLong.ok) assert.match(tooLong.error, /clientRequestId/);
+
+  const ok = validateRecordOverrideInput({
+    overrideType: "deferred_recommendation",
+    clientRequestId: "gesture-1",
+  });
+  assert.equal(ok.ok, true);
+});
+
 test("defaultInstructionText: builds customer-safe defaults", () => {
   assert.match(
     defaultInstructionText({

@@ -29,6 +29,31 @@ function mapOverrideRow(row: Record<string, unknown>): MarketingMemoryOverride {
   };
 }
 
+/**
+ * Claude review fix: verifies a related_learning_id supplied by the client actually
+ * belongs to the calling user/business before an override is allowed to reference it.
+ * Without this, related_learning_id was accepted as any syntactically valid uuid — a
+ * real (if hard-to-guess) cross-tenant reference risk, since marketing_memory_learnings
+ * only has an FK, not an ownership check, and marked_learning_incorrect overrides write
+ * a learning-anchored evidence_links row citing it as contradicting evidence.
+ */
+export async function learningBelongsToBusiness(
+  supabase: SupabaseClient,
+  userId: string,
+  businessProfileId: string,
+  learningId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("marketing_memory_learnings")
+    .select("id")
+    .eq("id", learningId)
+    .eq("user_id", userId)
+    .eq("business_profile_id", businessProfileId)
+    .maybeSingle();
+
+  return !error && Boolean(data);
+}
+
 export async function listOverridesForBusiness(
   supabase: SupabaseClient,
   userId: string,
