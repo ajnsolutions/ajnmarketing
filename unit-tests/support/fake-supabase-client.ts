@@ -43,6 +43,10 @@ export function createFakeSupabaseClient(tableResponses: Record<string, FakeTabl
         calls.push({ table, op: "eq", args });
         return builder;
       },
+      is(...args: unknown[]) {
+        calls.push({ table, op: "is", args });
+        return builder;
+      },
       in(...args: unknown[]) {
         calls.push({ table, op: "in", args });
         return builder;

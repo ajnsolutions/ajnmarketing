@@ -73,6 +73,10 @@ export const MarketingMemorySourceEntityTypes = {
   ANALYTICS_SNAPSHOT: "analytics_snapshot",
   MARKET_CONTEXT_ITEM: "market_context_item",
   MONTHLY_FOCUS: "monthly_focus",
+  /** Phase 2 learning-anchored evidence citing an observation. */
+  OBSERVATION: "observation",
+  /** Phase 3: customer override cited as (usually contradicting) learning evidence. */
+  OVERRIDE: "override",
 } as const;
 
 export type MarketingMemorySourceEntityType =
