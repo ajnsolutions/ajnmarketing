@@ -25,10 +25,11 @@ Implementation notes (post-blueprint):
 - GREAT_SIMPLIFICATION.md — navigation/IA simplification sprint (presentation only)
 - PROACTIVE_HEAD_OF_MARKETING.md — proactive presence + richer activity timeline (presentation only)
 - PRODUCT_READINESS.md — polish sprint: copy, a11y, loading, motion, walkthrough (presentation only)
-- MARKETING_DIRECTOR_ARCHITECTURE.md — decision-pipeline architecture review + orchestration design (analysis only)
+- MARKETING_DIRECTOR_ARCHITECTURE.md — decision-pipeline architecture review + orchestration design (analysis; Phase 4 memory consumption now implemented)
 - MARKETING_DIRECTOR_FOUNDATION.md — shared decision composition layer consolidating duplicate primary-decision authority (orchestration only)
-- MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (analysis; Phases 1-3 now implemented, see MARKETING_MEMORY_FOUNDATION.md / MARKETING_MEMORY_LEARNINGS.md / MARKETING_MEMORY_PREFERENCES.md)
-- MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 implemented; Phase 4 decision links remain a proposal)
+- MARKETING_DIRECTOR_MEMORY_INTEGRATION.md — Phase 4: Marketing Director consumes Marketing Memory evidence (optional, deterministic; MD remains sole decision-maker)
+- MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (Phases 1-4 consumption implemented; decision_links persistence still future)
+- MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 tables implemented; decision links remain a proposal)
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)
-- MARKETING_MEMORY_LEARNINGS.md — Phase 2 implementation record: learnings/confidence model, cohort and baseline rules, correlation safeguards, reconciliation, RLS, testing (no Marketing Director or customer-facing consumption yet)
-- MARKETING_MEMORY_PREFERENCES.md — Phase 3 implementation record: preferences/overrides, actor attribution, supersession, precedence vocabulary, minimal settings UI (not wired into Marketing Director or recommendations)
+- MARKETING_MEMORY_LEARNINGS.md — Phase 2 implementation record: learnings/confidence model, cohort and baseline rules, correlation safeguards, reconciliation, RLS, testing
+- MARKETING_MEMORY_PREFERENCES.md — Phase 3 implementation record: preferences/overrides, actor attribution, supersession, precedence vocabulary, minimal settings UI

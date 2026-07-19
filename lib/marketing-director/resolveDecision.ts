@@ -1,25 +1,24 @@
 /**
  * Marketing Director Intelligence — the single composition point for "what matters most
- * right now." See docs/MARKETING_DIRECTOR_FOUNDATION.md and
- * docs/MARKETING_DIRECTOR_ARCHITECTURE.md §8.
+ * right now." See docs/MARKETING_DIRECTOR_FOUNDATION.md,
+ * docs/MARKETING_DIRECTOR_ARCHITECTURE.md §8, and
+ * docs/MARKETING_DIRECTOR_MEMORY_INTEGRATION.md (Phase 4).
  *
  * Pure, deterministic, side-effect free: no OpenAI call, no database access, no new
  * scoring math. Every branch below composes an already-computed signal (recommendation
  * counts and their existing adaptive priority/urgency, health state, weekly wins,
- * seasonal hints, Monthly Focus) into one decision. Calling this twice with identical
- * inputs always returns a deep-equal result.
+ * seasonal hints, Monthly Focus, optional Marketing Memory evidence) into one decision.
+ * Calling this twice with identical inputs always returns a deep-equal result.
  *
- * The precedence below is the union of what buildPrimaryAction (weeklyBriefing.ts) and
- * proactive.ts's old buildPrimary each independently decided before this module existed
- * — see the architecture review's collision finding (MARKETING_DIRECTOR_ARCHITECTURE.md
- * §4). Consolidating them here also fixes a latent inconsistency: previously, when
- * `openRecommendations > 0` was the only active signal, buildPrimaryAction showed a
- * "Review Recommendation" CTA while proactive's message could say something unrelated
- * (e.g. a seasonal or celebration line), because proactive's own waterfall never checked
- * `openRecommendations` at all. That can no longer happen: both consumers now derive
- * from this one waterfall.
+ * Marketing Memory is optional trusted context only — it never creates recommendations,
+ * never publishes, never approves, and never becomes a second decision authority.
  */
 
+import {
+  buildMemoryRationaleLines,
+  effectiveSeasonalHint,
+  orderCandidatesWithMemory,
+} from "@/lib/marketing-director/memoryComposition";
 import {
   DeferralReasons,
   MarketingDirectorDecisionTypes,
@@ -27,6 +26,7 @@ import {
   type MarketingDirectorDecision,
   type MarketingDirectorDeferredAlternative,
   type MarketingDirectorInput,
+  type MarketingDirectorMemoryContext,
   type MarketingDirectorPrimaryAction,
 } from "@/lib/marketing-director/types";
 import { ConfidenceLabels } from "@/lib/recommendation-presentation/types";
@@ -47,12 +47,14 @@ const NO_ACTION: MarketingDirectorPrimaryAction = {
  */
 function buildDeferred(
   candidates: MarketingDirectorCandidate[],
+  prohibitedIds: ReadonlySet<string> = new Set(),
 ): MarketingDirectorDeferredAlternative[] {
   return candidates.map((candidate) => ({
     sourceId: candidate.id,
     title: candidate.actionTypeLabel,
-    reason:
-      candidate.status === "in_progress"
+    reason: prohibitedIds.has(candidate.id)
+      ? DeferralReasons.CUSTOMER_PROHIBITION
+      : candidate.status === "in_progress"
         ? DeferralReasons.ALREADY_HANDLED
         : candidate.urgency === "low"
           ? DeferralReasons.NOT_TIME_SENSITIVE
@@ -68,6 +70,9 @@ function approvalNeededDecision(
   confidenceLabel: MarketingDirectorDecision["confidenceLabel"],
   presentationPriority: number,
   signal: string,
+  candidates: MarketingDirectorCandidate[],
+  memoryContext: MarketingDirectorMemoryContext,
+  prohibitedIds: ReadonlySet<string>,
 ): MarketingDirectorDecision {
   return {
     decisionType: MarketingDirectorDecisionTypes.APPROVAL_NEEDED,
@@ -81,11 +86,12 @@ function approvalNeededDecision(
     confidenceLabel,
     requiresCustomerAction: true,
     primaryAction,
-    deferred: buildDeferred(input.candidateRecommendations),
+    deferred: buildDeferred(candidates, prohibitedIds),
     supportingSignals: [signal],
     sourceRecommendationId: null,
     presentationPriority,
     evaluatedAt: now.toISOString(),
+    memoryContext,
   };
 }
 
@@ -93,6 +99,14 @@ export function resolveMarketingDirectorDecision(
   input: MarketingDirectorInput,
   now: Date = new Date(),
 ): MarketingDirectorDecision {
+  const evidence = input.memoryEvidence ?? null;
+  const { ordered: candidates, prohibitedIds, memoryContext } = orderCandidatesWithMemory(
+    input.candidateRecommendations,
+    evidence,
+  );
+  const prohibitedSet = new Set(prohibitedIds);
+  const seasonalHint = effectiveSeasonalHint(input.seasonalHint, evidence);
+
   if (!input.gbpConnected) {
     return {
       decisionType: MarketingDirectorDecisionTypes.MEANINGFUL_DECISION,
@@ -109,11 +123,12 @@ export function resolveMarketingDirectorDecision(
         label: "Finish Google connection",
         href: "/dashboard/google-business-profile/connect",
       },
-      deferred: buildDeferred(input.candidateRecommendations),
+      deferred: buildDeferred(candidates, prohibitedSet),
       supportingSignals: ["gbpConnected:false"],
       sourceRecommendationId: null,
       presentationPriority: 100,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -126,19 +141,31 @@ export function resolveMarketingDirectorDecision(
       ConfidenceLabels.STRONG_RECOMMENDATION,
       95,
       `pendingApprovals:${input.pendingApprovals}`,
+      candidates,
+      memoryContext,
+      prohibitedSet,
     );
   }
 
-  if (input.openRecommendations > 0 && input.candidateRecommendations.length > 0) {
-    const [top, ...remaining] = input.candidateRecommendations;
-    const detail = input.topRecommendationDetail;
+  if (input.openRecommendations > 0 && candidates.length > 0) {
+    const [top, ...remaining] = candidates;
+    const detail =
+      input.topRecommendationDetail &&
+      input.topRecommendationDetail.recommendationId === top!.id
+        ? input.topRecommendationDetail
+        : null;
+    const memoryLines = buildMemoryRationaleLines(top, evidence);
+    const baseRationale =
+      detail?.whyNow ??
+      `A recommendation (${top!.actionTypeLabel}) is open and ranked highest for your business right now.`;
+    const rationale =
+      memoryLines.length > 0 ? `${baseRationale} ${memoryLines.join(" ")}` : baseRationale;
+
     return {
       decisionType: MarketingDirectorDecisionTypes.HIGH_VALUE_RECOMMENDATION,
       title: "Recommendation",
       summary: detail?.whyNow ?? "I found a recommendation worth a closer look when you're ready.",
-      rationale:
-        detail?.whyNow ??
-        `A recommendation (${top!.actionTypeLabel}) is open and ranked highest for your business right now.`,
+      rationale,
       targetOutcome: detail?.expectedBenefit ?? "Consistent, well-timed marketing presence",
       confidenceLabel: detail?.confidenceLabel ?? ConfidenceLabels.STILL_LEARNING,
       requiresCustomerAction: true,
@@ -147,11 +174,15 @@ export function resolveMarketingDirectorDecision(
         label: "Review Recommendation",
         href: "/dashboard/marketing-recommendations",
       },
-      deferred: buildDeferred(remaining),
-      supportingSignals: [`openRecommendations:${input.openRecommendations}`],
+      deferred: buildDeferred(remaining, prohibitedSet),
+      supportingSignals: [
+        `openRecommendations:${input.openRecommendations}`,
+        ...(evidence && !evidence.isColdStart ? ["memoryEvidence:consulted"] : []),
+      ],
       sourceRecommendationId: detail?.recommendationId ?? top!.id,
       presentationPriority: 80,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -164,18 +195,21 @@ export function resolveMarketingDirectorDecision(
       ConfidenceLabels.GOOD_OPPORTUNITY,
       70,
       `unansweredReviews:${input.unansweredReviews}`,
+      candidates,
+      memoryContext,
+      prohibitedSet,
     );
   }
 
   // Nothing requires the customer's attention this cycle — pick the calmest truthful
   // thing to say. Never invents urgency or a customer action from here down.
-  const deferred = buildDeferred(input.candidateRecommendations);
+  const deferred = buildDeferred(candidates, prohibitedSet);
 
-  if (input.seasonalHint) {
+  if (seasonalHint) {
     return {
       decisionType: MarketingDirectorDecisionTypes.OPPORTUNITY,
       title: "Opportunity",
-      summary: `I noticed a seasonal opportunity we should prepare for (${input.seasonalHint}).`,
+      summary: `I noticed a seasonal opportunity we should prepare for (${seasonalHint}).`,
       rationale: "A seasonal window is open and nothing more urgent is waiting.",
       targetOutcome: "Timely seasonal visibility",
       confidenceLabel: ConfidenceLabels.GOOD_OPPORTUNITY,
@@ -186,6 +220,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 60,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -204,6 +239,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 50,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -223,6 +259,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 45,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -241,6 +278,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 40,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -259,6 +297,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 35,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -277,6 +316,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 30,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -295,6 +335,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 25,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -315,6 +356,7 @@ export function resolveMarketingDirectorDecision(
       sourceRecommendationId: null,
       presentationPriority: 20,
       evaluatedAt: now.toISOString(),
+      memoryContext,
     };
   }
 
@@ -333,5 +375,6 @@ export function resolveMarketingDirectorDecision(
     sourceRecommendationId: null,
     presentationPriority: 10,
     evaluatedAt: now.toISOString(),
+    memoryContext,
   };
 }
