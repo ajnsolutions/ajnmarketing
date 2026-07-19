@@ -35,10 +35,17 @@ export type CalendarRangeResult =
     }
   | { ok: false; error: string };
 
-function parseView(value: string | null | undefined): StrategicCalendarView {
-  if (value === StrategicCalendarViews.DAY) return StrategicCalendarViews.DAY;
-  if (value === StrategicCalendarViews.WEEK) return StrategicCalendarViews.WEEK;
-  return StrategicCalendarViews.MONTH;
+const VALID_VIEWS = new Set<string>(Object.values(StrategicCalendarViews));
+
+/**
+ * A missing view defaults to month (the existing UX). An explicitly-supplied but
+ * unrecognized view is a client error, not a silent fallback — returns null so the
+ * caller can reject the request rather than quietly substituting month view.
+ */
+function parseView(value: string | null | undefined): StrategicCalendarView | null {
+  if (value == null || value === "") return StrategicCalendarViews.MONTH;
+  if (VALID_VIEWS.has(value)) return value as StrategicCalendarView;
+  return null;
 }
 
 function daysBetween(start: string, end: string): number {
@@ -68,6 +75,9 @@ export function resolveCalendarRange(input: CalendarRangeRequest): CalendarRange
   const timezone = resolveBusinessTimezone(input.configuredTimezone);
   const now = input.now ?? new Date();
   const view = parseView(input.view ?? null);
+  if (view === null) {
+    return { ok: false, error: `view must be one of: ${[...VALID_VIEWS].join(", ")}` };
+  }
   const today = zonedDateKey(now, timezone);
   const anchor =
     input.anchor && isValidDateKey(input.anchor) ? input.anchor : today;
