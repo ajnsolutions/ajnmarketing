@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExecutiveBriefSection } from "@/components/dashboard/executive-brief-section";
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
 import { MonthlyFocusSection } from "@/components/dashboard/monthly-focus-section";
 import { ProactivePresenceSection } from "@/components/dashboard/proactive-presence";
@@ -55,6 +56,8 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
       </header>
 
       <ProactivePresenceSection presence={briefing.proactive} />
+
+      <ExecutiveBriefSection brief={briefing.executiveBrief} />
 
       <MonthlyFocusSection focus={briefing.monthlyFocus} />
 

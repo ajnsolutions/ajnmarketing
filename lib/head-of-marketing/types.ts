@@ -1,3 +1,4 @@
+import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
@@ -75,6 +76,17 @@ export type HeadOfMarketingBriefing = {
   monthlyFocus: MonthlyFocus;
   /** Lightweight proactive presence — one primary moment; rest via disclosure. */
   proactive: ProactivePresence;
+  /**
+   * Surfaced Morning Executive Brief — summarizes Marketing Director + existing signals.
+   * Does not create recommendations; priorities come from the MD decision only.
+   */
+  executiveBrief: ExecutiveBrief;
+  /** All supported brief types from the same decision (weekly/monthly not surfaced yet). */
+  executiveBriefs: {
+    morning: ExecutiveBrief;
+    weeklyStrategy: ExecutiveBrief;
+    monthlyExecutive: ExecutiveBrief;
+  };
 };
 
 /** Customer-facing primary nav — Great Simplification four destinations. */
