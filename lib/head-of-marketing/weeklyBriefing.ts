@@ -15,6 +15,11 @@ import type {
   WeeklyBriefingRecommendation,
 } from "@/lib/head-of-marketing/types";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
+import {
+  buildMonthlyExecutiveReport,
+  buildMorningBrief,
+  buildWeeklyStrategyBrief,
+} from "@/lib/executive-briefing/buildBrief";
 import { resolveMarketingDirectorDecision } from "@/lib/marketing-director/resolveDecision";
 import type {
   MarketingDirectorCandidate,
@@ -381,13 +386,43 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     now: input.now,
   });
 
+  const thisWeek = buildThisWeek(input);
+  const noticed = buildNoticed(input);
+
+  // Executive Briefs summarize the same MD decision + signals — never a second
+  // prioritization pass. All three types are built; only Morning is surfaced.
+  // See docs/EXECUTIVE_BRIEFING_ENGINE.md.
+  const briefInput = {
+    decision,
+    healthState: health.state,
+    weeklyWins: input.weeklyWins,
+    pendingApprovals: input.pendingApprovals,
+    unansweredReviews: input.unansweredReviews,
+    openRecommendations: input.openRecommendations,
+    publishingReadyOrScheduled: input.publishingReadyOrScheduled,
+    seasonalHint: input.seasonalHint,
+    gbpConnected: input.gbpConnected,
+    focusTheme: focusTheme(monthlyFocus),
+    businessName: input.businessName || "your business",
+    candidateRecommendations: input.candidateRecommendations ?? [],
+    memoryEvidence: input.memoryEvidence ?? null,
+    thisWeekHandled: thisWeek,
+    noticed,
+    now: input.now,
+  };
+  const executiveBriefs = {
+    morning: buildMorningBrief(briefInput),
+    weeklyStrategy: buildWeeklyStrategyBrief(briefInput),
+    monthlyExecutive: buildMonthlyExecutiveReport(briefInput),
+  };
+
   return {
     experienceTitle: "Weekly Briefing",
     greeting,
     lead: proactive.primary.message,
     health: healthWithFocus,
-    thisWeek: buildThisWeek(input),
-    noticed: buildNoticed(input),
+    thisWeek,
+    noticed,
     recommendation: buildRecommendation(input),
     nextWeek: buildNextWeek(input),
     relationshipMemory: buildRelationshipMemory(input.profileCreatedAt, input.now),
@@ -401,6 +436,8 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     journal,
     monthlyFocus,
     proactive,
+    executiveBrief: executiveBriefs.morning,
+    executiveBriefs,
   };
 }
 

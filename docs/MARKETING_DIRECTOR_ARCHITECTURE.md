@@ -378,6 +378,10 @@ None of these require touching `marketing-decisions`, `recommendation-learning`,
 
 A durable evidence layer beneath the Marketing Director — observations, learnings, customer preferences, decisions, outcomes — was reviewed and designed in [`MARKETING_MEMORY_ARCHITECTURE.md`](./MARKETING_MEMORY_ARCHITECTURE.md) and [`MARKETING_MEMORY_DATA_MODEL.md`](./MARKETING_MEMORY_DATA_MODEL.md). **Phases 1–3 of Marketing Memory and Phase 4 consumption are implemented** — see [`MARKETING_MEMORY_FOUNDATION.md`](./MARKETING_MEMORY_FOUNDATION.md), [`MARKETING_MEMORY_LEARNINGS.md`](./MARKETING_MEMORY_LEARNINGS.md), [`MARKETING_MEMORY_PREFERENCES.md`](./MARKETING_MEMORY_PREFERENCES.md), and [`MARKETING_DIRECTOR_MEMORY_INTEGRATION.md`](./MARKETING_DIRECTOR_MEMORY_INTEGRATION.md). `resolveMarketingDirectorDecision` accepts an optional `memoryEvidence` package (same pattern as `topRecommendationDetail`) — evidence only, never a second decision authority (§8.2 still holds). Cold-start / absent memory preserves prior decision behavior.
 
+### 10.2 Executive Briefing Engine (summarization only)
+
+The Executive Briefing Engine ([`EXECUTIVE_BRIEFING_ENGINE.md`](./EXECUTIVE_BRIEFING_ENGINE.md)) turns the already-resolved Marketing Director decision plus existing briefing signals into a short structured Morning Brief (Weekly/Monthly types supported, not yet surfaced). It **explains** MD priorities; it does not re-rank recommendations or invent actions. Composition stays inside `buildWeeklyBriefing` so there is still exactly one `resolveMarketingDirectorDecision` call per briefing load.
+
 ---
 
 ## 11. Verification
