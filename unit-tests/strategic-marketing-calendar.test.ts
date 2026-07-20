@@ -452,6 +452,7 @@ test("aggregator is deterministic and preview prioritizes action-required", () =
     marketContextItems: [],
     pendingApprovalCount: 2,
     warnings: [],
+    decisionIntelligenceEvents: [],
   };
 
   // Place scheduled publish inside the upcoming 7-day preview window.

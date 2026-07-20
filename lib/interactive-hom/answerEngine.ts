@@ -362,6 +362,106 @@ function answerExecutiveBrief(ctx: InteractiveHomGroundedContext): InteractiveHo
   );
 }
 
+// --- Decision Intelligence & Learning Impact (Phase 2F) ------------------------------
+// Every handler below only reads from ctx.decisionIntelligence, already computed by
+// lib/decision-intelligence/service.ts — no trace/comparison logic is duplicated here.
+
+function answerWhyPlanChanged(ctx: InteractiveHomGroundedContext): InteractiveHomAnswer {
+  const di = ctx.decisionIntelligence;
+  if (!di || !di.comparison) {
+    return insufficient(
+      InteractiveHomQuestionCategories.WHY_PLAN_CHANGED,
+      "There isn't enough decision history yet to explain what changed. Check back after a few more visits.",
+    );
+  }
+  return grounded(InteractiveHomQuestionCategories.WHY_PLAN_CHANGED, di.comparison.explanation, ["Decision history"]);
+}
+
+function answerExperimentImpact(ctx: InteractiveHomGroundedContext): InteractiveHomAnswer {
+  const di = ctx.decisionIntelligence;
+  const experimentTrace = di?.currentPriorities
+    .flatMap((p) => p.trace)
+    .find((trace) => trace.evidenceType === "experiment_completion" || trace.evidenceType === "experiment_proposal");
+
+  if (!experimentTrace) {
+    return insufficient(
+      InteractiveHomQuestionCategories.EXPERIMENT_IMPACT,
+      "No experiment is linked to the current plan yet.",
+    );
+  }
+  return grounded(
+    InteractiveHomQuestionCategories.EXPERIMENT_IMPACT,
+    experimentTrace.customerExplanation,
+    ["Experiment result"],
+  );
+}
+
+function answerPreferenceImpact(ctx: InteractiveHomGroundedContext): InteractiveHomAnswer {
+  const di = ctx.decisionIntelligence;
+  const preferenceTraces = di?.currentPriorities
+    .flatMap((p) => p.trace)
+    .filter((trace) => trace.evidenceType === "marketing_memory_preference") ?? [];
+
+  if (preferenceTraces.length === 0) {
+    return insufficient(
+      InteractiveHomQuestionCategories.PREFERENCE_IMPACT,
+      "No customer preference is currently affecting the plan.",
+    );
+  }
+  return grounded(
+    InteractiveHomQuestionCategories.PREFERENCE_IMPACT,
+    joinSentences([`Your preferences currently affecting the plan:\n${bulletList(preferenceTraces.map((t) => t.customerExplanation))}`]),
+    ["Your preferences"],
+  );
+}
+
+function answerIgnoredEvidence(ctx: InteractiveHomGroundedContext): InteractiveHomAnswer {
+  const di = ctx.decisionIntelligence;
+  const ignored = di?.currentPriorities.flatMap((p) => p.trace).filter((trace) => trace.excluded) ?? [];
+
+  if (ignored.length === 0) {
+    return insufficient(
+      InteractiveHomQuestionCategories.IGNORED_EVIDENCE,
+      "No evidence was excluded from the current decision — or none has been recorded yet.",
+    );
+  }
+  return grounded(
+    InteractiveHomQuestionCategories.IGNORED_EVIDENCE,
+    joinSentences([`Evidence that was not used:\n${bulletList(ignored.map((t) => t.customerExplanation))}`]),
+    ["Excluded evidence"],
+  );
+}
+
+function answerCampaignImpact(ctx: InteractiveHomGroundedContext): InteractiveHomAnswer {
+  const di = ctx.decisionIntelligence;
+  const campaignLearning = di?.learningImpact.find((item) => item.relatedCampaignIds.length > 0);
+
+  if (!campaignLearning) {
+    return insufficient(
+      InteractiveHomQuestionCategories.CAMPAIGN_IMPACT,
+      "No campaign has been linked to a later decision yet.",
+    );
+  }
+  return grounded(
+    InteractiveHomQuestionCategories.CAMPAIGN_IMPACT,
+    campaignLearning.influencedLaterDecision
+      ? `Yes — a campaign contributed evidence that later influenced planning (${campaignLearning.label}).`
+      : `A campaign contributed evidence (${campaignLearning.label}), but it has not yet influenced a later decision.`,
+    ["Campaign evidence"],
+  );
+}
+
+function answerWhyDeprioritized(ctx: InteractiveHomGroundedContext): InteractiveHomAnswer {
+  const di = ctx.decisionIntelligence;
+  if (!di?.comparison || di.comparison.changeType !== "decreased_priority") {
+    return insufficient(
+      InteractiveHomQuestionCategories.WHY_DEPRIORITIZED,
+      "Nothing has been deprioritized recently based on the current decision history.",
+    );
+  }
+  return grounded(InteractiveHomQuestionCategories.WHY_DEPRIORITIZED, di.comparison.explanation, ["Decision history"]);
+}
+
 function answerUnsupported(): InteractiveHomAnswer {
   return insufficient(
     InteractiveHomQuestionCategories.UNSUPPORTED,
@@ -396,6 +496,18 @@ export function answerInteractiveHomQuestion(
       return answerExplainPriority(context);
     case InteractiveHomQuestionCategories.EXECUTIVE_BRIEF:
       return answerExecutiveBrief(context);
+    case InteractiveHomQuestionCategories.WHY_PLAN_CHANGED:
+      return answerWhyPlanChanged(context);
+    case InteractiveHomQuestionCategories.EXPERIMENT_IMPACT:
+      return answerExperimentImpact(context);
+    case InteractiveHomQuestionCategories.PREFERENCE_IMPACT:
+      return answerPreferenceImpact(context);
+    case InteractiveHomQuestionCategories.IGNORED_EVIDENCE:
+      return answerIgnoredEvidence(context);
+    case InteractiveHomQuestionCategories.CAMPAIGN_IMPACT:
+      return answerCampaignImpact(context);
+    case InteractiveHomQuestionCategories.WHY_DEPRIORITIZED:
+      return answerWhyDeprioritized(context);
     case InteractiveHomQuestionCategories.UNSUPPORTED:
       return answerUnsupported();
     default:

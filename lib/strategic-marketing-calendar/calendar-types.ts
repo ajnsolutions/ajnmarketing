@@ -23,6 +23,7 @@ export const StrategicCalendarSourceTypes = {
   PUBLISHING_QUEUE: "publishing_queue",
   CONTENT_APPROVAL: "content_approval",
   MARKET_CONTEXT: "market_context",
+  DECISION_INTELLIGENCE: "decision_intelligence",
 } as const;
 
 export type StrategicCalendarSourceType =
@@ -44,6 +45,11 @@ export const StrategicCalendarCategories = {
   SOCIAL_CONTENT: "social_content",
   BLOG_CONTENT: "blog_content",
   EMAIL_CONTENT: "email_content",
+  /** Decision Intelligence & Learning Impact (Phase 2F) — informational history only
+   * (decision generated, experiment approved/completed, learning promoted, override
+   * recorded). Deliberately distinct from every scheduled-work category above so
+   * intelligence history never looks like planned marketing work. */
+  DECISION_INTELLIGENCE: "decision_intelligence",
 } as const;
 
 export type StrategicCalendarCategory =
@@ -56,6 +62,7 @@ export const StrategicCalendarFilterGroups = {
   APPROVALS: "approvals",
   RECOMMENDATIONS: "recommendations",
   MARKET_CONTEXT: "market_context",
+  DECISION_INTELLIGENCE: "decision_intelligence",
 } as const;
 
 export type StrategicCalendarFilterGroup =

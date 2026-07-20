@@ -5,6 +5,7 @@
 
 import {
   normalizeCampaignCards,
+  normalizeDecisionIntelligenceEvents,
   normalizeExecutivePriorities,
   normalizeMarketContextItems,
   normalizePendingApprovals,
@@ -62,6 +63,7 @@ export function aggregateStrategicMarketingCalendar(
   collected.push(...normalizePublishingItems(input.sources.publishing, range));
   collected.push(...normalizePendingApprovals(input.sources.approvals, range));
   collected.push(...normalizeMarketContextItems(input.sources.marketContextItems, range));
+  collected.push(...normalizeDecisionIntelligenceEvents(input.sources.decisionIntelligenceEvents, range));
 
   const deduped = dedupeCalendarEvents(collected);
   const filtered = filterCalendarEvents(deduped, input.categories ?? null);

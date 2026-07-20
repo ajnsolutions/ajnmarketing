@@ -44,8 +44,16 @@ No background schedules. No Trigger.dev tasks. `ATTACH_DECLARATIVE_PRODUCTION_CR
 - What opportunities do you see?
 - Explain this priority.
 - Summarize the Executive Brief
+- Why did the plan change? *(Phase 2F — Decision Intelligence)*
+- Did this experiment change anything? *(Phase 2F)*
+- Which customer preferences affected the plan? *(Phase 2F)*
+- What evidence was ignored? *(Phase 2F)*
+- Did this campaign affect future decisions? *(Phase 2F)*
+- Why was this recommendation deprioritized? *(Phase 2F)*
 
 Suggested prompts ship in the Ask panel for keyboard- and mobile-friendly entry.
+
+The six Phase 2F categories above all read from `ctx.decisionIntelligence`, a `DecisionIntelligenceSummary` computed once by [`DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md`](./DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md)'s service and passed into the grounded context — no trace, comparison, or evidence logic is duplicated in `answerEngine.ts`. Like every other category, each answer discloses missing evidence (`insufficientData: true`) rather than guessing when decision history isn't available yet.
 
 ## Guardrails
 

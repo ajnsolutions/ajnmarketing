@@ -48,4 +48,14 @@ export const INTERACTIVE_HOM_SUGGESTED_PROMPTS: readonly InteractiveHomSuggested
     label: "Explain this priority.",
     category: InteractiveHomQuestionCategories.EXPLAIN_PRIORITY,
   },
+  {
+    id: "why_plan_changed",
+    label: "Why did the plan change?",
+    category: InteractiveHomQuestionCategories.WHY_PLAN_CHANGED,
+  },
+  {
+    id: "ignored_evidence",
+    label: "What evidence was ignored?",
+    category: InteractiveHomQuestionCategories.IGNORED_EVIDENCE,
+  },
 ] as const;

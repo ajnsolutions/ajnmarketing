@@ -33,6 +33,7 @@ export const CATEGORY_LABELS: Record<StrategicCalendarCategory, string> = {
   [StrategicCalendarCategories.SOCIAL_CONTENT]: "Social",
   [StrategicCalendarCategories.BLOG_CONTENT]: "Blog",
   [StrategicCalendarCategories.EMAIL_CONTENT]: "Email",
+  [StrategicCalendarCategories.DECISION_INTELLIGENCE]: "Decision history",
 };
 
 export type CalendarDayBucket = {

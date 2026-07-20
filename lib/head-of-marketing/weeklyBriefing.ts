@@ -444,6 +444,9 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     experiments: { pendingProposals: [], active: [], completed: [] },
     /** Filled by the HoM service from Strategic Marketing Calendar aggregation. */
     calendarPreview: null,
+    /** Filled by the HoM service from Decision Intelligence. */
+    whyPlanChanged: null,
+    internalDecision: decision,
   };
 }
 

@@ -167,6 +167,10 @@ The stored `metric_summary` is 12 flat scalar fields, fitting the shared `saniti
 
 (`experiment_id` is deliberately *not* duplicated into this object — it's already captured on the observation row itself via `source_experiment_id`.) `winner` is always `null` and `outcome` is always `inconclusive`/`insufficient_data` for every experiment created through the current pipeline, since `attribution_available` is always `false`.
 
+## Relationship to Decision Intelligence
+
+[`DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md`](./DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md) (Phase 2F) explains, but never changes, experiment outcomes: it shows the proposal → approval → lifecycle → completion → observation chain, and whether that observation was later promoted into a learning that influenced a decision — always with the same honesty this document establishes (no winner, confidence capped at `early`). It reads `marketing_experiments`/`marketing_experiment_proposals` directly; it never creates, approves, or completes an experiment.
+
 ## Modules
 
 | Module | Role |

@@ -99,6 +99,14 @@ export type MarketingDirectorMemoryContext = {
   ignoredPreferences: { id: string; reason: string }[];
   precedenceExplanation: string;
   confidenceExplanation: string;
+  /**
+   * [Decision Intelligence, Phase 2F] Stable IDs backing preferencesApplied/
+   * learningsConsidered, in the same order — added so a durable decision snapshot can
+   * record explicit evidence relationships instead of matching on the descriptive text
+   * above. Never used for display; the strings above remain the customer-safe copy.
+   */
+  appliedPreferenceIds: string[];
+  consideredLearningIds: string[];
 };
 
 /**

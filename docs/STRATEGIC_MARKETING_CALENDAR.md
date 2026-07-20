@@ -51,6 +51,7 @@ Event activation opens the existing authoritative feature (`detailTarget`).
 | `approval` | Approval Center pending rows | No due date — anchored to **today** as action-required, never “scheduled” |
 | `holiday` / `local_event` / `market_context` | Market Context items | Informational only; news/competitor omitted |
 | `recommendation` | — | Not dated in model; not fabricated |
+| `decision_intelligence` | Decision Intelligence timeline (Phase 2F) | Decision generated, experiment approved/completed, learning promoted, override recorded — informational history only, `sourceType: "decision_intelligence"`. Deliberately a distinct category from every scheduled-work category above so intelligence history never looks like planned marketing work. See [`DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md`](./DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md). |
 
 ## Normalized event model
 

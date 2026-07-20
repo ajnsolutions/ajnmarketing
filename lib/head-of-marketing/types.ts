@@ -1,8 +1,10 @@
 import type { CampaignDashboardCard } from "@/lib/campaign-intelligence/campaign-types";
+import type { WhyPlanChangedPreview } from "@/lib/decision-intelligence/dashboard";
 import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
+import type { MarketingDirectorDecision } from "@/lib/marketing-director/types";
 import type { ExperimentDashboardCard } from "@/lib/marketing-experimentation/experiment-types";
 import type { ExperimentProposalCard } from "@/lib/marketing-experimentation/proposal-types";
 import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
@@ -112,6 +114,21 @@ export type HeadOfMarketingBriefing = {
    * Aggregates existing sources — never invents schedule commitments.
    */
   calendarPreview: StrategicCalendarPreview | null;
+  /**
+   * Decision Intelligence & Learning Impact (Phase 2F) — compact "Why the Plan Changed"
+   * preview. Filled by the HoM service from lib/decision-intelligence/. Null only when
+   * decision-history reads fail entirely (partial-failure fallback, not "no changes").
+   */
+  whyPlanChanged: WhyPlanChangedPreview | null;
+  /**
+   * Internal only — the already-computed MarketingDirectorDecision this briefing's
+   * primaryAction/lead were derived from (see weeklyBriefing.ts). Exists so the HoM
+   * service can record a Decision Intelligence snapshot from a decision that was already
+   * computed, without a second resolveMarketingDirectorDecision call. Never rendered;
+   * never sent to the client (this object is only ever used server-side before the page
+   * renders to HTML).
+   */
+  internalDecision: MarketingDirectorDecision;
 };
 
 /** Customer-facing primary nav — Great Simplification four destinations. */
