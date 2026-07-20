@@ -13,7 +13,7 @@ test("Monthly Focus ships on Head of Marketing surface without new nav destinati
     "utf8",
   );
   expect(pageSource).toContain("MonthlyFocusSection");
-  expect(pageSource).toContain("Weekly Briefing");
+  expect(pageSource).toContain("Your Head of Marketing is the main place to decide.");
 
   const section = readFileSync(
     join(process.cwd(), "components/dashboard/monthly-focus-section.tsx"),

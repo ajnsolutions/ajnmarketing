@@ -12,7 +12,7 @@ test("Weekly Briefing ships on Head of Marketing surface without new nav destina
     join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
     "utf8",
   );
-  expect(pageSource).toContain("Weekly Briefing");
+  expect(pageSource).toContain("Your Head of Marketing is the main place to decide.");
   expect(pageSource).toContain("What I handled");
   expect(pageSource).toContain("What I noticed");
   expect(pageSource).toContain("Next Week");

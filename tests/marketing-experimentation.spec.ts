@@ -48,8 +48,8 @@ test("Experimentation Engine ships on Head of Marketing with proposal-approval U
   expect(section).toContain("hom-focusable");
   // Honest completed-without-attribution state, never a winner badge.
   expect(section).toContain("Inconclusive");
-  expect(section).toContain("Variant attribution unavailable");
-  expect(section).toContain("No winner selected");
+  expect(section).toContain("No variant attribution is available.");
+  expect(section).toContain("No winner was selected.");
   expect(section).not.toMatch(/contentEditable|onChange=\{.*experiment/i);
   // No free-form creation control of any kind, and no editing of proposal fields.
   expect(section).not.toMatch(/type="text"|<input|<textarea/i);
