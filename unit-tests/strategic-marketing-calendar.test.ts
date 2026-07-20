@@ -502,11 +502,15 @@ test("UI ships read-only calendar page + HoM preview without edit/drag controls"
 
   const hom = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
   assert.match(hom, /StrategicCalendarPreviewSection/);
+  // Phase 3A hierarchy: Why Plan Changed → Calendar → Campaigns → Ask
   assert.ok(
-    hom.indexOf("<CampaignsSection") < hom.indexOf("<StrategicCalendarPreviewSection"),
+    hom.indexOf("<WhyPlanChangedSection") < hom.indexOf("<StrategicCalendarPreviewSection"),
   );
   assert.ok(
-    hom.indexOf("<StrategicCalendarPreviewSection") < hom.indexOf("<AskHeadOfMarketingPanel"),
+    hom.indexOf("<StrategicCalendarPreviewSection") < hom.indexOf("<CampaignsSection"),
+  );
+  assert.ok(
+    hom.indexOf("<CampaignsSection") < hom.indexOf("<AskHeadOfMarketingPanel"),
   );
 
   const api = readFileSync(

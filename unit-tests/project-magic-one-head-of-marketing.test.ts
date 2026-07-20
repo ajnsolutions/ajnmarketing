@@ -182,9 +182,10 @@ test("One Head of Marketing docs and UI ship expected copy", () => {
     "utf8",
   );
   assert.match(page, /Your Head of Marketing/);
-  assert.match(page, /Weekly Briefing/);
+  assert.match(page, /experienceTitle|Weekly Briefing/);
   assert.match(page, /primaryAction\.label/);
   assert.match(page, /More tools/);
+  assert.match(page, /hom-primary-action/);
 
   const service = readFileSync(join(root, "lib/head-of-marketing/service.ts"), "utf8");
   assert.match(service, /loadCommandCenterContextForCurrentUser/);

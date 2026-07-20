@@ -13,7 +13,7 @@ test("One Head of Marketing source ships unified briefing and demoted nav peers"
     "utf8",
   );
   expect(page).toContain("Your Head of Marketing");
-  expect(page).toContain("Weekly Briefing");
+  expect(page).toContain("Your Head of Marketing is the main place to decide.");
   expect(page).toContain("What I handled");
   expect(page).toContain("More tools");
 

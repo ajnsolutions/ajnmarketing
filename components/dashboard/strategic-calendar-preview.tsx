@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
 import { CATEGORY_LABELS } from "@/lib/strategic-marketing-calendar/calendar-presentation";
 import { formatEventWhen } from "@/lib/strategic-marketing-calendar/calendar-timezone";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import { ReadOnlyNotice } from "@/components/dashboard/ui/page-chrome";
 
 export function StrategicCalendarPreviewSection({
   preview,
@@ -27,20 +29,28 @@ export function StrategicCalendarPreviewSection({
           <p className="mt-3 text-sm leading-7 text-text-muted">
             A read-only view of priorities, campaigns, and scheduled work already in motion.
           </p>
+          <ReadOnlyNotice>
+            The calendar aggregates existing work — it does not create or reschedule anything.
+          </ReadOnlyNotice>
         </div>
         <Link
           href="/dashboard/strategic-marketing-calendar"
-          className="hom-focusable rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-navy-900 transition-colors hover:bg-slate-50"
+          className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-navy-900 transition-colors hover:bg-slate-50"
         >
           Open full calendar
         </Link>
       </div>
 
       {!preview || preview.nextEvents.length === 0 ? (
-        <p className="mt-5 text-sm leading-7 text-text-muted">
-          Nothing dated in the next week yet. Approvals and campaigns will show here when they have
-          real dates.
-        </p>
+        <div className="mt-5">
+          <DashboardEmptyState
+            kind="no_activity"
+            title="Nothing dated in the next week"
+            description="Approvals, campaigns, and publishing will show here when they have real dates."
+            actionLabel="Open full calendar"
+            actionHref="/dashboard/strategic-marketing-calendar"
+          />
+        </div>
       ) : (
         <>
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">

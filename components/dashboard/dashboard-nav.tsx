@@ -122,6 +122,16 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Why the plan changed",
+    href: "/dashboard/decision-intelligence",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" />
+      </svg>
+    ),
+  },
+  {
     label: "Reviews",
     href: "/dashboard/reviews",
     icon: (

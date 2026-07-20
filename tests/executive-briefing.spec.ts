@@ -19,7 +19,7 @@ test("Executive Brief ships on Head of Marketing without new engines or schedule
     "utf8",
   );
   expect(card).toContain("Executive Brief");
-  expect(card).toContain("Show brief details");
+  expect(card).toContain("Show full brief details");
   expect(card).toContain("Refresh");
   expect(card).toContain("<details");
   expect(card).toContain("aria-labelledby");

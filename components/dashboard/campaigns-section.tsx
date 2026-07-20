@@ -2,10 +2,10 @@
 
 import { useId, useState } from "react";
 import type { CampaignDashboardCard } from "@/lib/campaign-intelligence/campaign-types";
-
-function statusLabel(status: string): string {
-  return status.replaceAll("_", " ");
-}
+import { StatusBadge } from "@/components/dashboard/ui/status-badge";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import { campaignStatusLabel } from "@/lib/customer-ux/statusVocabulary";
+import { ReadOnlyNotice } from "@/components/dashboard/ui/page-chrome";
 
 function CampaignCard({ campaign }: { campaign: CampaignDashboardCard }) {
   const [expanded, setExpanded] = useState(false);
@@ -24,9 +24,7 @@ function CampaignCard({ campaign }: { campaign: CampaignDashboardCard }) {
           </h3>
           <p className="mt-1 text-sm leading-6 text-text-muted">{campaign.objective}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-navy-900 ring-1 ring-slate-200">
-          {statusLabel(campaign.status)}
-        </span>
+        <StatusBadge presentation={campaignStatusLabel(campaign.status)} />
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -97,8 +95,8 @@ function CampaignCard({ campaign }: { campaign: CampaignDashboardCard }) {
               className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
             >
               <span className="text-navy-900">{step.label}</span>
-              <span className="text-xs capitalize text-text-muted">
-                {statusLabel(step.status)}
+              <span className="text-xs text-text-muted">
+                {campaignStatusLabel(step.status).label}
                 {step.scheduledFor ? ` · ${step.scheduledFor}` : ""}
               </span>
             </li>
@@ -120,14 +118,23 @@ export function CampaignsSection({ campaigns }: { campaigns: CampaignDashboardCa
         Active campaigns
       </h2>
       <p className="mt-3 text-sm leading-7 text-text-muted">
-        Execution plans approved by your Head of Marketing — not new recommendations.
+        Execution plans organized from your Head of Marketing&apos;s strategy — not a second strategy
+        engine.
       </p>
+      <ReadOnlyNotice>
+        Campaigns organize approved work. They do not invent priorities or publish on their own.
+      </ReadOnlyNotice>
 
       {campaigns.length === 0 ? (
-        <p className="mt-5 text-sm leading-7 text-text-muted">
-          No active campaigns right now. When your Head of Marketing starts one, it will show up
-          here with a clear timeline.
-        </p>
+        <div className="mt-5">
+          <DashboardEmptyState
+            kind="no_activity"
+            title="No active campaigns"
+            description="When your Head of Marketing starts a campaign, it will show up here with a clear timeline and progress."
+            actionLabel="See why the plan changed"
+            actionHref="/dashboard/decision-intelligence"
+          />
+        </div>
       ) : (
         <ul className="mt-5 grid gap-4">
           {campaigns.map((campaign) => (

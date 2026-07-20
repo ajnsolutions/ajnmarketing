@@ -88,11 +88,11 @@ test("Campaigns section: expand/collapse, accessibility, mobile-friendly layout"
   const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
   assert.match(page, /CampaignsSection/);
   assert.match(page, /MonthlyFocusSection/);
-  // Campaigns ships after Monthly Focus in the rendered tree (not import order).
+  // Phase 3A: Campaigns sit in the execution block; Monthly Focus is supporting detail below.
   const monthlyJsx = page.indexOf("<MonthlyFocusSection");
   const campaignsJsx = page.indexOf("<CampaignsSection");
   assert.ok(monthlyJsx >= 0 && campaignsJsx >= 0);
-  assert.ok(monthlyJsx < campaignsJsx);
+  assert.ok(campaignsJsx < monthlyJsx);
 });
 
 test("documentation and cron gate ship with Campaign Intelligence", () => {

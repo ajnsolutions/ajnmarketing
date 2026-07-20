@@ -287,7 +287,7 @@ test("suggested prompts and UI/docs ship with accessibility + mobile layout", ()
   assert.match(panel, /aria-live/);
   assert.match(panel, /hom-focusable/);
   assert.match(panel, /sm:flex-row|sm:p-6|sm:text-sm/);
-  assert.match(panel, /Thinking/);
+  assert.match(panel, /Looking through what we already know|Asking…/);
   assert.doesNotMatch(panel, /approveRecommendation|publishContent|openai/i);
 
   const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");

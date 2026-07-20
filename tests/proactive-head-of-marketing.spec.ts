@@ -13,7 +13,7 @@ test("Proactive HoM ships on dashboard without becoming a notification center", 
     "utf8",
   );
   expect(pageSource).toContain("ProactivePresenceSection");
-  expect(pageSource).toContain("Weekly Briefing");
+  expect(pageSource).toContain("Your Head of Marketing is the main place to decide.");
 
   const presence = readFileSync(
     join(process.cwd(), "components/dashboard/proactive-presence.tsx"),

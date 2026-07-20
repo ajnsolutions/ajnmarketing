@@ -119,9 +119,20 @@ function PriorityList({
 }
 
 export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
+  const highCount = data.priorities.high.length;
+  const mediumCount = data.priorities.medium.length;
+
   return (
     <div className="space-y-8">
       <div>
+        <p className="mb-3">
+          <Link
+            href="/dashboard"
+            className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+          >
+            ← Back to Head of Marketing
+          </Link>
+        </p>
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
           Detailed workspace
         </p>
@@ -130,29 +141,29 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-text-muted sm:text-base">
           An advanced view of priorities, health, and momentum. For most weeks,{" "}
-          <Link href="/dashboard" className="font-medium text-brand-600 hover:text-brand-700">
+          <Link
+            href="/dashboard"
+            className="hom-focusable font-medium text-brand-600 hover:text-brand-700"
+          >
             Your Head of Marketing
           </Link>{" "}
           is the calmer place to start.
         </p>
+        <p className="mt-3 text-sm text-navy-900" role="status">
+          {highCount > 0
+            ? `${highCount} high-priority item${highCount === 1 ? "" : "s"} need attention`
+            : mediumCount > 0
+              ? `${mediumCount} medium-priority item${mediumCount === 1 ? "" : "s"} to review`
+              : "Nothing urgent needs attention right now"}
+          .
+        </p>
       </div>
-
-      <SectionCard
-        title="Executive Summary"
-        subtitle={
-          data.aiInsights.generatedByAi
-            ? "Generated from your live marketing systems"
-            : "Rule-based briefing (OpenAI unavailable)"
-        }
-      >
-        <p className="text-sm leading-7 text-slate-700">{data.aiInsights.executiveSummary}</p>
-      </SectionCard>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
         <SectionCard
-          title="Today's Priorities"
-          subtitle="What I'm prioritizing today"
+          title="Needs attention"
+          subtitle="Urgent work first — informational metrics come later"
           action="View all tasks"
           actionHref="/dashboard/tasks"
         >
@@ -250,10 +261,13 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
         </SectionCard>
       </div>
 
-      <SectionCard title="AI Recommendations" subtitle="Suggested next actions">
+      <SectionCard
+        title="Suggested next actions"
+        subtitle="Informational suggestions — Head of Marketing remains the primary guide"
+      >
         {data.aiInsights.recommendations.length === 0 ? (
           <p className="text-sm text-text-muted">
-            Recommendations will appear once your marketing systems have more activity to analyze.
+            Suggestions will appear once your marketing systems have more activity to analyze.
           </p>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">

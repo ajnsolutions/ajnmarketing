@@ -1,11 +1,12 @@
 "use client";
 
 import { useId, useRef, useState, useTransition } from "react";
-import { INTERACTIVE_HOM_SUGGESTED_PROMPTS } from "@/lib/interactive-hom/prompts";
+import { groupInteractiveHomPrompts } from "@/lib/interactive-hom/promptGroups";
 import type {
   InteractiveHomAnswer,
   InteractiveHomTurn,
 } from "@/lib/interactive-hom/types";
+import { PartialDataNotice } from "@/components/dashboard/ui/dashboard-states";
 
 function makeTurnId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -22,7 +23,9 @@ export function AskHeadOfMarketingPanel() {
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<InteractiveHomTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [partialWarning, setPartialWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const promptGroups = groupInteractiveHomPrompts();
 
   function appendAnswer(userText: string, answer: InteractiveHomAnswer) {
     setTurns((prev) => [
@@ -38,6 +41,11 @@ export function AskHeadOfMarketingPanel() {
         insufficientData: answer.insufficientData,
       },
     ]);
+    if (answer.insufficientData) {
+      setPartialWarning(
+        "Some answers are limited by missing evidence. That is normal — I will not invent certainty.",
+      );
+    }
   }
 
   function ask(nextQuestion: string) {
@@ -84,17 +92,26 @@ export function AskHeadOfMarketingPanel() {
         only what we already know. I won&apos;t approve, publish, or invent new recommendations.
       </p>
 
-      <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Suggested questions">
-        {INTERACTIVE_HOM_SUGGESTED_PROMPTS.map((prompt) => (
-          <button
-            key={prompt.id}
-            type="button"
-            disabled={isPending}
-            onClick={() => ask(prompt.label)}
-            className="hom-focusable rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-navy-900 transition-colors hover:bg-slate-100 disabled:opacity-60 sm:text-sm"
-          >
-            {prompt.label}
-          </button>
+      <div className="mt-5 space-y-4" role="group" aria-label="Suggested questions by topic">
+        {promptGroups.map((group) => (
+          <div key={group.group}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              {group.label}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {group.prompts.map((prompt) => (
+                <button
+                  key={prompt.id}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => ask(prompt.label)}
+                  className="hom-focusable min-h-11 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-navy-900 transition-colors hover:bg-slate-100 disabled:opacity-60 sm:text-sm"
+                >
+                  {prompt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
@@ -138,10 +155,16 @@ export function AskHeadOfMarketingPanel() {
         )}
         {isPending && (
           <p className="text-sm font-medium text-navy-900" role="status">
-            Thinking…
+            Looking through what we already know…
           </p>
         )}
       </div>
+
+      {partialWarning && (
+        <div className="mt-3">
+          <PartialDataNotice message={partialWarning} />
+        </div>
+      )}
 
       {error && (
         <p className="mt-3 text-sm text-amber-800" role="alert">
@@ -179,7 +202,7 @@ export function AskHeadOfMarketingPanel() {
         <button
           type="submit"
           disabled={isPending || !question.trim()}
-          className="hom-focusable inline-flex shrink-0 items-center justify-center rounded-full bg-[#081426] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426] disabled:opacity-60"
+          className="hom-focusable inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#081426] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426] disabled:opacity-60"
         >
           {isPending ? "Asking…" : "Ask"}
         </button>

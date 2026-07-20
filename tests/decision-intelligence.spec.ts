@@ -42,7 +42,7 @@ test("Decision Intelligence ships on Head of Marketing, has no mutation controls
   const fullPage = readFileSync(join(process.cwd(), "components/dashboard/decision-intelligence-page.tsx"), "utf8");
   expect(fullPage).toContain("Current decision");
   expect(fullPage).toContain("What changed");
-  expect(fullPage).toContain("Learning impact");
+  expect(fullPage).toContain("What influenced later decisions");
   expect(fullPage).toContain("Decision timeline");
   expect(fullPage).not.toMatch(/<input|<textarea|onSubmit|method="post"/i);
 
