@@ -53,9 +53,7 @@
 - **Shipped (Campaign Intelligence Engine — Phase 2B):** Multi-step campaign execution plans initiated only via Marketing Director; declarative templates reuse existing recommendation action types; HoM Campaigns section with timeline/metrics; completion records Marketing Memory observations (not learnings). See [`CAMPAIGN_INTELLIGENCE_ENGINE.md`](./CAMPAIGN_INTELLIGENCE_ENGINE.md).  
 - **Shipped (Interactive Head of Marketing — Phase 2C):** Ask Your Head of Marketing panel — grounded, deterministic Q&A over Marketing Director / Executive Brief / Campaigns / Memory / Market Context; presentation only (no new recommendation engine, no autonomous actions). See [`INTERACTIVE_HEAD_OF_MARKETING.md`](./INTERACTIVE_HEAD_OF_MARKETING.md).  
 - **Shipped (Strategic Marketing Calendar — Phase 2D):** Read-only day/week/month aggregation of existing priorities, campaigns, publishing, approvals, and market context; HoM preview + dedicated calendar page; no second planner or writable calendar table. See [`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md).  
-
-
-
+- **Shipped (Marketing Experimentation Engine — Phase 2E):** Controlled experiments proposed only via Marketing Director and linked to existing recommendations; deterministic lifecycle and outcome math; HoM Experiments section; completion records Marketing Memory observations (not learnings). See [`MARKETING_EXPERIMENTATION_ENGINE.md`](./MARKETING_EXPERIMENTATION_ENGINE.md).  
 
 - **Shipped (Monthly Focus):** Living “This Month’s Focus” on the same HoM surface — presentation over existing plan themes/goals and signals; horizon hook for future Quarterly/Annual. See [`MONTHLY_FOCUS.md`](./MONTHLY_FOCUS.md).  
 - **Shipped (Great Simplification):** Primary nav → Your Head of Marketing / Results / Library / Settings; analytics→Results and content→Library presentation aliases; Settings hub; customer language + one-primary-CTA pass. See [`GREAT_SIMPLIFICATION.md`](./GREAT_SIMPLIFICATION.md).  

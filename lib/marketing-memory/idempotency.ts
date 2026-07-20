@@ -11,7 +11,11 @@ import type { MarketingMemorySourceEntityType } from "@/lib/marketing-memory/typ
 
 export function buildObservationIdempotencyKey(
   businessProfileId: string,
-  sourceType: "recommendation_outcome_event" | "analytics_snapshot" | "campaign",
+  sourceType:
+    | "recommendation_outcome_event"
+    | "analytics_snapshot"
+    | "campaign"
+    | "experiment",
   sourceId: string
 ): string {
   return `obs:${businessProfileId}:${sourceType}:${sourceId}`;

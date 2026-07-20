@@ -3,6 +3,7 @@ import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
+import type { ExperimentDashboardCard } from "@/lib/marketing-experimentation/experiment-types";
 import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
 
 export type MarketingHealthState =
@@ -94,6 +95,14 @@ export type HeadOfMarketingBriefing = {
    * initiates a campaign. Never contains independently invented recommendations.
    */
   campaigns: CampaignDashboardCard[];
+  /**
+   * Experimentation Engine dashboard cards. Empty until Marketing Director proposes
+   * an experiment backed by an existing recommendation. Measurement only.
+   */
+  experiments: {
+    active: ExperimentDashboardCard[];
+    completed: ExperimentDashboardCard[];
+  };
   /**
    * Compact read-only Strategic Marketing Calendar preview (next 7 days).
    * Aggregates existing sources — never invents schedule commitments.

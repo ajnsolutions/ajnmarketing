@@ -24,6 +24,7 @@ import { buildMarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evid
 import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
 import { getCampaignDashboardForBusiness } from "@/lib/campaign-intelligence/campaign-service";
+import { getExperimentDashboardForBusiness } from "@/lib/marketing-experimentation/experiment-service";
 import { getContentApprovalsForUser } from "@/lib/content-approval/persistence";
 import { getLatestMarketContextBriefWithItemsForUser } from "@/lib/market-context/persistence";
 import { getPublishingQueueForUser } from "@/lib/publishing-queue/persistence";
@@ -151,11 +152,12 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   const topPriorityTitle =
     priorities.high[0]?.title ?? priorities.medium[0]?.title ?? null;
 
-  // Batch: open-count + memory + campaigns + calendar sources (no N+1 / no second MD resolve).
+  // Batch: open-count + memory + campaigns + experiments + calendar sources (no N+1 / no second MD resolve).
   const [
     openRecommendations,
     memoryEvidence,
     campaigns,
+    experiments,
     publishing,
     approvals,
     marketBrief,
@@ -165,6 +167,9 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
       activeGoals,
     }),
     getCampaignDashboardForBusiness(profile.user_id, profile.id, {
+      supabaseClient: supabase,
+    }),
+    getExperimentDashboardForBusiness(profile.user_id, profile.id, {
       supabaseClient: supabase,
     }),
     getPublishingQueueForUser(supabase, profile.user_id),
@@ -209,12 +214,12 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     memoryEvidence,
   });
 
-  const withCampaigns = { ...briefing, campaigns };
+  const withCampaignsAndExperiments = { ...briefing, campaigns, experiments };
   const range = resolveCalendarRange({ view: "week", configuredTimezone: null });
   let calendarPreview = null;
   if (range.ok) {
     const sources: CalendarSourceBundle = {
-      briefing: withCampaigns,
+      briefing: withCampaignsAndExperiments,
       campaigns,
       publishing: publishing.filter((item) => item.business_profile_id === profile.id),
       approvals: approvals.filter((item) => item.business_profile_id === profile.id),
@@ -237,5 +242,5 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     calendarPreview = buildCalendarPreview(calendar, todayKey);
   }
 
-  return { ...withCampaigns, calendarPreview };
+  return { ...withCampaignsAndExperiments, calendarPreview };
 }

@@ -436,3 +436,144 @@ export async function recordObservationForCampaignCompletion(
     return { recorded: false, duplicate: false, observationId: null };
   }
 }
+
+/**
+ * Records one factual observation when an Experimentation Engine experiment completes.
+ * Evidence only — never writes learnings. Best-effort and non-blocking.
+ */
+export async function recordObservationForExperimentCompletion(
+  supabase: SupabaseClient,
+  experiment: {
+    id: string;
+    user_id: string;
+    business_profile_id: string;
+    experiment_type: string;
+    title: string;
+    variants: unknown;
+    outcome: {
+      direction?: string;
+      confidenceLevel?: string;
+      summary?: string;
+      winningVariantKey?: string | null;
+      primaryMetric?: string;
+      liftPercent?: number | null;
+    };
+    metrics: Record<string, unknown>;
+    created_from_recommendation_id: string;
+    related_campaign_id?: string | null;
+    completed_at?: string | null;
+    updated_at?: string;
+  },
+): Promise<MarketingMemoryIngestionResult> {
+  try {
+    const observationType = MarketingMemoryObservationTypes.EXPERIMENT_COMPLETED;
+    const outcomeDirection = outcomeDirectionForObservationType(observationType);
+    const retentionClassification = retentionClassificationForObservationType(observationType);
+    const occurredAt = new Date(
+      experiment.completed_at ?? experiment.updated_at ?? Date.now(),
+    );
+
+    const contextSnapshotId = await resolveContextSnapshotForObservation(supabase, {
+      userId: experiment.user_id,
+      businessProfileId: experiment.business_profile_id,
+      occurredAt,
+    });
+
+    const idempotencyKey = buildObservationIdempotencyKey(
+      experiment.business_profile_id,
+      "experiment",
+      experiment.id,
+    );
+
+    const outcome = experiment.outcome ?? {};
+    const result = await insertMarketingMemoryObservation(supabase, {
+      userId: experiment.user_id,
+      businessProfileId: experiment.business_profile_id,
+      observationType,
+      sourceSystem: MarketingMemorySourceSystems.MARKETING_EXPERIMENTATION,
+      sourceOutcomeEventId: null,
+      sourceAnalyticsSnapshotId: null,
+      sourceCampaignId: null,
+      sourceExperimentId: experiment.id,
+      contextSnapshotId,
+      occurredAt: occurredAt.toISOString(),
+      outcomeDirection,
+      locationScope: null,
+      metricSummary: sanitizeMetricSummary({
+        experimentType: experiment.experiment_type,
+        title: experiment.title,
+        variantSummary: experiment.variants,
+        measuredOutcome: {
+          direction: outcome.direction ?? null,
+          summary: outcome.summary ?? null,
+          winningVariantKey: outcome.winningVariantKey ?? null,
+          primaryMetric: outcome.primaryMetric ?? null,
+          liftPercent: outcome.liftPercent ?? null,
+        },
+        confidenceLevel: outcome.confidenceLevel ?? null,
+        supportingMetrics: experiment.metrics,
+        recommendationId: experiment.created_from_recommendation_id,
+        campaignId: experiment.related_campaign_id ?? null,
+      }),
+      retentionClassification,
+      idempotencyKey,
+    });
+
+    if (result.duplicate) {
+      logMarketingMemoryEvent({
+        event: "observation_deduplicated",
+        businessProfileId: experiment.business_profile_id,
+        observationType,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+      });
+      return { recorded: false, duplicate: true, observationId: null };
+    }
+
+    if (!result.observation) {
+      logMarketingMemoryEvent({
+        event: "ingestion_failed",
+        businessProfileId: experiment.business_profile_id,
+        observationType,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+        result: "error",
+        errorClass: result.error?.code ?? "unknown",
+      });
+      return { recorded: false, duplicate: false, observationId: null };
+    }
+
+    logMarketingMemoryEvent({
+      event: "observation_inserted",
+      businessProfileId: experiment.business_profile_id,
+      observationType,
+      sourceType: "experiment",
+      sourceId: experiment.id,
+      observationId: result.observation.id,
+    });
+
+    await recordEvidenceLinksSafely(
+      supabase,
+      experiment.user_id,
+      experiment.business_profile_id,
+      result.observation.id,
+      [
+        {
+          sourceType: MarketingMemorySourceEntityTypes.EXPERIMENT,
+          sourceId: experiment.id,
+          linkType: MarketingMemoryLinkTypes.PRIMARY_SOURCE,
+        },
+      ],
+    );
+
+    return { recorded: true, duplicate: false, observationId: result.observation.id };
+  } catch (err) {
+    logMarketingMemoryEvent({
+      event: "ingestion_failed",
+      businessProfileId: experiment.business_profile_id,
+      result: "error",
+      errorClass: classifyError(err),
+    });
+    return { recorded: false, duplicate: false, observationId: null };
+  }
+}
