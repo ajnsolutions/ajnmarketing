@@ -66,16 +66,22 @@ const PUBLISHING_STATUS: Record<string, CustomerStatusPresentation> = {
   cancelled: { label: "Cancelled", description: "Publishing was cancelled.", tone: "muted" },
 };
 
+/**
+ * [Claude review] Keys must exactly match RecommendationStatuses
+ * (lib/marketing-decisions/types.ts): open | in_progress | dismissed | completed |
+ * superseded. A prior version of this map used invented key names (active, new,
+ * approved, applied, rejected, expired) that do not exist anywhere in the real enum —
+ * "open", the single most common status, was missing entirely and would have silently
+ * fallen through to the generic humanized fallback (title-cased raw value, neutral tone)
+ * instead of an intentional customer label. Caught because this map is not yet wired
+ * into any production page (verified via grep) — fixed before a future caller could
+ * inherit the bug.
+ */
 const RECOMMENDATION_STATUS: Record<string, CustomerStatusPresentation> = {
-  active: { label: "New", description: "Open recommendation awaiting action.", tone: "info" },
-  new: { label: "New", description: "Open recommendation awaiting action.", tone: "info" },
-  approved: { label: "Approved", description: "Recommendation was approved.", tone: "success" },
-  applied: { label: "In progress", description: "Recommendation work is underway.", tone: "info" },
+  open: { label: "New", description: "Open recommendation awaiting action.", tone: "info" },
   in_progress: { label: "In progress", description: "Recommendation work is underway.", tone: "info" },
   completed: { label: "Completed", description: "Recommendation work finished.", tone: "success" },
   dismissed: { label: "Dismissed", description: "Recommendation was dismissed.", tone: "muted" },
-  rejected: { label: "Dismissed", description: "Recommendation was dismissed.", tone: "muted" },
-  expired: { label: "Expired", description: "Recommendation is no longer current.", tone: "muted" },
   superseded: { label: "Superseded", description: "A newer recommendation replaced this one.", tone: "muted" },
 };
 
@@ -127,6 +133,20 @@ const MEMORY_KIND: Record<string, CustomerStatusPresentation> = {
   },
 };
 
+/**
+ * [Claude review] This map is fed by two different real enums:
+ * ExperimentConfidenceLevels (insufficient | early | moderate | strong) and, on the
+ * live Decision Intelligence page, DecisionEvidenceConfidenceState
+ * (lib/decision-intelligence/types.ts: strong | developing | early | inconclusive |
+ * not_applicable) via decision-intelligence-page.tsx's
+ * confidenceLabel(trace.confidenceState). "not_applicable" is the value assigned to
+ * every recommendation/campaign evidence trace (evidenceTrace.ts) — i.e. the majority
+ * of real traces on that page — and was missing entirely, so most confidence badges
+ * were silently falling through to the generic humanized fallback ("Not Applicable",
+ * neutral tone) instead of an intentional label. "developing" and "inconclusive" were
+ * missing too. Added all three so the map now covers the full union of both real
+ * enums.
+ */
 const CONFIDENCE: Record<string, CustomerStatusPresentation> = {
   insufficient: {
     label: "Insufficient data",
@@ -138,6 +158,11 @@ const CONFIDENCE: Record<string, CustomerStatusPresentation> = {
     description: "Early signal only — treat cautiously.",
     tone: "warning",
   },
+  developing: {
+    label: "Developing signal",
+    description: "A pattern is emerging but is not yet strong.",
+    tone: "info",
+  },
   moderate: {
     label: "Moderate signal",
     description: "Moderate confidence based on available data.",
@@ -147,6 +172,16 @@ const CONFIDENCE: Record<string, CustomerStatusPresentation> = {
     label: "Strong signal",
     description: "Stronger confidence based on available data.",
     tone: "success",
+  },
+  inconclusive: {
+    label: "Inconclusive",
+    description: "Result could not be attributed with confidence.",
+    tone: "muted",
+  },
+  not_applicable: {
+    label: "Not scored",
+    description: "Confidence scoring does not apply to this evidence.",
+    tone: "neutral",
   },
   unknown: {
     label: "Uncertain",

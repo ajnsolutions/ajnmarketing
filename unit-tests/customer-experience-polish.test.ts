@@ -37,6 +37,28 @@ test("identical status inputs produce identical presentations", () => {
   assert.deepEqual(confidenceLabel("insufficient"), confidenceLabel("insufficient"));
 });
 
+test("recommendationStatusLabel covers every real RecommendationStatuses value, including the common 'open' status", () => {
+  for (const status of ["open", "in_progress", "dismissed", "completed", "superseded"]) {
+    const presentation = recommendationStatusLabel(status);
+    assert.notEqual(presentation.label, "Unknown", `status "${status}" should not fall through to the generic fallback`);
+  }
+  assert.equal(recommendationStatusLabel("open").label, "New");
+});
+
+test("confidenceLabel covers every real DecisionEvidenceConfidenceState, including the common 'not_applicable' state", () => {
+  for (const state of ["strong", "developing", "early", "inconclusive", "not_applicable"]) {
+    const presentation = confidenceLabel(state);
+    // The generic lookup() fallback for an unmapped key sets label === description
+    // (both the humanized raw key). A real map entry always gives them distinct text.
+    assert.notEqual(
+      presentation.label,
+      presentation.description,
+      `state "${state}" should have an intentional map entry, not fall through to the generic fallback`,
+    );
+  }
+  assert.equal(confidenceLabel("not_applicable").label, "Not scored");
+});
+
 test("Head of Marketing hierarchy places strategy and action above history", () => {
   const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
   const executive = page.indexOf("<ExecutiveBriefSection");

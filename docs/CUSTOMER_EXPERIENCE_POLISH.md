@@ -122,6 +122,8 @@ Partial-data warnings use `PartialDataNotice` instead of muted footnotes.
 
 Centralized customer labels for campaigns, experiments, publishing, recommendations, memory kinds, confidence, and evidence types. Tests lock key mappings.
 
+Review fixes (PR #63 review pass): `RECOMMENDATION_STATUS` previously used invented keys and was missing the real `"open"` value; `CONFIDENCE` was missing `developing` / `inconclusive` / `not_applicable`, the real `DecisionEvidenceConfidenceState` values used on the live Decision Intelligence page (`not_applicable` is the value on every recommendation/campaign evidence trace — the majority case). Both maps now cover the full real enums; regression tests added in `unit-tests/customer-experience-polish.test.ts`. `PUBLISHING_STATUS` is not yet wired into any production caller and mixes three different underlying enums (`ContentApprovalStatus`, `PublishingQueueStatus`, `publishing_jobs.status`) — flagged as remaining UX debt below rather than fixed speculatively, since the correct single source enum needs a product decision before wiring it up.
+
 ## Mobile / accessibility
 
 - Touch targets on primary CTAs and disclosures
@@ -153,6 +155,8 @@ Centralized customer labels for campaigns, experiments, publishing, recommendati
 - GBP permission diagnostics still somewhat technical in edge cases
 - Authenticated visual QA on real pilot data (requires logged-in session)
 - Optional future: responsive table → list conversions on dense admin tables
+- `experiments-section.tsx`'s measured (non-inconclusive) confidence badge builds an inline presentation object from `ExperimentDashboardCard.confidenceLabel` (already a formatted string) with a hardcoded `tone: "info"`, so it doesn't get success/muted color-coding by actual confidence level. Fixing properly requires threading the raw `ExperimentConfidenceLevels` enum onto the card type instead of a pre-formatted string — left as debt rather than reshaping the data layer in a presentation-only PR.
+- `publishingStatusLabel` (`lib/customer-ux/statusVocabulary.ts`) is unwired and its `PUBLISHING_STATUS` map conflates three different real enums; needs a product decision on which one it should represent before it's wired into any page.
 
 ## Manual smoke-test checklist
 
