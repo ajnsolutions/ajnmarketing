@@ -51,6 +51,7 @@ const OBSERVATION_TYPE_TO_OUTCOME_DIRECTION: Record<MarketingMemoryObservationTy
   [MarketingMemoryObservationTypes.PERFORMANCE_MEASURED]: MarketingMemoryOutcomeDirections.UNKNOWN,
   [MarketingMemoryObservationTypes.ANALYTICS_SNAPSHOT_CAPTURED]: MarketingMemoryOutcomeDirections.NEUTRAL,
   [MarketingMemoryObservationTypes.CAMPAIGN_COMPLETED]: MarketingMemoryOutcomeDirections.NEUTRAL,
+  [MarketingMemoryObservationTypes.EXPERIMENT_COMPLETED]: MarketingMemoryOutcomeDirections.NEUTRAL,
 };
 
 export function outcomeDirectionForObservationType(

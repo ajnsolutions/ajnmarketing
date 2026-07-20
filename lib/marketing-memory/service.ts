@@ -436,3 +436,158 @@ export async function recordObservationForCampaignCompletion(
     return { recorded: false, duplicate: false, observationId: null };
   }
 }
+
+/**
+ * Records one factual observation when an Experimentation Engine experiment completes.
+ * Evidence only — never writes learnings. Best-effort and non-blocking.
+ */
+export async function recordObservationForExperimentCompletion(
+  supabase: SupabaseClient,
+  experiment: {
+    id: string;
+    user_id: string;
+    business_profile_id: string;
+    experiment_type: string;
+    outcome: {
+      direction?: string;
+      confidenceLevel?: string;
+      winningVariantKey?: string | null;
+      attributionAvailable?: boolean;
+    };
+    metrics: {
+      primaryMetric?: string;
+      aggregateValue?: number | null;
+      measurementStart?: string | null;
+      measurementEnd?: string | null;
+    };
+    created_from_recommendation_id: string;
+    related_campaign_id?: string | null;
+    source_proposal_id?: string | null;
+    completed_at?: string | null;
+    updated_at?: string;
+  },
+): Promise<MarketingMemoryIngestionResult> {
+  try {
+    const observationType = MarketingMemoryObservationTypes.EXPERIMENT_COMPLETED;
+    const outcomeDirection = outcomeDirectionForObservationType(observationType);
+    const retentionClassification = retentionClassificationForObservationType(observationType);
+    const occurredAt = new Date(
+      experiment.completed_at ?? experiment.updated_at ?? Date.now(),
+    );
+
+    const contextSnapshotId = await resolveContextSnapshotForObservation(supabase, {
+      userId: experiment.user_id,
+      businessProfileId: experiment.business_profile_id,
+      occurredAt,
+    });
+
+    const idempotencyKey = buildObservationIdempotencyKey(
+      experiment.business_profile_id,
+      "experiment",
+      experiment.id,
+    );
+
+    const outcome = experiment.outcome ?? {};
+    const metrics = experiment.metrics ?? {};
+
+    // [Claude review, follow-up] Existing analytics are aggregate-only; there is no
+    // real per-variant attribution. This payload is deliberately honest about that
+    // rather than nesting a would-be "measuredOutcome"/"supportingMetrics" object the
+    // shared sanitizer would silently drop anyway (see the prior review's finding on
+    // this same function) — every field here is a flat scalar. `experiment_id` is
+    // deliberately omitted from this object (unlike the review's own field list) because
+    // it is already captured on the observation row itself via `sourceExperimentId`
+    // below; including it again here would be pure duplication and would push this
+    // object to 13 keys, one over sanitizeMetricSummary's MAX_METADATA_KEYS cap. Winner
+    // and outcome are never fabricated: attributionAvailable is false for every
+    // experiment created through the current pipeline, so winner is always null and
+    // outcome direction is always inconclusive/insufficient_data.
+    const result = await insertMarketingMemoryObservation(supabase, {
+      userId: experiment.user_id,
+      businessProfileId: experiment.business_profile_id,
+      observationType,
+      sourceSystem: MarketingMemorySourceSystems.MARKETING_EXPERIMENTATION,
+      sourceOutcomeEventId: null,
+      sourceAnalyticsSnapshotId: null,
+      sourceCampaignId: null,
+      sourceExperimentId: experiment.id,
+      contextSnapshotId,
+      occurredAt: occurredAt.toISOString(),
+      outcomeDirection,
+      locationScope: null,
+      metricSummary: sanitizeMetricSummary({
+        experiment_type: experiment.experiment_type,
+        outcome: outcome.direction ?? null,
+        winner: outcome.winningVariantKey ?? null,
+        confidence: outcome.confidenceLevel ?? null,
+        attribution_available: outcome.attributionAvailable ?? false,
+        primary_kpi: metrics.primaryMetric ?? null,
+        aggregate_metric_value: metrics.aggregateValue ?? null,
+        measurement_start: metrics.measurementStart ?? null,
+        measurement_end: metrics.measurementEnd ?? null,
+        proposal_id: experiment.source_proposal_id ?? null,
+        recommendation_id: experiment.created_from_recommendation_id,
+        campaign_id: experiment.related_campaign_id ?? null,
+      }),
+      retentionClassification,
+      idempotencyKey,
+    });
+
+    if (result.duplicate) {
+      logMarketingMemoryEvent({
+        event: "observation_deduplicated",
+        businessProfileId: experiment.business_profile_id,
+        observationType,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+      });
+      return { recorded: false, duplicate: true, observationId: null };
+    }
+
+    if (!result.observation) {
+      logMarketingMemoryEvent({
+        event: "ingestion_failed",
+        businessProfileId: experiment.business_profile_id,
+        observationType,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+        result: "error",
+        errorClass: result.error?.code ?? "unknown",
+      });
+      return { recorded: false, duplicate: false, observationId: null };
+    }
+
+    logMarketingMemoryEvent({
+      event: "observation_inserted",
+      businessProfileId: experiment.business_profile_id,
+      observationType,
+      sourceType: "experiment",
+      sourceId: experiment.id,
+      observationId: result.observation.id,
+    });
+
+    await recordEvidenceLinksSafely(
+      supabase,
+      experiment.user_id,
+      experiment.business_profile_id,
+      result.observation.id,
+      [
+        {
+          sourceType: MarketingMemorySourceEntityTypes.EXPERIMENT,
+          sourceId: experiment.id,
+          linkType: MarketingMemoryLinkTypes.PRIMARY_SOURCE,
+        },
+      ],
+    );
+
+    return { recorded: true, duplicate: false, observationId: result.observation.id };
+  } catch (err) {
+    logMarketingMemoryEvent({
+      event: "ingestion_failed",
+      businessProfileId: experiment.business_profile_id,
+      result: "error",
+      errorClass: classifyError(err),
+    });
+    return { recorded: false, duplicate: false, observationId: null };
+  }
+}

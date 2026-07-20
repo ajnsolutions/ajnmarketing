@@ -20,6 +20,8 @@ export const MarketingMemoryObservationTypes = {
   ANALYTICS_SNAPSHOT_CAPTURED: "analytics_snapshot_captured",
   /** Campaign Intelligence — campaign execution finished (evidence only). */
   CAMPAIGN_COMPLETED: "campaign_completed",
+  /** Experimentation Engine — experiment finished (evidence only). */
+  EXPERIMENT_COMPLETED: "experiment_completed",
 } as const;
 
 export type MarketingMemoryObservationType =
@@ -29,6 +31,7 @@ export const MarketingMemorySourceSystems = {
   RECOMMENDATION_OUTCOMES: "recommendation-outcomes",
   ANALYTICS: "analytics",
   CAMPAIGN_INTELLIGENCE: "campaign-intelligence",
+  MARKETING_EXPERIMENTATION: "marketing-experimentation",
 } as const;
 
 export type MarketingMemorySourceSystem =
@@ -82,6 +85,8 @@ export const MarketingMemorySourceEntityTypes = {
   OVERRIDE: "override",
   /** Campaign Intelligence execution plan (evidence only — never a Learning write). */
   CAMPAIGN: "campaign",
+  /** Experimentation Engine experiment (evidence only — never a Learning write). */
+  EXPERIMENT: "experiment",
 } as const;
 
 export type MarketingMemorySourceEntityType =
@@ -141,6 +146,7 @@ export type MarketingMemoryObservation = {
   source_outcome_event_id: string | null;
   source_analytics_snapshot_id: string | null;
   source_campaign_id: string | null;
+  source_experiment_id: string | null;
   context_snapshot_id: string | null;
   occurred_at: string;
   outcome_direction: MarketingMemoryOutcomeDirection;

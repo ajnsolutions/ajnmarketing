@@ -96,3 +96,7 @@ Head of Marketing service loads open-count + evidence in parallel, then loads ca
 - Marketing Memory does not create, score, publish, approve, or suppress recommendations as an authority
 - No second `resolveMarketingDirectorDecision`
 - `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`
+
+## 8. Experimentation Engine observations (Phase 2E)
+
+The Marketing Experimentation Engine ([`MARKETING_EXPERIMENTATION_ENGINE.md`](./MARKETING_EXPERIMENTATION_ENGINE.md)) writes `experiment_completed` observations on completion — evidence only, honest about the current lack of per-variant attribution (winner always `null`, confidence never above `early`). This is a **write** into the evidence base this document's `evidencePackage.ts`/`memoryComposition.ts` pipeline already consumes (§1) — Marketing Director does not read experiment results directly; any future influence on candidate ordering would have to flow through the same learnings-promotion pipeline preferences/learnings already use (§2–3), not a direct shortcut from the experiment result. No such promotion path for `experiment_completed` observations exists yet; this section exists so a future phase that adds one does not accidentally wire the Experimentation Engine straight into `resolveDecision.ts` instead.

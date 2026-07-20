@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AskHeadOfMarketingPanel } from "@/components/dashboard/ask-head-of-marketing";
 import { CampaignsSection } from "@/components/dashboard/campaigns-section";
+import { ExperimentsSection } from "@/components/dashboard/experiments-section";
 import { ExecutiveBriefSection } from "@/components/dashboard/executive-brief-section";
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
 import { MonthlyFocusSection } from "@/components/dashboard/monthly-focus-section";
@@ -65,6 +66,12 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
       <MonthlyFocusSection focus={briefing.monthlyFocus} />
 
       <CampaignsSection campaigns={briefing.campaigns} />
+
+      <ExperimentsSection
+        pendingProposals={briefing.experiments.pendingProposals}
+        active={briefing.experiments.active}
+        completed={briefing.experiments.completed}
+      />
 
       <StrategicCalendarPreviewSection preview={briefing.calendarPreview} />
 

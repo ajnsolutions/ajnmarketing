@@ -3,6 +3,8 @@ import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
+import type { ExperimentDashboardCard } from "@/lib/marketing-experimentation/experiment-types";
+import type { ExperimentProposalCard } from "@/lib/marketing-experimentation/proposal-types";
 import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
 
 export type MarketingHealthState =
@@ -94,6 +96,17 @@ export type HeadOfMarketingBriefing = {
    * initiates a campaign. Never contains independently invented recommendations.
    */
   campaigns: CampaignDashboardCard[];
+  /**
+   * Experimentation Engine dashboard cards. pendingProposals are server-authored,
+   * awaiting the user's explicit approval — the client never defines these. Empty until
+   * Marketing Director's eligibility rule proposes one from an existing, open
+   * recommendation. Measurement only.
+   */
+  experiments: {
+    pendingProposals: ExperimentProposalCard[];
+    active: ExperimentDashboardCard[];
+    completed: ExperimentDashboardCard[];
+  };
   /**
    * Compact read-only Strategic Marketing Calendar preview (next 7 days).
    * Aggregates existing sources — never invents schedule commitments.

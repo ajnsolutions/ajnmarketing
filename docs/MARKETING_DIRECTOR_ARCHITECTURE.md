@@ -390,6 +390,10 @@ The Campaign Intelligence Engine ([`CAMPAIGN_INTELLIGENCE_ENGINE.md`](./CAMPAIGN
 
 The Strategic Marketing Calendar ([`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md)) aggregates dated Marketing Director priorities and other authoritative systems into a read-only day/week/month view. It does not reinterpret strategy, invent priorities, or mutate any source system.
 
+### 10.5 Marketing Experimentation Engine (proposal-gated measurement)
+
+The Marketing Experimentation Engine ([`MARKETING_EXPERIMENTATION_ENGINE.md`](./MARKETING_EXPERIMENTATION_ENGINE.md)) is the one Phase 2 execution engine whose Director-gating is enforced structurally rather than by convention alone: since Director decisions are computed per-request and never persisted (§2.2, §8.2 — nothing in this pipeline writes `MarketingDirectorDecision` to the database), an early version of this engine accepted a client-supplied provenance string as its only gate, which a direct API call could forge. The current design instead treats a new table, `marketing_experiment_proposals`, as the first durable artifact of a specific Director determination: a deterministic eligibility rule (`lib/marketing-director/experimentEligibility.ts`) evaluates recommendations and writes proposals server-side only (RLS has no INSERT policy for the `authenticated` role at all — only the service-role client, from an admin-gated route, can create one). The user approves a proposal; the server copies its authoritative fields into exactly one experiment. Measurement reports an honest aggregate over the experiment's KPI window and never fabricates a per-variant winner — existing analytics have no per-variant attribution to give it. Completion feeds Marketing Memory as observations only. `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains `false`.
+
 ---
 
 ## 11. Verification

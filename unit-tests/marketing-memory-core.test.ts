@@ -70,6 +70,14 @@ test("outcomeDirectionForObservationType: purely factual, non-inferential mappin
     outcomeDirectionForObservationType(MarketingMemoryObservationTypes.ANALYTICS_SNAPSHOT_CAPTURED),
     MarketingMemoryOutcomeDirections.NEUTRAL
   );
+  assert.equal(
+    outcomeDirectionForObservationType(MarketingMemoryObservationTypes.CAMPAIGN_COMPLETED),
+    MarketingMemoryOutcomeDirections.NEUTRAL
+  );
+  assert.equal(
+    outcomeDirectionForObservationType(MarketingMemoryObservationTypes.EXPERIMENT_COMPLETED),
+    MarketingMemoryOutcomeDirections.NEUTRAL
+  );
 });
 
 test("retentionClassificationForObservationType: recommendation-outcome-derived observations are long_term_audit_evidence; analytics captures are standard_operational_evidence", () => {
