@@ -4,10 +4,13 @@ import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ExperimentDashboardCard } from "@/lib/marketing-experimentation/experiment-types";
 import type { ExperimentProposalCard } from "@/lib/marketing-experimentation/proposal-types";
-
-function statusLabel(status: string): string {
-  return status.replaceAll("_", " ");
-}
+import { StatusBadge, ConfidenceBadge } from "@/components/dashboard/ui/status-badge";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import { ReadOnlyNotice } from "@/components/dashboard/ui/page-chrome";
+import {
+  confidenceLabel,
+  experimentStatusLabel,
+} from "@/lib/customer-ux/statusVocabulary";
 
 function ProposalCard({ proposal }: { proposal: ExperimentProposalCard }) {
   const router = useRouter();
@@ -47,9 +50,13 @@ function ProposalCard({ proposal }: { proposal: ExperimentProposalCard }) {
           </h3>
           <p className="mt-1 text-sm leading-6 text-text-muted">{proposal.hypothesis}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-navy-900 ring-1 ring-slate-200">
-          Proposed — awaiting your approval
-        </span>
+        <StatusBadge
+          presentation={{
+            label: "Proposed",
+            description: "Awaiting your approval to run. Not started automatically.",
+            tone: "warning",
+          }}
+        />
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -88,8 +95,8 @@ function ProposalCard({ proposal }: { proposal: ExperimentProposalCard }) {
       </dl>
 
       <p className="mt-3 text-xs leading-5 text-text-muted">
-        Linked recommendation · {proposal.recommendationId.slice(0, 8)}…
-        {proposal.campaignId ? ` · Campaign · ${proposal.campaignId.slice(0, 8)}…` : ""}
+        Linked to an existing recommendation
+        {proposal.campaignId ? " and related campaign" : ""}.
       </p>
 
       {error && (
@@ -130,18 +137,19 @@ function ExperimentCard({ experiment }: { experiment: ExperimentDashboardCard })
           </h3>
           <p className="mt-1 text-sm leading-6 text-text-muted">{experiment.hypothesis}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-navy-900 ring-1 ring-slate-200">
-          {statusLabel(experiment.status)}
-        </span>
+        <StatusBadge presentation={experimentStatusLabel(experiment.status)} />
       </div>
 
       {isCompletedWithoutAttribution ? (
         <div className="mt-4 rounded-lg border border-slate-200/80 bg-white p-3 text-sm text-navy-900">
           <p className="font-semibold">Inconclusive</p>
-          <p className="mt-1 text-text-muted">Aggregate performance observed.</p>
-          <p className="text-text-muted">Variant attribution unavailable.</p>
-          <p className="text-text-muted">Early confidence maximum.</p>
-          <p className="text-text-muted">No winner selected.</p>
+          <p className="mt-1 text-text-muted">Aggregate activity was observed during the window.</p>
+          <p className="text-text-muted">No variant attribution is available.</p>
+          <p className="text-text-muted">Confidence is capped at Early signal.</p>
+          <p className="text-text-muted">No winner was selected.</p>
+          <div className="mt-2">
+            <ConfidenceBadge presentation={confidenceLabel("early")} />
+          </div>
         </div>
       ) : (
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -155,16 +163,22 @@ function ExperimentCard({ experiment }: { experiment: ExperimentDashboardCard })
             <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
               Confidence
             </dt>
-            <dd className="mt-1 text-navy-900">{experiment.confidenceLabel}</dd>
+            <dd className="mt-1">
+              <ConfidenceBadge
+                presentation={{
+                  label: experiment.confidenceLabel,
+                  description: experiment.confidenceLabel,
+                  tone: "info",
+                }}
+              />
+            </dd>
           </div>
         </dl>
       )}
 
       <p className="mt-3 text-xs leading-5 text-text-muted">
-        Linked recommendation · {experiment.recommendationId.slice(0, 8)}…
-        {experiment.campaignId
-          ? ` · Campaign · ${experiment.campaignId.slice(0, 8)}…`
-          : ""}
+        Linked to an existing recommendation
+        {experiment.campaignId ? " and related campaign" : ""}.
       </p>
 
       <button
@@ -216,10 +230,13 @@ export function ExperimentsSection({
         Marketing experiments
       </h2>
       <p className="mt-3 text-sm leading-7 text-text-muted">
-        Controlled tests proposed by your Head of Marketing — measurement only, not new
-        strategy. Every experiment starts from a proposal your Head of Marketing wrote; you
-        can approve it here, but not edit or invent one yourself.
+        Controlled tests proposed by your Head of Marketing — measurement only, not new strategy.
+        You can approve a proposal here, but you cannot edit or invent one yourself.
       </p>
+      <ReadOnlyNotice>
+        Experiments never auto-launch, never invent strategy, and never claim a winner without
+        variant attribution.
+      </ReadOnlyNotice>
 
       {pendingProposals.length > 0 && (
         <>
@@ -239,10 +256,17 @@ export function ExperimentsSection({
       <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
         Active
       </h3>
-      {active.length === 0 ? (
+      {active.length === 0 && pendingProposals.length === 0 ? (
+        <div className="mt-3">
+          <DashboardEmptyState
+            kind="no_activity"
+            title="No active experiments"
+            description="When your Head of Marketing proposes a test and you approve it, it will appear here while it runs."
+          />
+        </div>
+      ) : active.length === 0 ? (
         <p className="mt-3 text-sm leading-7 text-text-muted">
-          No active experiments right now. When your Head of Marketing proposes one and you
-          approve it, it will appear here.
+          No running experiments yet. Approve a proposal above to start one.
         </p>
       ) : (
         <ul className="mt-3 grid gap-4">
@@ -258,9 +282,13 @@ export function ExperimentsSection({
         Completed
       </h3>
       {completed.length === 0 ? (
-        <p className="mt-3 text-sm leading-7 text-text-muted">
-          Completed experiment outcomes will show up here.
-        </p>
+        <div className="mt-3">
+          <DashboardEmptyState
+            kind="no_data_yet"
+            title="No completed experiments yet"
+            description="Finished tests will appear here with honest outcomes — including inconclusive results when we cannot attribute variants."
+          />
+        </div>
       ) : (
         <ul className="mt-3 grid gap-4">
           {completed.map((experiment) => (

@@ -119,3 +119,7 @@ No speculative micro-optimizations applied.
 - No auto-approval introduced
 - Tenant isolation not weakened
 - Service-role code remains server-only
+
+## 12. Customer experience polish (Phase 3A)
+
+Presentation-only improvements for pilot usability are recorded in [`CUSTOMER_EXPERIENCE_POLISH.md`](./CUSTOMER_EXPERIENCE_POLISH.md). They do not change Marketing Director, recommendation ranking, publishing/approval mutation paths, providers, or schedule activation.

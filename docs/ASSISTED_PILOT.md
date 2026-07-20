@@ -56,6 +56,17 @@ Admin API: `GET|POST /api/admin/pilot` (allowlisted via `ADMIN_USER_IDS` + servi
 
 ---
 
+## Customer experience (Phase 3A)
+
+When operating pilots, prefer the polished Head of Marketing hierarchy:
+
+1. Executive Brief + primary next action  
+2. Why the Plan Changed  
+3. Calendar / Campaigns / Experiments  
+4. Ask Your Head of Marketing for grounded explanations  
+
+Do not treat Decision Intelligence, Campaigns, or Experiments as strategy engines — they explain or organize work already decided by Marketing Director. See [`CUSTOMER_EXPERIENCE_POLISH.md`](./CUSTOMER_EXPERIENCE_POLISH.md).
+
 ## Success criteria
 
 - At least one owned business completes the checklist through analytics + learning

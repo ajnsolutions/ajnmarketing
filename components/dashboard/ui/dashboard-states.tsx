@@ -1,29 +1,68 @@
 import Link from "next/link";
 
+export type EmptyStateKind =
+  | "no_data_yet"
+  | "not_configured"
+  | "no_activity"
+  | "no_filter_results"
+  | "source_unavailable"
+  | "permission"
+  | "stale"
+  | "error";
+
+const KIND_HINT: Record<EmptyStateKind, string> = {
+  no_data_yet: "Nothing here yet — that can be normal for a new account.",
+  not_configured: "A quick setup step is needed before this can fill in.",
+  no_activity: "Configured and waiting — activity will show up here when it happens.",
+  no_filter_results: "Nothing matches these filters. Try widening them.",
+  source_unavailable: "An optional source was unavailable. Everything else can still be useful.",
+  permission: "You may not have access to this information right now.",
+  stale: "This view may be out of date. Refresh when you can.",
+  error: "Something went wrong loading this section.",
+};
+
 export function DashboardEmptyState({
   title,
   description,
   actionLabel,
   actionHref,
+  kind = "no_data_yet",
 }: {
   title: string;
   description: string;
   actionLabel?: string;
   actionHref?: string;
+  kind?: EmptyStateKind;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-200 bg-[#F8FAFC] px-5 py-10 text-center ring-1 ring-slate-200/60 sm:px-8">
+    <div className="rounded-xl border border-dashed border-slate-200 bg-[#F8FAFC] px-5 py-8 text-center ring-1 ring-slate-200/60 sm:px-8 sm:py-10">
       <h3 className="text-base font-semibold text-navy-900">{title}</h3>
       <p className="mx-auto mt-2 max-w-lg text-sm leading-7 text-text-muted">{description}</p>
+      <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-slate-500">{KIND_HINT[kind]}</p>
       {actionLabel && actionHref && (
         <Link
           href={actionHref}
-          className="hom-focusable mt-5 inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
+          className="hom-focusable mt-5 inline-flex min-h-11 items-center rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
         >
           {actionLabel}
         </Link>
       )}
     </div>
+  );
+}
+
+export function PartialDataNotice({
+  message = "Some optional sources were unavailable. What you see may be incomplete.",
+}: {
+  message?: string;
+}) {
+  return (
+    <p
+      role="status"
+      className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 text-sm leading-6 text-amber-800 ring-1 ring-amber-100"
+    >
+      {message}
+    </p>
   );
 }
 

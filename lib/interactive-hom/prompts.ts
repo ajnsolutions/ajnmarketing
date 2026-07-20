@@ -58,4 +58,14 @@ export const INTERACTIVE_HOM_SUGGESTED_PROMPTS: readonly InteractiveHomSuggested
     label: "What evidence was ignored?",
     category: InteractiveHomQuestionCategories.IGNORED_EVIDENCE,
   },
+  {
+    id: "experiment_impact",
+    label: "What did our experiments show?",
+    category: InteractiveHomQuestionCategories.EXPERIMENT_IMPACT,
+  },
+  {
+    id: "preference_impact",
+    label: "How do my preferences affect the plan?",
+    category: InteractiveHomQuestionCategories.PREFERENCE_IMPACT,
+  },
 ] as const;

@@ -8,6 +8,7 @@ import { MonthlyFocusSection } from "@/components/dashboard/monthly-focus-sectio
 import { ProactivePresenceSection } from "@/components/dashboard/proactive-presence";
 import { StrategicCalendarPreviewSection } from "@/components/dashboard/strategic-calendar-preview";
 import { WhyPlanChangedSection } from "@/components/dashboard/why-plan-changed-section";
+import { PrimaryActionBar } from "@/components/dashboard/ui/page-chrome";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 
@@ -38,9 +39,17 @@ function Section({
   );
 }
 
+/**
+ * Head of Marketing — primary strategic customer surface.
+ * Hierarchy: summary → next action → why it changed → calendar → execution → ask → history.
+ */
 export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBriefing }) {
   return (
     <div className="mx-auto max-w-3xl">
+      <a href="#hom-primary-action" className="hom-skip-link">
+        Skip to next action
+      </a>
+
       <header className="max-w-2xl">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
           Your Head of Marketing · {briefing.experienceTitle}
@@ -51,7 +60,9 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
           </h1>
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${healthStyles(briefing.health.state)}`}
+            title={briefing.health.message}
           >
+            <span className="sr-only">Marketing health: </span>
             {briefing.health.label}
           </span>
         </div>
@@ -60,27 +71,74 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
         )}
       </header>
 
+      {/* 1. Executive summary / current priorities */}
       <ProactivePresenceSection presence={briefing.proactive} />
-
       <ExecutiveBriefSection brief={briefing.executiveBrief} />
 
-      <MonthlyFocusSection focus={briefing.monthlyFocus} />
+      {/* 2. Primary next actions — above the fold, before history */}
+      <div id="hom-primary-action">
+        <PrimaryActionBar>
+          {briefing.primaryAction.kind === "none" ? (
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-semibold text-navy-900">
+                {briefing.magicMoment ?? "Everything looks great."}
+              </p>
+              <p className="mt-1 text-sm leading-7 text-text-muted">
+                No urgent decision needed. I&apos;ll let you know if anything changes.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Next step
+                </p>
+                <p className="mt-1 text-base font-semibold text-navy-900">
+                  {briefing.primaryAction.label}
+                </p>
+                {briefing.magicMoment && (
+                  <p className="mt-1 text-sm text-text-muted">{briefing.magicMoment}</p>
+                )}
+              </div>
+              <Link
+                href={briefing.primaryAction.href}
+                className="hom-focusable motion-safe-lift inline-flex min-h-11 items-center justify-center rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
+              >
+                {briefing.primaryAction.label}
+              </Link>
+            </>
+          )}
+        </PrimaryActionBar>
+      </div>
 
+      {/* 3. Why the Plan Changed */}
+      <WhyPlanChangedSection preview={briefing.whyPlanChanged} />
+
+      {/* 4. Strategic Calendar preview */}
+      <StrategicCalendarPreviewSection preview={briefing.calendarPreview} />
+
+      {/* 5–6. Execution: Campaigns then Experiments */}
       <CampaignsSection campaigns={briefing.campaigns} />
-
       <ExperimentsSection
         pendingProposals={briefing.experiments.pendingProposals}
         active={briefing.experiments.active}
         completed={briefing.experiments.completed}
       />
 
-      <WhyPlanChangedSection preview={briefing.whyPlanChanged} />
-
-      <StrategicCalendarPreviewSection preview={briefing.calendarPreview} />
-
+      {/* 7. Ask Your Head of Marketing */}
       <AskHeadOfMarketingPanel />
 
+      {/* 8. Supporting detail / historical */}
+      <MonthlyFocusSection focus={briefing.monthlyFocus} />
+
       <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
+          Supporting detail
+        </p>
+        <p className="mt-2 text-sm leading-7 text-text-muted">
+          Extra context for this week — useful when you want the full picture.
+        </p>
+
         <Section title="What I handled">
           <ul className="space-y-3">
             {briefing.thisWeek.map((item) => (
@@ -140,38 +198,13 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
             Estimated review time: {briefing.timeRespectLabel}.
           </p>
         </div>
-
-        <div className="mt-8">
-          {briefing.primaryAction.kind === "none" ? (
-            <div className="rounded-xl border border-emerald-200 bg-growth-50/60 px-5 py-4">
-              <p className="text-base font-semibold text-navy-900">
-                {briefing.magicMoment ?? "Everything looks great."}
-              </p>
-              <p className="mt-1 text-sm leading-7 text-text-muted">
-                Go enjoy your week. I&apos;ll let you know if anything changes.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link
-                href={briefing.primaryAction.href}
-                className="hom-focusable motion-safe-lift inline-flex rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
-              >
-                {briefing.primaryAction.label}
-              </Link>
-              {briefing.magicMoment && (
-                <p className="text-sm text-text-muted">{briefing.magicMoment}</p>
-              )}
-            </div>
-          )}
-        </div>
       </section>
 
       <HeadOfMarketingJournalSection journal={briefing.journal} />
 
       <details className="group mt-8 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-sm shadow-sm ring-1 ring-slate-900/[0.03]">
         <summary className="hom-focusable cursor-pointer list-none font-semibold text-navy-900 marker:content-none [&::-webkit-details-marker]:hidden">
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex min-h-11 items-center gap-2">
             More tools
             <span
               className="text-slate-400 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
@@ -183,13 +216,14 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
         </summary>
         <div className="hom-disclose-content">
           <p className="mt-2 text-text-muted">
-            The Weekly Briefing is your check-in. Tools below still work — they stay out of the way so
-            you have one calm place to decide what matters.
+            Your Head of Marketing is the main place to decide. Tools below still work — they stay
+            out of the way so you have one calm place to start.
           </p>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
             {[
               { href: "/dashboard/approvals", label: "This Week — needs your opinion" },
               { href: "/dashboard/publishing", label: "Preparing for publication" },
+              { href: "/dashboard/decision-intelligence", label: "Why the plan changed" },
               { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
               { href: "/dashboard/tasks", label: "What I'm working on" },
@@ -199,7 +233,7 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="hom-focusable font-medium text-brand-600 transition-colors hover:text-brand-700"
+                  className="hom-focusable inline-flex min-h-11 items-center font-medium text-brand-600 transition-colors hover:text-brand-700"
                 >
                   {item.label}
                 </Link>

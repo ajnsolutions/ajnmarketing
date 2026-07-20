@@ -124,6 +124,14 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
   return (
     <div className="mx-auto max-w-5xl">
       <header className="max-w-3xl">
+        <p className="mb-3">
+          <Link
+            href="/dashboard"
+            className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+          >
+            ← Back to Head of Marketing
+          </Link>
+        </p>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
           Strategic Marketing Calendar
         </p>
@@ -134,7 +142,12 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
           Read-only view of priorities, campaigns, publishing, and market context already produced
           by AJN Marketing. Nothing here schedules, approves, or invents work.
         </p>
-        <p className="mt-2 text-xs text-slate-500">Timezone: {calendar.timezone}</p>
+        <p className="mt-2 text-xs text-slate-500">
+          Times shown in {calendar.timezone}
+          {calendar.timezone.toUpperCase() === "UTC"
+            ? " (UTC fallback when a business timezone is not configured)."
+            : "."}
+        </p>
       </header>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">

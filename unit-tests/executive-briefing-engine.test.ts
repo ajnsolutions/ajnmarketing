@@ -339,7 +339,7 @@ test("dashboard card uses details disclosure and refresh control", () => {
     "utf8",
   );
   assert.match(source, /<details/);
-  assert.match(source, /Show brief details/);
+  assert.match(source, /Show (full )?brief details/);
   assert.match(source, /Refresh/);
   assert.match(source, /aria-labelledby/);
   assert.match(source, /hom-focusable/);

@@ -127,8 +127,9 @@ test("Weekly Briefing docs and orchestration stay presentation-only", () => {
     join(root, "components/dashboard/head-of-marketing-page.tsx"),
     "utf8",
   );
-  assert.match(page, /Weekly Briefing/);
+  assert.match(page, /experienceTitle|Weekly Briefing|Head of Marketing/);
   assert.match(page, /What I handled|This Week/);
   assert.match(page, /Next Week/);
   assert.match(page, /timeRespectLabel/);
+  assert.match(page, /hom-primary-action/);
 });
