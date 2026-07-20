@@ -25,6 +25,7 @@ import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evid
 import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
 import { getCampaignDashboardForBusiness } from "@/lib/campaign-intelligence/campaign-service";
 import { getExperimentDashboardForBusiness } from "@/lib/marketing-experimentation/experiment-service";
+import { listExperimentProposalsForBusiness } from "@/lib/marketing-experimentation/proposal-service";
 import { getContentApprovalsForUser } from "@/lib/content-approval/persistence";
 import { getLatestMarketContextBriefWithItemsForUser } from "@/lib/market-context/persistence";
 import { getPublishingQueueForUser } from "@/lib/publishing-queue/persistence";
@@ -157,7 +158,8 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     openRecommendations,
     memoryEvidence,
     campaigns,
-    experiments,
+    experimentDashboard,
+    pendingProposals,
     publishing,
     approvals,
     marketBrief,
@@ -172,10 +174,12 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     getExperimentDashboardForBusiness(profile.user_id, profile.id, {
       supabaseClient: supabase,
     }),
+    listExperimentProposalsForBusiness(supabase, profile.user_id, profile.id),
     getPublishingQueueForUser(supabase, profile.user_id),
     getContentApprovalsForUser(supabase, profile.user_id),
     getLatestMarketContextBriefWithItemsForUser(supabase, profile.user_id),
   ]);
+  const experiments = { pendingProposals, ...experimentDashboard };
 
   const { candidates: candidateRecommendations, topDetail: topRecommendationDetail } =
     openRecommendations > 0

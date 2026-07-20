@@ -68,6 +68,7 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
       <CampaignsSection campaigns={briefing.campaigns} />
 
       <ExperimentsSection
+        pendingProposals={briefing.experiments.pendingProposals}
         active={briefing.experiments.active}
         completed={briefing.experiments.completed}
       />

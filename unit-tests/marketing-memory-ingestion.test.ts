@@ -226,34 +226,28 @@ function experimentRow(overrides: Record<string, unknown> = {}) {
     user_id: USER,
     business_profile_id: BIZ,
     experiment_type: "posting_time",
-    title: "Posting time",
-    variants: [
-      { key: "a", label: "Mid-week", description: "Publish Tuesday-Thursday mornings." },
-      { key: "b", label: "Weekend", description: "Publish Saturday-Sunday mornings." },
-    ],
     outcome: {
-      direction: "variant_a",
-      confidenceLevel: "moderate",
-      winningVariantKey: "a",
-      summary: "Mid-week outperformed Weekend on engagement.",
-      primaryMetric: "engagement",
-      liftPercent: 40,
+      direction: "inconclusive",
+      confidenceLevel: "early",
+      winningVariantKey: null,
+      attributionAvailable: false,
     },
     metrics: {
-      engagementA: 28,
-      engagementB: 20,
-      clicksA: 0,
-      clicksB: 0,
+      primaryMetric: "engagement",
+      aggregateValue: 150,
+      measurementStart: "2026-07-01T00:00:00.000Z",
+      measurementEnd: "2026-07-15T00:00:00.000Z",
     },
     created_from_recommendation_id: "rec-1",
     related_campaign_id: "camp-1",
+    source_proposal_id: "prop-1",
     completed_at: "2026-07-19T00:00:00.000Z",
     updated_at: "2026-07-19T00:00:00.000Z",
     ...overrides,
   };
 }
 
-test("recordObservationForExperimentCompletion: outcome, variants, and supporting metrics survive sanitization (not silently dropped)", async () => {
+test("recordObservationForExperimentCompletion: honest fields survive sanitization (not silently dropped), never a fabricated winner", async () => {
   const { client, calls } = createFakeSupabaseClient(
     baseMemoryTables({
       marketing_memory_observations: {
@@ -273,21 +267,41 @@ test("recordObservationForExperimentCompletion: outcome, variants, and supportin
   assert.equal(payload.source_experiment_id, "exp-1");
 
   const metricSummary = payload.metric_summary as Record<string, unknown>;
-  // A prior version nested these three under object/array keys, which
+  // A prior version nested outcome/variant/metric detail under object/array keys, which
   // sanitizeMetricSummary silently drops (it only keeps top-level scalars) — the stored
-  // observation ended up missing exactly the evidence it claimed to record. Flattened
-  // fields must actually be present now.
-  assert.equal(metricSummary.experimentType, "posting_time");
-  assert.equal(metricSummary.variantSummary, "Mid-week vs Weekend");
-  assert.equal(metricSummary.outcomeDirection, "variant_a");
-  assert.equal(metricSummary.winningVariantKey, "a");
-  assert.equal(metricSummary.confidenceLevel, "moderate");
-  assert.equal(metricSummary.liftPercent, 40);
-  assert.equal(metricSummary.primaryMetric, "engagement");
-  assert.equal(metricSummary.primaryMetricValueA, 28);
-  assert.equal(metricSummary.primaryMetricValueB, 20);
-  assert.equal(metricSummary.recommendationId, "rec-1");
-  assert.equal(metricSummary.campaignId, "camp-1");
+  // observation ended up missing exactly the evidence it claimed to record. Every field
+  // here is a flat scalar and must actually persist. Fits exactly within
+  // MAX_METADATA_KEYS (12) — experiment_id is deliberately excluded since it is already
+  // captured via source_experiment_id above.
+  assert.deepEqual(
+    Object.keys(metricSummary).sort(),
+    [
+      "aggregate_metric_value",
+      "attribution_available",
+      "campaign_id",
+      "confidence",
+      "experiment_type",
+      "measurement_end",
+      "measurement_start",
+      "outcome",
+      "primary_kpi",
+      "proposal_id",
+      "recommendation_id",
+      "winner",
+    ],
+  );
+  assert.equal(metricSummary.experiment_type, "posting_time");
+  assert.equal(metricSummary.outcome, "inconclusive");
+  assert.equal(metricSummary.winner, null);
+  assert.equal(metricSummary.confidence, "early");
+  assert.equal(metricSummary.attribution_available, false);
+  assert.equal(metricSummary.primary_kpi, "engagement");
+  assert.equal(metricSummary.aggregate_metric_value, 150);
+  assert.equal(metricSummary.measurement_start, "2026-07-01T00:00:00.000Z");
+  assert.equal(metricSummary.measurement_end, "2026-07-15T00:00:00.000Z");
+  assert.equal(metricSummary.proposal_id, "prop-1");
+  assert.equal(metricSummary.recommendation_id, "rec-1");
+  assert.equal(metricSummary.campaign_id, "camp-1");
 });
 
 test("recordObservationForExperimentCompletion: insufficient-data outcome is represented honestly, winner is null", async () => {
@@ -307,9 +321,13 @@ test("recordObservationForExperimentCompletion: insufficient-data outcome is rep
         direction: "insufficient_data",
         confidenceLevel: "insufficient",
         winningVariantKey: null,
-        summary: "Not enough measured data yet.",
+        attributionAvailable: false,
+      },
+      metrics: {
         primaryMetric: "engagement",
-        liftPercent: null,
+        aggregateValue: null,
+        measurementStart: "2026-07-01T00:00:00.000Z",
+        measurementEnd: "2026-07-15T00:00:00.000Z",
       },
     }) as never,
   );
@@ -319,8 +337,32 @@ test("recordObservationForExperimentCompletion: insufficient-data outcome is rep
   );
   const [payload] = observationInsert!.args as [Record<string, unknown>];
   const metricSummary = payload.metric_summary as Record<string, unknown>;
-  assert.equal(metricSummary.winningVariantKey, null);
-  assert.equal(metricSummary.confidenceLevel, "insufficient");
+  assert.equal(metricSummary.winner, null);
+  assert.equal(metricSummary.confidence, "insufficient");
+  assert.equal(metricSummary.aggregate_metric_value, null);
+});
+
+test("recordObservationForExperimentCompletion: no campaign linkage is represented as null, not omitted or fabricated", async () => {
+  const { client, calls } = createFakeSupabaseClient(
+    baseMemoryTables({
+      marketing_memory_observations: {
+        data: { id: "obs-exp-3", observation_type: MarketingMemoryObservationTypes.EXPERIMENT_COMPLETED },
+        error: null,
+      },
+    })
+  );
+
+  await recordObservationForExperimentCompletion(
+    client,
+    experimentRow({ related_campaign_id: null }) as never,
+  );
+
+  const observationInsert = calls.find(
+    (c) => c.table === "marketing_memory_observations" && c.op === "insert",
+  );
+  const [payload] = observationInsert!.args as [Record<string, unknown>];
+  const metricSummary = payload.metric_summary as Record<string, unknown>;
+  assert.equal(metricSummary.campaign_id, null);
 });
 
 // --- integration: real production hook points --------------------------------------

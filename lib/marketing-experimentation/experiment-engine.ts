@@ -2,15 +2,13 @@
  * Pure experiment lifecycle + measurement helpers.
  */
 
-import { computeExperimentOutcome } from "@/lib/marketing-experimentation/experiment-outcomes";
-import { getExperimentTemplate } from "@/lib/marketing-experimentation/experiment-templates";
+import { aggregateObservedOutcome } from "@/lib/marketing-experimentation/experiment-outcomes";
 import {
   advanceExperimentStatus,
   canTransitionExperimentStatus,
 } from "@/lib/marketing-experimentation/experiment-state";
 import {
   ExperimentStatuses,
-  type ExperimentMetrics,
   type ExperimentStatus,
   type MarketingExperiment,
 } from "@/lib/marketing-experimentation/experiment-types";
@@ -57,10 +55,15 @@ export function progressExperimentLifecycle(
  * completed/archived experiment and silently overwrite its historical, already-recorded
  * outcome. The service layer (experiment-service.ts) rejects those cases before calling
  * here; this guard means the pure function is safe even if called directly.
+ *
+ * [Claude review, follow-up] Takes a single aggregate value, never per-variant metrics —
+ * existing analytics have no per-variant attribution to give this function. The outcome
+ * is always the honest "aggregate observed, attribution unavailable" result; see
+ * aggregateObservedOutcome's doc comment.
  */
 export function applyExperimentMeasurement(
   experiment: MarketingExperiment,
-  metrics: ExperimentMetrics,
+  measurement: { aggregateValue: number | null; measurementStart: string; measurementEnd: string },
 ): Pick<MarketingExperiment, "metrics" | "outcome" | "status" | "measured_at"> {
   if (
     experiment.status !== ExperimentStatuses.RUNNING &&
@@ -74,12 +77,12 @@ export function applyExperimentMeasurement(
     };
   }
 
-  const template = getExperimentTemplate(experiment.experiment_type);
-  const primaryMetric = template?.primaryMetric ?? "engagement";
-  const outcome = computeExperimentOutcome({
-    metrics,
-    variants: experiment.variants,
+  const primaryMetric = experiment.metrics.primaryMetric;
+  const outcome = aggregateObservedOutcome({
     primaryMetric,
+    aggregateValue: measurement.aggregateValue,
+    measurementStart: measurement.measurementStart,
+    measurementEnd: measurement.measurementEnd,
   });
 
   let status = experiment.status;
@@ -91,7 +94,12 @@ export function applyExperimentMeasurement(
   }
 
   return {
-    metrics,
+    metrics: {
+      primaryMetric,
+      aggregateValue: measurement.aggregateValue,
+      measurementStart: measurement.measurementStart,
+      measurementEnd: measurement.measurementEnd,
+    },
     outcome,
     status,
     measured_at: new Date().toISOString(),

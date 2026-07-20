@@ -32,7 +32,7 @@ Implementation notes (post-blueprint):
 - CAMPAIGN_INTELLIGENCE_ENGINE.md — Phase 2B: Campaign Intelligence execution layer (MD-gated plans, timelines, metrics, HoM dashboard; observations only into Marketing Memory)
 - INTERACTIVE_HEAD_OF_MARKETING.md — Phase 2C: Ask Your Head of Marketing presentation/explanation layer over MD + existing intelligence (no second recommendation engine)
 - STRATEGIC_MARKETING_CALENDAR.md — Phase 2D: read-only Strategic Marketing Calendar aggregating MD / campaigns / publishing / approvals / market context
-- MARKETING_EXPERIMENTATION_ENGINE.md — Phase 2E: Marketing Experimentation Engine (MD-gated experiments, lifecycle, deterministic outcomes, HoM dashboard; observations only into Marketing Memory)
+- MARKETING_EXPERIMENTATION_ENGINE.md — Phase 2E: Marketing Experimentation Engine (server-authored MD proposals, user approval, deterministic lifecycle, honest aggregate-only measurement — no fabricated variant attribution; HoM dashboard; observations only into Marketing Memory)
 - MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (Phases 1-4 consumption implemented; decision_links persistence still future)
 - MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 tables implemented; decision links remain a proposal)
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)

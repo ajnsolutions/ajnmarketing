@@ -448,19 +448,21 @@ export async function recordObservationForExperimentCompletion(
     user_id: string;
     business_profile_id: string;
     experiment_type: string;
-    title: string;
-    variants: unknown;
     outcome: {
       direction?: string;
       confidenceLevel?: string;
-      summary?: string;
       winningVariantKey?: string | null;
-      primaryMetric?: string;
-      liftPercent?: number | null;
+      attributionAvailable?: boolean;
     };
-    metrics: Record<string, unknown>;
+    metrics: {
+      primaryMetric?: string;
+      aggregateValue?: number | null;
+      measurementStart?: string | null;
+      measurementEnd?: string | null;
+    };
     created_from_recommendation_id: string;
     related_campaign_id?: string | null;
+    source_proposal_id?: string | null;
     completed_at?: string | null;
     updated_at?: string;
   },
@@ -486,27 +488,20 @@ export async function recordObservationForExperimentCompletion(
     );
 
     const outcome = experiment.outcome ?? {};
-    const primaryMetric =
-      typeof outcome.primaryMetric === "string" ? outcome.primaryMetric : null;
-    const metrics = (experiment.metrics ?? {}) as Record<string, unknown>;
+    const metrics = experiment.metrics ?? {};
 
-    // [Claude review] sanitizeMetricSummary only preserves top-level scalar values —
-    // nested objects/arrays are silently dropped (`continue` in metadata.ts). A prior
-    // version nested variantSummary/measuredOutcome/supportingMetrics as objects/arrays,
-    // so the three fields the review explicitly expects (variant summary, measured
-    // outcome, supporting metrics) never actually reached the stored observation; only
-    // experimentType/confidenceLevel/recommendationId/campaignId survived. Flattened to
-    // scalars here so every field actually persists. Bounded to the sanitizer's 12-key
-    // cap (metadata.ts MAX_METADATA_KEYS) — the full 12-field A/B metrics object is not
-    // included wholesale (that alone would exceed the cap); only the primary metric's
-    // two values are, since that is what the outcome is actually computed from.
-    const variantLabels = Array.isArray(experiment.variants)
-      ? (experiment.variants as Array<{ label?: unknown }>)
-          .map((variant) => (typeof variant.label === "string" ? variant.label : ""))
-          .filter(Boolean)
-          .join(" vs ")
-      : "";
-
+    // [Claude review, follow-up] Existing analytics are aggregate-only; there is no
+    // real per-variant attribution. This payload is deliberately honest about that
+    // rather than nesting a would-be "measuredOutcome"/"supportingMetrics" object the
+    // shared sanitizer would silently drop anyway (see the prior review's finding on
+    // this same function) — every field here is a flat scalar. `experiment_id` is
+    // deliberately omitted from this object (unlike the review's own field list) because
+    // it is already captured on the observation row itself via `sourceExperimentId`
+    // below; including it again here would be pure duplication and would push this
+    // object to 13 keys, one over sanitizeMetricSummary's MAX_METADATA_KEYS cap. Winner
+    // and outcome are never fabricated: attributionAvailable is false for every
+    // experiment created through the current pipeline, so winner is always null and
+    // outcome direction is always inconclusive/insufficient_data.
     const result = await insertMarketingMemoryObservation(supabase, {
       userId: experiment.user_id,
       businessProfileId: experiment.business_profile_id,
@@ -521,18 +516,18 @@ export async function recordObservationForExperimentCompletion(
       outcomeDirection,
       locationScope: null,
       metricSummary: sanitizeMetricSummary({
-        experimentType: experiment.experiment_type,
-        variantSummary: variantLabels,
-        outcomeDirection: outcome.direction ?? null,
-        outcomeSummary: outcome.summary ?? null,
-        winningVariantKey: outcome.winningVariantKey ?? null,
-        confidenceLevel: outcome.confidenceLevel ?? null,
-        liftPercent: outcome.liftPercent ?? null,
-        primaryMetric,
-        primaryMetricValueA: primaryMetric ? (metrics[`${primaryMetric}A`] ?? null) : null,
-        primaryMetricValueB: primaryMetric ? (metrics[`${primaryMetric}B`] ?? null) : null,
-        recommendationId: experiment.created_from_recommendation_id,
-        campaignId: experiment.related_campaign_id ?? null,
+        experiment_type: experiment.experiment_type,
+        outcome: outcome.direction ?? null,
+        winner: outcome.winningVariantKey ?? null,
+        confidence: outcome.confidenceLevel ?? null,
+        attribution_available: outcome.attributionAvailable ?? false,
+        primary_kpi: metrics.primaryMetric ?? null,
+        aggregate_metric_value: metrics.aggregateValue ?? null,
+        measurement_start: metrics.measurementStart ?? null,
+        measurement_end: metrics.measurementEnd ?? null,
+        proposal_id: experiment.source_proposal_id ?? null,
+        recommendation_id: experiment.created_from_recommendation_id,
+        campaign_id: experiment.related_campaign_id ?? null,
       }),
       retentionClassification,
       idempotencyKey,

@@ -4,6 +4,7 @@ import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalType
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
 import type { ExperimentDashboardCard } from "@/lib/marketing-experimentation/experiment-types";
+import type { ExperimentProposalCard } from "@/lib/marketing-experimentation/proposal-types";
 import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
 
 export type MarketingHealthState =
@@ -96,10 +97,13 @@ export type HeadOfMarketingBriefing = {
    */
   campaigns: CampaignDashboardCard[];
   /**
-   * Experimentation Engine dashboard cards. Empty until Marketing Director proposes
-   * an experiment backed by an existing recommendation. Measurement only.
+   * Experimentation Engine dashboard cards. pendingProposals are server-authored,
+   * awaiting the user's explicit approval — the client never defines these. Empty until
+   * Marketing Director's eligibility rule proposes one from an existing, open
+   * recommendation. Measurement only.
    */
   experiments: {
+    pendingProposals: ExperimentProposalCard[];
     active: ExperimentDashboardCard[];
     completed: ExperimentDashboardCard[];
   };

@@ -441,7 +441,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     /** Filled by the HoM service from Campaign Intelligence — empty in pure composition. */
     campaigns: [],
     /** Filled by the HoM service from Experimentation Engine — empty in pure composition. */
-    experiments: { active: [], completed: [] },
+    experiments: { pendingProposals: [], active: [], completed: [] },
     /** Filled by the HoM service from Strategic Marketing Calendar aggregation. */
     calendarPreview: null,
   };

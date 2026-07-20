@@ -32,6 +32,7 @@ export function toExperimentDashboardCard(
     status: experiment.status,
     outcomeSummary: experiment.outcome.summary,
     confidenceLabel: confidenceLabel(experiment.outcome.confidenceLevel),
+    attributionAvailable: experiment.outcome.attributionAvailable,
     recommendationId: experiment.created_from_recommendation_id,
     campaignId: experiment.related_campaign_id,
     variants: experiment.variants,

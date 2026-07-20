@@ -1,11 +1,19 @@
 /**
- * Experimentation service entrypoints — DI-friendly, MD-gated creation.
+ * Experimentation service entrypoints.
+ *
+ * [Claude review, follow-up] Experiment creation no longer lives here. Experiments may
+ * only be created by approving a persisted, server-authored proposal — see
+ * proposal-service.ts's approveExperimentProposalForUser, the only remaining creation
+ * path. The prior client-decision-key creation route (proposeExperimentForBusiness) is
+ * removed entirely: it accepted marketingDirectorDecisionKey/experimentType/hypothesis
+ * as opaque client-supplied fields with no server-side verification that Marketing
+ * Director actually proposed the experiment.
  */
 
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getLatestAnalyticsSnapshotForUser } from "@/lib/analytics/analyticsPersistence";
+import { getAnalyticsSnapshotsForUser } from "@/lib/analytics/analyticsPersistence";
 import {
   applyExperimentMeasurement,
   completeExperimentMeasurement,
@@ -14,13 +22,7 @@ import {
 } from "@/lib/marketing-experimentation/experiment-engine";
 import { toExperimentDashboardCards } from "@/lib/marketing-experimentation/experiment-dashboard";
 import {
-  metricsFromAnalyticsPair,
-  type VariantMetricInput,
-} from "@/lib/marketing-experimentation/experiment-outcomes";
-import { planExperimentFromDirector } from "@/lib/marketing-experimentation/experiment-planner";
-import {
   getMarketingExperimentForUser,
-  insertMarketingExperiment,
   listActiveMarketingExperimentsForBusiness,
   listCompletedMarketingExperimentsForBusiness,
   listMarketingExperimentsForBusiness,
@@ -29,9 +31,7 @@ import {
 import {
   ExperimentStatuses,
   type ExperimentDashboardCard,
-  type ExperimentMetrics,
   type MarketingExperiment,
-  type ProposeExperimentInput,
 } from "@/lib/marketing-experimentation/experiment-types";
 import { recordObservationForExperimentCompletion } from "@/lib/marketing-memory/service";
 import { createClient } from "@/lib/supabase/server";
@@ -39,117 +39,11 @@ import { createClient } from "@/lib/supabase/server";
 export type ExperimentServiceDeps = {
   supabaseClient?: SupabaseClient;
   recordCompletionObservation?: typeof recordObservationForExperimentCompletion;
-  loadLatestAnalytics?: typeof getLatestAnalyticsSnapshotForUser;
+  loadAnalyticsHistory?: typeof getAnalyticsSnapshotsForUser;
 };
 
 async function resolveClient(deps?: ExperimentServiceDeps): Promise<SupabaseClient> {
   return deps?.supabaseClient ?? (await createClient());
-}
-
-export async function proposeExperimentForBusiness(
-  userId: string,
-  businessProfileId: string,
-  input: ProposeExperimentInput,
-  deps?: ExperimentServiceDeps,
-): Promise<
-  | { ok: true; experiment: MarketingExperiment }
-  | { ok: false; status: number; error: string }
-> {
-  if (input.proposedBy !== "marketing_director") {
-    return {
-      ok: false,
-      status: 403,
-      error: "Experiments may only be proposed by Marketing Director.",
-    };
-  }
-
-  let draft;
-  try {
-    draft = planExperimentFromDirector(input);
-  } catch (err) {
-    return {
-      ok: false,
-      status: 400,
-      error: err instanceof Error ? err.message : "Invalid experiment proposal",
-    };
-  }
-
-  const supabase = await resolveClient(deps);
-
-  // Ensure the recommendation exists, belongs to this tenant, and is still open —
-  // [Claude review] a dismissed/completed/superseded recommendation is no longer an
-  // actionable Marketing Director directive, so it cannot originate a new experiment.
-  const { data: recommendation, error: recError } = await supabase
-    .from("marketing_recommendations")
-    .select("id, business_profile_id, user_id, status")
-    .eq("id", draft.created_from_recommendation_id)
-    .eq("user_id", userId)
-    .eq("business_profile_id", businessProfileId)
-    .maybeSingle();
-
-  if (recError || !recommendation) {
-    return {
-      ok: false,
-      status: 400,
-      error: "Recommendation not found for this business.",
-    };
-  }
-
-  if (recommendation.status !== "open") {
-    return {
-      ok: false,
-      status: 400,
-      error: `Recommendation is "${recommendation.status}" and no longer eligible for a new experiment.`,
-    };
-  }
-
-  // [Claude review] related_campaign_id was previously inserted with no ownership check
-  // at all — a client could cite any campaign ID, including another tenant's, and it
-  // would be stored as this experiment's authoritative campaign link. Validate it belongs
-  // to the same business before it is ever written.
-  if (draft.related_campaign_id) {
-    const { data: campaign, error: campaignError } = await supabase
-      .from("marketing_campaigns")
-      .select("id")
-      .eq("id", draft.related_campaign_id)
-      .eq("user_id", userId)
-      .eq("business_profile_id", businessProfileId)
-      .maybeSingle();
-
-    if (campaignError || !campaign) {
-      return {
-        ok: false,
-        status: 400,
-        error: "related campaign not found for this business.",
-      };
-    }
-  }
-
-  const { experiment, error } = await insertMarketingExperiment(
-    supabase,
-    userId,
-    businessProfileId,
-    draft,
-  );
-
-  if (!experiment) {
-    return {
-      ok: false,
-      status: 500,
-      error: error?.message ?? "Failed to create experiment",
-    };
-  }
-
-  console.info("[MarketingExperimentation]", {
-    scope: "marketing-experimentation",
-    event: "experiment_proposed",
-    businessProfileId,
-    experimentId: experiment.id,
-    experimentType: experiment.experiment_type,
-    recommendationId: experiment.created_from_recommendation_id,
-  });
-
-  return { ok: true, experiment };
 }
 
 export async function getExperimentDashboardForBusiness(
@@ -225,22 +119,22 @@ export async function advanceExperimentForUser(
   return { ok: true, experiment };
 }
 
+const ANALYTICS_FIELD_BY_KPI: Record<string, string> = {
+  engagement: "engagement_score",
+  clicks: "website_clicks",
+  reviews: "review_count",
+  reach: "google_views",
+  conversions: "calls",
+  publishingConsistency: "posts_published",
+};
+
 /**
- * Measure using the latest analytics snapshot.
- *
- * [Claude review] There is no per-post/per-variant tag anywhere in analytics capture —
- * a business has exactly one aggregate total per KPI, not a real variant A vs. variant B
- * split. A prior version of this function fabricated a split via floor(total/2) for A and
- * ceil(total/2) for B, which is not a measurement: it structurally guarantees B >= A for
- * every metric (variant A could never win) and, for large totals, the 1-unit rounding
- * artifact could clear the outcome engine's sample-size thresholds and be reported as
- * "moderate" confidence evidence for a difference that never existed. Both buckets now
- * receive the identical floor(total/2) value, so downstream `computeExperimentOutcome`'s
- * existing exact-tie branch (`Math.abs(a - b) < 1e-9`) applies honestly — it always
- * reports inconclusive with confidence capped at "early", never fabricating a winner or
- * overclaiming confidence. Real variant-level comparison requires tagging publishing
- * output with its originating experiment variant, a genuine future requirement — see
- * docs/MARKETING_EXPERIMENTATION_ENGINE.md.
+ * Measures the experiment's primary KPI as an honest aggregate over the measurement
+ * window — never a per-variant comparison. See experiment-outcomes.ts's
+ * aggregateObservedOutcome and docs/MARKETING_EXPERIMENTATION_ENGINE.md "Honest
+ * measurement boundary". Sums the primary KPI across every analytics snapshot captured
+ * since the experiment started running (or all available history if it has not started
+ * — defensive only, the status guard below prevents this in practice).
  */
 export async function measureExperimentForUser(
   userId: string,
@@ -267,52 +161,28 @@ export async function measureExperimentForUser(
     };
   }
 
-  const loadAnalytics = deps?.loadLatestAnalytics ?? getLatestAnalyticsSnapshotForUser;
-  const snapshot = await loadAnalytics(supabase, userId);
+  const loadHistory = deps?.loadAnalyticsHistory ?? getAnalyticsSnapshotsForUser;
+  const snapshots = await loadHistory(supabase, userId, 90);
 
-  const base: VariantMetricInput = {
-    engagement: Number(snapshot?.engagement_score ?? 0),
-    clicks: Number(snapshot?.website_clicks ?? 0),
-    reviews: Number(snapshot?.review_count ?? 0),
-    reach: Number(snapshot?.google_views ?? 0),
-    conversions: Number(snapshot?.calls ?? 0),
-    publishingConsistency: Number(snapshot?.posts_published ?? 0),
-  };
+  const field = ANALYTICS_FIELD_BY_KPI[existing.metrics.primaryMetric] ?? "engagement_score";
+  const windowStart = existing.started_at ?? existing.created_at;
+  const now = new Date().toISOString();
+  const inWindow = snapshots.filter((snapshot) => snapshot.snapshot_date >= windowStart.slice(0, 10));
 
-  // Equal split — see function doc comment. Never floor/ceil (that fabricated a fake
-  // 1-unit "B wins" bias with no basis in real per-variant data).
-  const split = (value: number) => ({
-    a: Math.floor(value / 2),
-    b: Math.floor(value / 2),
-  });
-  const engagement = split(base.engagement);
-  const clicks = split(base.clicks);
-  const reviews = split(base.reviews);
-  const reach = split(base.reach);
-  const conversions = split(base.conversions);
-  const publishing = split(base.publishingConsistency);
-
-  const metrics: ExperimentMetrics = metricsFromAnalyticsPair({
-    variantA: {
-      engagement: engagement.a,
-      clicks: clicks.a,
-      reviews: reviews.a,
-      reach: reach.a,
-      conversions: conversions.a,
-      publishingConsistency: publishing.a,
-    },
-    variantB: {
-      engagement: engagement.b,
-      clicks: clicks.b,
-      reviews: reviews.b,
-      reach: reach.b,
-      conversions: conversions.b,
-      publishingConsistency: publishing.b,
-    },
-  });
+  const aggregateValue =
+    inWindow.length === 0
+      ? null
+      : inWindow.reduce((sum, snapshot) => {
+          const value = (snapshot as unknown as Record<string, unknown>)[field];
+          return sum + (typeof value === "number" ? value : Number(value ?? 0));
+        }, 0);
 
   const previousStatus = existing.status;
-  const measured = applyExperimentMeasurement(existing, metrics);
+  const measured = applyExperimentMeasurement(existing, {
+    aggregateValue,
+    measurementStart: windowStart,
+    measurementEnd: now,
+  });
   const { experiment, error } = await updateMarketingExperimentFields(
     supabase,
     userId,
