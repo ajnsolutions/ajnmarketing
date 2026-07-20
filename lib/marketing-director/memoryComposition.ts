@@ -172,6 +172,8 @@ export function orderCandidatesWithMemory(
           ignoredPreferences: evidence.ignoredPreferences,
           precedenceExplanation: buildPrecedenceExplanation(evidence),
           confidenceExplanation: buildConfidenceExplanation(candidates, evidence),
+          appliedPreferenceIds: [],
+          consideredLearningIds: evidence.learnings.map((learning) => learning.id),
         }
       : {
           preferencesApplied: [],
@@ -182,6 +184,8 @@ export function orderCandidatesWithMemory(
           precedenceExplanation: "no_memory_evidence",
           confidenceExplanation:
             "No Marketing Memory evidence provided; decision uses existing signals only.",
+          appliedPreferenceIds: [],
+          consideredLearningIds: [],
         };
 
     return { ordered: [...candidates], prohibitedIds: [], memoryContext };
@@ -213,15 +217,14 @@ export function orderCandidatesWithMemory(
   }
 
   const ordered = indexed.map((entry) => entry.candidate);
-  const appliedPreferences = evidence.preferences
-    .filter(
-      (preference) =>
-        preference.factorType === PROHIBIT_ACTION_FACTOR ||
-        preference.factorType === PREFER_ACTION_FACTOR ||
-        preference.preferenceType === "context_category_toggle" ||
-        preference.preferenceType === "publishing_day_restriction"
-    )
-    .map((preference) => preference.instructionText);
+  const appliedPreferenceRows = evidence.preferences.filter(
+    (preference) =>
+      preference.factorType === PROHIBIT_ACTION_FACTOR ||
+      preference.factorType === PREFER_ACTION_FACTOR ||
+      preference.preferenceType === "context_category_toggle" ||
+      preference.preferenceType === "publishing_day_restriction"
+  );
+  const appliedPreferences = appliedPreferenceRows.map((preference) => preference.instructionText);
 
   const memoryContext: MarketingDirectorMemoryContext = {
     preferencesApplied: appliedPreferences,
@@ -231,6 +234,8 @@ export function orderCandidatesWithMemory(
     ignoredPreferences: evidence.ignoredPreferences,
     precedenceExplanation: buildPrecedenceExplanation(evidence),
     confidenceExplanation: buildConfidenceExplanation(ordered, evidence),
+    appliedPreferenceIds: appliedPreferenceRows.map((preference) => preference.id),
+    consideredLearningIds: evidence.learnings.map((learning) => learning.id),
   };
 
   return { ordered, prohibitedIds, memoryContext };

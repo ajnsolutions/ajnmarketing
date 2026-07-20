@@ -24,6 +24,9 @@ import { buildMarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evid
 import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 import { getRecommendationDecisionPackageForUser } from "@/lib/recommendation-presentation/service";
 import { getCampaignDashboardForBusiness } from "@/lib/campaign-intelligence/campaign-service";
+import { buildWhyPlanChangedPreview } from "@/lib/decision-intelligence/dashboard";
+import { getDecisionIntelligenceSummaryForBusiness } from "@/lib/decision-intelligence/service";
+import { recordDecisionSnapshotForCurrentUser } from "@/lib/decision-intelligence/snapshotService";
 import { getExperimentDashboardForBusiness } from "@/lib/marketing-experimentation/experiment-service";
 import { listExperimentProposalsForBusiness } from "@/lib/marketing-experimentation/proposal-service";
 import { getContentApprovalsForUser } from "@/lib/content-approval/persistence";
@@ -219,6 +222,31 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
   });
 
   const withCampaignsAndExperiments = { ...briefing, campaigns, experiments };
+
+  // Decision Intelligence (Phase 2F) — records a durable snapshot of the decision
+  // already computed above (no second resolveMarketingDirectorDecision call) and builds
+  // the compact "Why the Plan Changed" preview from it, plus a bounded timeline the
+  // calendar preview below reuses (no second Decision Intelligence read). Best-effort: a
+  // failure here must never break the HoM page — see recordDecisionSnapshotForCurrentUser's
+  // own try/catch and getDecisionIntelligenceSummaryForBusiness's per-source degradation.
+  let whyPlanChanged = null;
+  let decisionIntelligenceEvents: CalendarSourceBundle["decisionIntelligenceEvents"] = [];
+  try {
+    await recordDecisionSnapshotForCurrentUser(supabase, profile.user_id, profile.id, briefing.internalDecision);
+    const decisionIntelligence = await getDecisionIntelligenceSummaryForBusiness(
+      supabase,
+      profile.user_id,
+      profile.id,
+    );
+    whyPlanChanged = buildWhyPlanChangedPreview(decisionIntelligence);
+    decisionIntelligenceEvents = decisionIntelligence.timeline;
+  } catch (err) {
+    console.warn("[HeadOfMarketing] decision intelligence unavailable", {
+      businessProfileId: profile.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   const range = resolveCalendarRange({ view: "week", configuredTimezone: null });
   let calendarPreview = null;
   if (range.ok) {
@@ -232,6 +260,7 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
       ),
       pendingApprovalCount: context.approvalStats.pending ?? 0,
       warnings: [],
+      decisionIntelligenceEvents,
     };
     const todayKey = zonedDateKey(new Date(), range.timezone);
     const calendar = aggregateStrategicMarketingCalendar({
@@ -246,5 +275,5 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     calendarPreview = buildCalendarPreview(calendar, todayKey);
   }
 
-  return { ...withCampaignsAndExperiments, calendarPreview };
+  return { ...withCampaignsAndExperiments, calendarPreview, whyPlanChanged };
 }

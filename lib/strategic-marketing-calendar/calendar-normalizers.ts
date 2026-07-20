@@ -345,6 +345,56 @@ export function normalizeMarketContextItems(
   return events;
 }
 
+/**
+ * Decision Intelligence & Learning Impact (Phase 2F) — informational history only.
+ * [Claude review] Deliberately narrow: only DecisionTimelineEvent already produced by
+ * lib/decision-intelligence/service.ts is normalized (never every observation — "avoid
+ * noise" per the design brief), and every event uses the DECISION_INTELLIGENCE
+ * category/source type so it never visually or semantically resembles scheduled
+ * marketing work. Read-only: no detailTarget here ever points at a mutation route.
+ */
+export function normalizeDecisionIntelligenceEvents(
+  events: { id: string; type: string; occurredAt: string; title: string; description: string; sourceTarget: string | null }[] | undefined | null,
+  range: NormalizeRange,
+): StrategicMarketingCalendarEvent[] {
+  const results: StrategicMarketingCalendarEvent[] = [];
+  for (const event of events ?? []) {
+    if (!isoInRange(event.occurredAt, range.rangeStart, range.rangeEnd, range.timezone)) continue;
+
+    results.push(
+      baseEvent(
+        {
+          id: `decision_intel:${event.id}`,
+          businessProfileId: range.businessProfileId,
+          sourceType: StrategicCalendarSourceTypes.DECISION_INTELLIGENCE,
+          sourceId: event.id,
+          category: StrategicCalendarCategories.DECISION_INTELLIGENCE,
+          title: event.title,
+          summary: event.description || "Decision history — informational only.",
+          startAt: event.occurredAt,
+          endAt: null,
+          allDay: false,
+          status: StrategicCalendarEventStatuses.INFORMATIONAL,
+          priority: StrategicCalendarPriorityLevels.INFORMATIONAL,
+          confidenceState: StrategicCalendarConfidenceStates.INFORMATIONAL,
+          actionRequired: false,
+          detailTarget: event.sourceTarget ?? "/dashboard/decision-intelligence",
+          campaignId: null,
+          recommendationId: null,
+          metadata: {
+            decisionEventType: event.type,
+            informational: true,
+          },
+          createdAt: event.occurredAt,
+          updatedAt: event.occurredAt,
+        },
+        range.timezone,
+      ),
+    );
+  }
+  return results;
+}
+
 export function normalizeExecutivePriorities(input: {
   primaryAction: HeadOfMarketingPrimaryAction;
   executiveBrief: ExecutiveBrief;

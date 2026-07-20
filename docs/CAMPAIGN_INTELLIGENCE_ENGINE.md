@@ -94,6 +94,10 @@ None of these activate schedules. Manual APIs and dashboard load remain the only
 
 The Strategic Marketing Calendar ([`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md)) may display campaign spans and dated timeline steps. Campaign Intelligence remains authoritative; the calendar never invents or mutates steps.
 
+## Relationship to Decision Intelligence
+
+[`DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md`](./DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md) (Phase 2F) may show that a campaign's completion observation later contributed to a learning that influenced a decision — traced via explicit IDs (`marketing_memory_evidence_links` → `marketing_memory_observations.source_campaign_id`), never by matching titles or dates. It only reads campaigns; it never creates, initiates, or modifies one.
+
 ## Explicit non-goals (this phase)
 
 - No LLM / ML

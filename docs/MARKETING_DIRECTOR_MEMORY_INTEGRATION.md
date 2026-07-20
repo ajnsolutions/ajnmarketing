@@ -64,6 +64,7 @@ Learnings never override compliance, prohibitions, or preferences.
 - ignoredLearnings / ignoredPreferences
 - precedenceExplanation
 - confidenceExplanation
+- `appliedPreferenceIds` / `consideredLearningIds` — **added in Phase 2F.** `preferencesApplied`/`learningsConsidered` above are customer-facing descriptive text (`instructionText`/`summary`); they were never stable IDs. Decision Intelligence needed explicit IDs to trace evidence without matching on that text, so `orderCandidatesWithMemory` (`lib/marketing-director/memoryComposition.ts`) now also threads through `evidence.preferences[].id`/`evidence.learnings[].id` in the same order. Internal only, same as everything else in this object — never a scoring signal, never exposed via `toMarketingDirectorClientView`.
 
 `toMarketingDirectorClientView` does **not** expose this. Customer copy stays calm (“You've told us…”, “We've noticed…”, “Historically…”) — never weights or coefficients.
 
@@ -100,3 +101,7 @@ Head of Marketing service loads open-count + evidence in parallel, then loads ca
 ## 8. Experimentation Engine observations (Phase 2E)
 
 The Marketing Experimentation Engine ([`MARKETING_EXPERIMENTATION_ENGINE.md`](./MARKETING_EXPERIMENTATION_ENGINE.md)) writes `experiment_completed` observations on completion — evidence only, honest about the current lack of per-variant attribution (winner always `null`, confidence never above `early`). This is a **write** into the evidence base this document's `evidencePackage.ts`/`memoryComposition.ts` pipeline already consumes (§1) — Marketing Director does not read experiment results directly; any future influence on candidate ordering would have to flow through the same learnings-promotion pipeline preferences/learnings already use (§2–3), not a direct shortcut from the experiment result. No such promotion path for `experiment_completed` observations exists yet; this section exists so a future phase that adds one does not accidentally wire the Experimentation Engine straight into `resolveDecision.ts` instead.
+
+## 9. Decision Intelligence (Phase 2F) — reads, never writes, decision composition
+
+Decision Intelligence ([`DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md`](./DECISION_INTELLIGENCE_AND_LEARNING_IMPACT.md)) is downstream of everything in this document, not a peer to it. It never calls `orderCandidatesWithMemory` or `resolveMarketingDirectorDecision` itself; it only records a durable snapshot of what those functions already produced (`lib/decision-intelligence/snapshotService.ts`, called from `lib/head-of-marketing/service.ts` after `buildWeeklyBriefing` has already run) and explains that snapshot after the fact. It reads §4's `appliedPreferenceIds`/`consideredLearningIds` to build explicit evidence traces, and it reads `marketing_memory_learnings`/`preferences`/`overrides` directly for the Learning Impact panel — but it never writes to any Marketing Memory table, never promotes an observation into a learning, and never creates a preference or override. §2's precedence order is explained by Decision Intelligence, never altered by it.

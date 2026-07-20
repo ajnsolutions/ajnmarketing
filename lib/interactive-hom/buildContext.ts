@@ -3,6 +3,7 @@
  * Pure — no DB, no LLM, no second decision pipeline.
  */
 
+import type { DecisionIntelligenceSummary } from "@/lib/decision-intelligence/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
 import type { InteractiveHomGroundedContext } from "@/lib/interactive-hom/types";
@@ -14,6 +15,9 @@ export type BuildInteractiveHomContextInput = {
   openRecommendations?: number;
   unansweredReviews?: number;
   publishFailures?: number;
+  /** Already computed by lib/decision-intelligence/service.ts — this module never
+   * fetches or recomputes it. */
+  decisionIntelligence?: DecisionIntelligenceSummary | null;
 };
 
 /**
@@ -44,5 +48,6 @@ export function buildInteractiveHomContext(
     openRecommendations: input.openRecommendations ?? 0,
     unansweredReviews: input.unansweredReviews ?? 0,
     publishFailures: input.publishFailures ?? 0,
+    decisionIntelligence: input.decisionIntelligence ?? null,
   };
 }

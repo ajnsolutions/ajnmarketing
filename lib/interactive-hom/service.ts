@@ -14,6 +14,7 @@ import type {
   InteractiveHomSuggestedPrompt,
 } from "@/lib/interactive-hom/types";
 import { loadCommandCenterContextForCurrentUser } from "@/lib/command-center/context";
+import { getDecisionIntelligenceSummaryForBusiness } from "@/lib/decision-intelligence/service";
 import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { getHeadOfMarketingBriefingForCurrentUser } from "@/lib/head-of-marketing/service";
 import { buildMarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidencePackage";
@@ -25,6 +26,7 @@ export type InteractiveHomServiceDeps = {
   loadCommandCenter?: typeof loadCommandCenterContextForCurrentUser;
   loadProfile?: typeof getBusinessProfileForUser;
   buildMemory?: typeof buildMarketingMemoryEvidencePackage;
+  loadDecisionIntelligence?: typeof getDecisionIntelligenceSummaryForBusiness;
 };
 
 export type InteractiveHomAskResult =
@@ -54,6 +56,7 @@ export async function askInteractiveHomForCurrentUser(
   const loadCommandCenter = deps?.loadCommandCenter ?? loadCommandCenterContextForCurrentUser;
   const loadProfile = deps?.loadProfile ?? getBusinessProfileForUser;
   const buildMemory = deps?.buildMemory ?? buildMarketingMemoryEvidencePackage;
+  const loadDecisionIntelligence = deps?.loadDecisionIntelligence ?? getDecisionIntelligenceSummaryForBusiness;
   const supabase = deps?.supabaseClient ?? (await createClient());
 
   const [briefing, context, profile] = await Promise.all([
@@ -79,6 +82,11 @@ export async function askInteractiveHomForCurrentUser(
     activeGoals,
   });
 
+  // Best-effort: a Decision Intelligence failure must never block answering a question.
+  const decisionIntelligence = await loadDecisionIntelligence(supabase, profile.user_id, profile.id).catch(
+    () => null,
+  );
+
   const groundedContext = buildInteractiveHomContext({
     briefing,
     memoryEvidence,
@@ -86,6 +94,7 @@ export async function askInteractiveHomForCurrentUser(
     openRecommendations: briefing.recommendation ? 1 : 0,
     unansweredReviews: context?.gbpData.reviewSummary.unansweredCount ?? 0,
     publishFailures: context?.publishingStats.failed ?? 0,
+    decisionIntelligence,
   });
 
   const answer = askInteractiveHom(trimmed, groundedContext);

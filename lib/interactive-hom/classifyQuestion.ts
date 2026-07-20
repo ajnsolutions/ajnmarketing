@@ -18,6 +18,56 @@ type Rule = {
 };
 
 const RULES: readonly Rule[] = [
+  // Decision Intelligence categories are checked before the older, broader categories
+  // they could otherwise be swallowed by (e.g. "why is this priority higher" would
+  // otherwise match EXPLAIN_PRIORITY's generic /\bpriority\b/ pattern first).
+  {
+    category: InteractiveHomQuestionCategories.WHY_PLAN_CHANGED,
+    patterns: [
+      /\bwhy (did|has) (the )?plan change/,
+      /\bwhat changed (about |in )?(the )?plan\b/,
+      /\bwhy (did|does) (this|the) (priority|plan) change/,
+    ],
+  },
+  {
+    category: InteractiveHomQuestionCategories.EXPERIMENT_IMPACT,
+    patterns: [
+      /\bdid (this |the )?experiment change anything\b/,
+      /\bexperiment (change|affect|impact)/,
+      /\bwhat did (the |this )?experiment (find|show|conclude)/,
+    ],
+  },
+  {
+    category: InteractiveHomQuestionCategories.PREFERENCE_IMPACT,
+    patterns: [
+      /\bwhich (customer )?preferences? affected\b/,
+      /\bhow did my preferences? (affect|change|influence)/,
+      /\bdid my preferences? (matter|affect|change)/,
+    ],
+  },
+  {
+    category: InteractiveHomQuestionCategories.IGNORED_EVIDENCE,
+    patterns: [
+      /\bwhat evidence was ignored\b/,
+      /\bwhat (was|did you) (ignore|skip|exclude)/,
+      /\bwhat remains uncertain\b/,
+      /\bwhat.s still uncertain\b/,
+    ],
+  },
+  {
+    category: InteractiveHomQuestionCategories.CAMPAIGN_IMPACT,
+    patterns: [
+      /\bdid (this |the )?campaign affect (future |later )?decisions?\b/,
+      /\bhow did (this |the )?campaign (affect|influence|change)/,
+    ],
+  },
+  {
+    category: InteractiveHomQuestionCategories.WHY_DEPRIORITIZED,
+    patterns: [
+      /\bwhy was (this|that) (recommendation |priority )?deprioriti[sz]ed\b/,
+      /\bwhy (did|is) (this|that) (recommendation |priority )?(drop|lower|go down)/,
+    ],
+  },
   {
     category: InteractiveHomQuestionCategories.WORK_ON_TODAY,
     patterns: [

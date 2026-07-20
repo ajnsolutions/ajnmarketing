@@ -41,6 +41,9 @@ export const FILTER_GROUP_CATEGORIES: Record<
     StrategicCalendarCategories.LOCAL_EVENT,
     StrategicCalendarCategories.REVIEW_ACTIVITY,
   ],
+  [StrategicCalendarFilterGroups.DECISION_INTELLIGENCE]: [
+    StrategicCalendarCategories.DECISION_INTELLIGENCE,
+  ],
 };
 
 const ALL_CATEGORIES = new Set<string>(Object.values(StrategicCalendarCategories));
@@ -103,4 +106,5 @@ export const FILTER_GROUP_LABELS: Record<StrategicCalendarFilterGroup, string> =
   [StrategicCalendarFilterGroups.APPROVALS]: "Approvals",
   [StrategicCalendarFilterGroups.RECOMMENDATIONS]: "Recommendations",
   [StrategicCalendarFilterGroups.MARKET_CONTEXT]: "Market context",
+  [StrategicCalendarFilterGroups.DECISION_INTELLIGENCE]: "Decision history",
 };

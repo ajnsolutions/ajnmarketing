@@ -7,6 +7,7 @@
  */
 
 import type { CampaignDashboardCard } from "@/lib/campaign-intelligence/campaign-types";
+import type { DecisionIntelligenceSummary } from "@/lib/decision-intelligence/types";
 import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type {
   HeadOfMarketingHealth,
@@ -30,6 +31,14 @@ export const InteractiveHomQuestionCategories = {
   OPPORTUNITIES: "opportunities",
   EXPLAIN_PRIORITY: "explain_priority",
   EXECUTIVE_BRIEF: "executive_brief",
+  // Decision Intelligence & Learning Impact (Phase 2F) — all reuse
+  // lib/decision-intelligence/service.ts; no trace logic is duplicated here.
+  WHY_PLAN_CHANGED: "why_plan_changed",
+  EXPERIMENT_IMPACT: "experiment_impact",
+  PREFERENCE_IMPACT: "preference_impact",
+  IGNORED_EVIDENCE: "ignored_evidence",
+  CAMPAIGN_IMPACT: "campaign_impact",
+  WHY_DEPRIORITIZED: "why_deprioritized",
   UNSUPPORTED: "unsupported",
 } as const;
 
@@ -61,6 +70,10 @@ export type InteractiveHomGroundedContext = {
   openRecommendations: number;
   unansweredReviews: number;
   publishFailures: number;
+  /** Decision Intelligence & Learning Impact (Phase 2F) — already computed by
+   * lib/decision-intelligence/service.ts; answer handlers only read from this, they
+   * never recompute traces/comparisons themselves. Null only on total source failure. */
+  decisionIntelligence: DecisionIntelligenceSummary | null;
 };
 
 export type InteractiveHomAnswer = {

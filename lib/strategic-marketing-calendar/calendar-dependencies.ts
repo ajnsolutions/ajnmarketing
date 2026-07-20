@@ -14,6 +14,8 @@ import type { CampaignDashboardCard } from "@/lib/campaign-intelligence/campaign
 import { toCampaignDashboardCards } from "@/lib/campaign-intelligence/campaign-dashboard";
 import { getContentApprovalsForUser } from "@/lib/content-approval/persistence";
 import type { ContentApproval } from "@/lib/content-approval/types";
+import { getDecisionIntelligenceSummaryForBusiness } from "@/lib/decision-intelligence/service";
+import type { DecisionTimelineEvent } from "@/lib/decision-intelligence/types";
 import { getHeadOfMarketingBriefingForCurrentUser } from "@/lib/head-of-marketing/service";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import { getLatestMarketContextBriefWithItemsForUser } from "@/lib/market-context/persistence";
@@ -32,6 +34,8 @@ export type CalendarSourceBundle = {
   marketContextItems: MarketContextItem[];
   pendingApprovalCount: number;
   warnings: StrategicCalendarSourceWarning[];
+  /** Decision Intelligence & Learning Impact (Phase 2F) — informational timeline only. */
+  decisionIntelligenceEvents: DecisionTimelineEvent[];
 };
 
 export type CalendarDependencies = {
@@ -45,6 +49,7 @@ export type CalendarDependencies = {
     businessProfileId: string,
     supabase: SupabaseClient,
   ) => Promise<CampaignDashboardCard[]>;
+  loadDecisionIntelligence?: typeof getDecisionIntelligenceSummaryForBusiness;
 };
 
 async function defaultLoadCampaignCards(
@@ -79,16 +84,19 @@ export async function loadCalendarSources(
   const loadMarketContext =
     deps?.loadMarketContext ?? getLatestMarketContextBriefWithItemsForUser;
   const loadCampaignCards = deps?.loadCampaignCards ?? defaultLoadCampaignCards;
+  const loadDecisionIntelligence =
+    deps?.loadDecisionIntelligence ?? getDecisionIntelligenceSummaryForBusiness;
 
   const warnings: StrategicCalendarSourceWarning[] = [];
 
-  const [briefingResult, publishingResult, approvalsResult, marketResult, campaignsResult] =
+  const [briefingResult, publishingResult, approvalsResult, marketResult, campaignsResult, decisionIntelligenceResult] =
     await Promise.allSettled([
       loadBriefing(),
       loadPublishing(supabase, userId),
       loadApprovals(supabase, userId),
       loadMarketContext(supabase, userId),
       loadCampaignCards(userId, businessProfileId, supabase),
+      loadDecisionIntelligence(supabase, userId, businessProfileId),
     ]);
 
   const briefing =
@@ -159,6 +167,16 @@ export async function loadCalendarSources(
 
   const pendingApprovalCount = approvals.filter((item) => item.status === "pending").length;
 
+  let decisionIntelligenceEvents: DecisionTimelineEvent[] = [];
+  if (decisionIntelligenceResult.status === "fulfilled") {
+    decisionIntelligenceEvents = decisionIntelligenceResult.value.timeline;
+  } else {
+    warnings.push({
+      source: StrategicCalendarSourceTypes.DECISION_INTELLIGENCE,
+      message: "Decision history unavailable for this range.",
+    });
+  }
+
   return {
     briefing,
     campaigns,
@@ -167,5 +185,6 @@ export async function loadCalendarSources(
     marketContextItems,
     pendingApprovalCount,
     warnings,
+    decisionIntelligenceEvents,
   };
 }
