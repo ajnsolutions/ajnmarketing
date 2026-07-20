@@ -98,6 +98,50 @@ create trigger marketing_experiments_updated_at
   for each row
   execute function public.set_marketing_experiments_updated_at();
 
+-- [Claude review] Mutation guard: RLS's "update own rows" policy (above) is ownership-only
+-- — it does not, and structurally cannot, express "status may only move forward one step
+-- at a time." Without this trigger, an authenticated user holding their own session JWT
+-- could call the Supabase client directly (bypassing the app's /api/experiments routes
+-- entirely) and set status straight to 'completed' with a fabricated outcome, or move a
+-- completed/archived experiment back to 'running'. This enforces the same linear state
+-- machine as lib/marketing-experimentation/experiment-state.ts at the database layer, so
+-- direct table writes cannot bypass lifecycle rules even though RLS alone would allow
+-- them. It does not validate the *content* of outcome/metrics on a legal transition —
+-- see docs/MARKETING_EXPERIMENTATION_ENGINE.md for that remaining limitation.
+create or replace function public.enforce_marketing_experiment_transition()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.status = old.status then
+    return new;
+  end if;
+
+  if not (
+    (old.status = 'draft' and new.status = 'proposed')
+    or (old.status = 'proposed' and new.status = 'approved')
+    or (old.status = 'approved' and new.status = 'running')
+    or (old.status = 'running' and new.status = 'measuring')
+    or (old.status = 'measuring' and new.status = 'completed')
+    or (old.status = 'completed' and new.status = 'archived')
+  ) then
+    raise exception
+      'Invalid marketing_experiments status transition: % -> %', old.status, new.status
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists marketing_experiments_guard_transition on public.marketing_experiments;
+
+create trigger marketing_experiments_guard_transition
+  before update on public.marketing_experiments
+  for each row
+  when (new.status is distinct from old.status)
+  execute function public.enforce_marketing_experiment_transition();
+
 -- Extend Marketing Memory observations for experiment completion evidence.
 
 alter table public.marketing_memory_observations

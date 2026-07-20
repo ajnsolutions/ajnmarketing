@@ -486,6 +486,27 @@ export async function recordObservationForExperimentCompletion(
     );
 
     const outcome = experiment.outcome ?? {};
+    const primaryMetric =
+      typeof outcome.primaryMetric === "string" ? outcome.primaryMetric : null;
+    const metrics = (experiment.metrics ?? {}) as Record<string, unknown>;
+
+    // [Claude review] sanitizeMetricSummary only preserves top-level scalar values —
+    // nested objects/arrays are silently dropped (`continue` in metadata.ts). A prior
+    // version nested variantSummary/measuredOutcome/supportingMetrics as objects/arrays,
+    // so the three fields the review explicitly expects (variant summary, measured
+    // outcome, supporting metrics) never actually reached the stored observation; only
+    // experimentType/confidenceLevel/recommendationId/campaignId survived. Flattened to
+    // scalars here so every field actually persists. Bounded to the sanitizer's 12-key
+    // cap (metadata.ts MAX_METADATA_KEYS) — the full 12-field A/B metrics object is not
+    // included wholesale (that alone would exceed the cap); only the primary metric's
+    // two values are, since that is what the outcome is actually computed from.
+    const variantLabels = Array.isArray(experiment.variants)
+      ? (experiment.variants as Array<{ label?: unknown }>)
+          .map((variant) => (typeof variant.label === "string" ? variant.label : ""))
+          .filter(Boolean)
+          .join(" vs ")
+      : "";
+
     const result = await insertMarketingMemoryObservation(supabase, {
       userId: experiment.user_id,
       businessProfileId: experiment.business_profile_id,
@@ -501,17 +522,15 @@ export async function recordObservationForExperimentCompletion(
       locationScope: null,
       metricSummary: sanitizeMetricSummary({
         experimentType: experiment.experiment_type,
-        title: experiment.title,
-        variantSummary: experiment.variants,
-        measuredOutcome: {
-          direction: outcome.direction ?? null,
-          summary: outcome.summary ?? null,
-          winningVariantKey: outcome.winningVariantKey ?? null,
-          primaryMetric: outcome.primaryMetric ?? null,
-          liftPercent: outcome.liftPercent ?? null,
-        },
+        variantSummary: variantLabels,
+        outcomeDirection: outcome.direction ?? null,
+        outcomeSummary: outcome.summary ?? null,
+        winningVariantKey: outcome.winningVariantKey ?? null,
         confidenceLevel: outcome.confidenceLevel ?? null,
-        supportingMetrics: experiment.metrics,
+        liftPercent: outcome.liftPercent ?? null,
+        primaryMetric,
+        primaryMetricValueA: primaryMetric ? (metrics[`${primaryMetric}A`] ?? null) : null,
+        primaryMetricValueB: primaryMetric ? (metrics[`${primaryMetric}B`] ?? null) : null,
         recommendationId: experiment.created_from_recommendation_id,
         campaignId: experiment.related_campaign_id ?? null,
       }),

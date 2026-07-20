@@ -26,11 +26,12 @@ import {
   listMarketingExperimentsForBusiness,
   updateMarketingExperimentFields,
 } from "@/lib/marketing-experimentation/experiment-persistence";
-import type {
-  ExperimentDashboardCard,
-  ExperimentMetrics,
-  MarketingExperiment,
-  ProposeExperimentInput,
+import {
+  ExperimentStatuses,
+  type ExperimentDashboardCard,
+  type ExperimentMetrics,
+  type MarketingExperiment,
+  type ProposeExperimentInput,
 } from "@/lib/marketing-experimentation/experiment-types";
 import { recordObservationForExperimentCompletion } from "@/lib/marketing-memory/service";
 import { createClient } from "@/lib/supabase/server";
@@ -75,10 +76,12 @@ export async function proposeExperimentForBusiness(
 
   const supabase = await resolveClient(deps);
 
-  // Ensure the recommendation exists and belongs to this tenant.
+  // Ensure the recommendation exists, belongs to this tenant, and is still open —
+  // [Claude review] a dismissed/completed/superseded recommendation is no longer an
+  // actionable Marketing Director directive, so it cannot originate a new experiment.
   const { data: recommendation, error: recError } = await supabase
     .from("marketing_recommendations")
-    .select("id, business_profile_id, user_id")
+    .select("id, business_profile_id, user_id, status")
     .eq("id", draft.created_from_recommendation_id)
     .eq("user_id", userId)
     .eq("business_profile_id", businessProfileId)
@@ -90,6 +93,36 @@ export async function proposeExperimentForBusiness(
       status: 400,
       error: "Recommendation not found for this business.",
     };
+  }
+
+  if (recommendation.status !== "open") {
+    return {
+      ok: false,
+      status: 400,
+      error: `Recommendation is "${recommendation.status}" and no longer eligible for a new experiment.`,
+    };
+  }
+
+  // [Claude review] related_campaign_id was previously inserted with no ownership check
+  // at all — a client could cite any campaign ID, including another tenant's, and it
+  // would be stored as this experiment's authoritative campaign link. Validate it belongs
+  // to the same business before it is ever written.
+  if (draft.related_campaign_id) {
+    const { data: campaign, error: campaignError } = await supabase
+      .from("marketing_campaigns")
+      .select("id")
+      .eq("id", draft.related_campaign_id)
+      .eq("user_id", userId)
+      .eq("business_profile_id", businessProfileId)
+      .maybeSingle();
+
+    if (campaignError || !campaign) {
+      return {
+        ok: false,
+        status: 400,
+        error: "related campaign not found for this business.",
+      };
+    }
   }
 
   const { experiment, error } = await insertMarketingExperiment(
@@ -193,8 +226,21 @@ export async function advanceExperimentForUser(
 }
 
 /**
- * Measure using the latest analytics snapshot split deterministically into A/B
- * buckets (even/odd of engagement+clicks as a stable proxy). No new providers.
+ * Measure using the latest analytics snapshot.
+ *
+ * [Claude review] There is no per-post/per-variant tag anywhere in analytics capture —
+ * a business has exactly one aggregate total per KPI, not a real variant A vs. variant B
+ * split. A prior version of this function fabricated a split via floor(total/2) for A and
+ * ceil(total/2) for B, which is not a measurement: it structurally guarantees B >= A for
+ * every metric (variant A could never win) and, for large totals, the 1-unit rounding
+ * artifact could clear the outcome engine's sample-size thresholds and be reported as
+ * "moderate" confidence evidence for a difference that never existed. Both buckets now
+ * receive the identical floor(total/2) value, so downstream `computeExperimentOutcome`'s
+ * existing exact-tie branch (`Math.abs(a - b) < 1e-9`) applies honestly — it always
+ * reports inconclusive with confidence capped at "early", never fabricating a winner or
+ * overclaiming confidence. Real variant-level comparison requires tagging publishing
+ * output with its originating experiment variant, a genuine future requirement — see
+ * docs/MARKETING_EXPERIMENTATION_ENGINE.md.
  */
 export async function measureExperimentForUser(
   userId: string,
@@ -210,6 +256,17 @@ export async function measureExperimentForUser(
     return { ok: false, status: 404, error: "Experiment not found" };
   }
 
+  if (
+    existing.status !== ExperimentStatuses.RUNNING &&
+    existing.status !== ExperimentStatuses.MEASURING
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      error: `Cannot measure an experiment in status "${existing.status}". Measuring requires "running" or "measuring".`,
+    };
+  }
+
   const loadAnalytics = deps?.loadLatestAnalytics ?? getLatestAnalyticsSnapshotForUser;
   const snapshot = await loadAnalytics(supabase, userId);
 
@@ -222,10 +279,11 @@ export async function measureExperimentForUser(
     publishingConsistency: Number(snapshot?.posts_published ?? 0),
   };
 
-  // Deterministic A/B split from existing totals (no fabricated traffic).
+  // Equal split — see function doc comment. Never floor/ceil (that fabricated a fake
+  // 1-unit "B wins" bias with no basis in real per-variant data).
   const split = (value: number) => ({
     a: Math.floor(value / 2),
-    b: Math.ceil(value / 2),
+    b: Math.floor(value / 2),
   });
   const engagement = split(base.engagement);
   const clicks = split(base.clicks);
@@ -282,6 +340,14 @@ export async function completeExperimentForUser(
   const existing = await getMarketingExperimentForUser(supabase, userId, experimentId);
   if (!existing) {
     return { ok: false, status: 404, error: "Experiment not found" };
+  }
+
+  if (existing.status !== ExperimentStatuses.MEASURING) {
+    return {
+      ok: false,
+      status: 409,
+      error: `Cannot complete an experiment in status "${existing.status}". Completing requires "measuring".`,
+    };
   }
 
   const previousStatus = existing.status;

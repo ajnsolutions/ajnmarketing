@@ -131,6 +131,39 @@ test("experiment creation: recommendation linkage required", () => {
   assert.equal(parsed.ok, false);
 });
 
+test("experiment creation: unsupported experiment type is rejected", () => {
+  const parsed = parseProposeExperimentRequestBody({
+    experimentType: "sentiment_analysis",
+    createdFromRecommendationId: "rec-1",
+    marketingDirectorDecisionKey: "key",
+    proposedBy: "marketing_director",
+  });
+  assert.equal(parsed.ok, false);
+});
+
+test("experiment creation: oversized hypothesis is rejected, not silently truncated", () => {
+  const parsed = parseProposeExperimentRequestBody({
+    experimentType: ExperimentTypes.CONTENT_FORMAT,
+    createdFromRecommendationId: "rec-1",
+    marketingDirectorDecisionKey: "key",
+    proposedBy: "marketing_director",
+    hypothesis: "x".repeat(281),
+  });
+  assert.equal(parsed.ok, false);
+  if (!parsed.ok) assert.match(parsed.error, /280/);
+});
+
+test("experiment creation: a hypothesis at exactly the limit is accepted", () => {
+  const parsed = parseProposeExperimentRequestBody({
+    experimentType: ExperimentTypes.CONTENT_FORMAT,
+    createdFromRecommendationId: "rec-1",
+    marketingDirectorDecisionKey: "key",
+    proposedBy: "marketing_director",
+    hypothesis: "x".repeat(280),
+  });
+  assert.equal(parsed.ok, true);
+});
+
 test("identical inputs produce identical experiment plans and outcomes", () => {
   const input = {
     experimentType: ExperimentTypes.MESSAGING_STYLE,
@@ -199,6 +232,36 @@ test("lifecycle transitions are deterministic and linear", () => {
   assert.equal(canTransitionExperimentStatus(ExperimentStatuses.DRAFT, ExperimentStatuses.RUNNING), false);
 });
 
+test("transition matrix: every status pair is exhaustively valid or invalid, no forward skips, no backward moves", () => {
+  const all = Object.values(ExperimentStatuses);
+  const forwardStep: Record<string, string> = {
+    draft: "proposed",
+    proposed: "approved",
+    approved: "running",
+    running: "measuring",
+    measuring: "completed",
+    completed: "archived",
+  };
+
+  for (const from of all) {
+    for (const to of all) {
+      const expected = forwardStep[from] === to;
+      assert.equal(
+        canTransitionExperimentStatus(from, to),
+        expected,
+        `${from} -> ${to} should be ${expected ? "valid" : "invalid"}`,
+      );
+    }
+  }
+
+  // Explicit named invariants the review asked to guard against.
+  assert.equal(canTransitionExperimentStatus(ExperimentStatuses.RUNNING, ExperimentStatuses.COMPLETED), false, "measuring cannot be skipped");
+  assert.equal(canTransitionExperimentStatus(ExperimentStatuses.COMPLETED, ExperimentStatuses.RUNNING), false, "completed cannot return to running");
+  assert.equal(canTransitionExperimentStatus(ExperimentStatuses.ARCHIVED, ExperimentStatuses.RUNNING), false, "archived cannot be restarted");
+  assert.equal(canTransitionExperimentStatus(ExperimentStatuses.ARCHIVED, ExperimentStatuses.COMPLETED), false, "archived is terminal");
+  assert.equal(canTransitionExperimentStatus(ExperimentStatuses.DRAFT, ExperimentStatuses.MEASURING), false, "measuring cannot occur before running");
+});
+
 test("progressExperimentLifecycle advances status with timestamps", () => {
   const approved = sampleExperiment({ status: ExperimentStatuses.APPROVED });
   const running = progressExperimentLifecycle(approved);
@@ -246,6 +309,49 @@ test("completeExperimentMeasurement and observation gate", () => {
   );
 });
 
+test("completeExperimentMeasurement refuses to skip measuring", () => {
+  const running = sampleExperiment({ status: ExperimentStatuses.RUNNING });
+  const result = completeExperimentMeasurement(running);
+  // A prior version accepted "running" directly, completing an experiment that had
+  // never actually been measured. completed_at must stay unset and status unchanged.
+  assert.equal(result.status, ExperimentStatuses.RUNNING);
+  assert.equal(result.completed_at, null);
+});
+
+test("completeExperimentMeasurement refuses to re-complete an archived experiment", () => {
+  const archived = sampleExperiment({ status: ExperimentStatuses.ARCHIVED });
+  const result = completeExperimentMeasurement(archived);
+  assert.equal(result.status, ExperimentStatuses.ARCHIVED);
+});
+
+test("applyExperimentMeasurement refuses to measure a draft experiment", () => {
+  const draft = sampleExperiment({ status: ExperimentStatuses.DRAFT });
+  const metrics = { ...emptyExperimentMetrics(), engagementA: 80, engagementB: 20 };
+  const result = applyExperimentMeasurement(draft, metrics);
+  // Status stays draft and metrics/outcome are untouched — a draft experiment has not
+  // started, so there is nothing legitimate to measure yet.
+  assert.equal(result.status, ExperimentStatuses.DRAFT);
+  assert.deepEqual(result.metrics, draft.metrics);
+});
+
+test("applyExperimentMeasurement refuses to silently overwrite a completed experiment's outcome", () => {
+  const completed = sampleExperiment({
+    status: ExperimentStatuses.COMPLETED,
+    outcome: {
+      direction: "variant_a",
+      confidenceLevel: "strong",
+      winningVariantKey: "a",
+      summary: "Mid-week outperformed Weekend on engagement.",
+      primaryMetric: "engagement",
+      liftPercent: 40,
+    },
+  });
+  const newMetrics = { ...emptyExperimentMetrics(), engagementA: 1, engagementB: 99 };
+  const result = applyExperimentMeasurement(completed, newMetrics);
+  assert.equal(result.status, ExperimentStatuses.COMPLETED);
+  assert.equal(result.outcome.winningVariantKey, "a");
+});
+
 test("explainExperiment is human-readable and includes status", () => {
   const experiment = sampleExperiment({
     status: ExperimentStatuses.COMPLETED,
@@ -286,4 +392,18 @@ test("regression: Marketing Director / campaigns / publishing modules unchanged 
   const md = readFileSync(join(root, "lib/marketing-director/resolveDecision.ts"), "utf8");
   assert.ok(md.includes("resolveMarketingDirectorDecision"));
   assert.ok(!md.includes("planExperimentFromDirector"));
+});
+
+test("migration 028: RLS is enabled, no delete policy, and a status-transition mutation guard trigger exists", () => {
+  const migration = readFileSync(
+    join(root, "supabase/migrations/028_marketing_experimentation.sql"),
+    "utf8",
+  );
+  assert.match(migration, /alter table public\.marketing_experiments enable row level security/);
+  assert.doesNotMatch(migration, /for delete\s*\n\s*on public\.marketing_experiments/i);
+  // Guards against direct-DB-write lifecycle bypass — RLS's "auth.uid() = user_id" policy
+  // is ownership-only and cannot express "status may only move forward one step."
+  assert.match(migration, /enforce_marketing_experiment_transition/);
+  assert.match(migration, /marketing_experiments_guard_transition/);
+  assert.match(migration, /before update on public\.marketing_experiments/);
 });

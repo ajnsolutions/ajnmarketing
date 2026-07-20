@@ -9,6 +9,7 @@ import {
 } from "@/lib/marketing-experimentation/experiment-types";
 
 const TYPE_SET = new Set<string>(Object.values(ExperimentTypes));
+const MAX_HYPOTHESIS_LENGTH = 280;
 
 export function parseProposeExperimentRequestBody(
   body: unknown,
@@ -42,6 +43,16 @@ export function parseProposeExperimentRequestBody(
     return {
       ok: false,
       error: "createdFromRecommendationId is required",
+    };
+  }
+
+  if (
+    typeof record.hypothesis === "string" &&
+    record.hypothesis.trim().length > MAX_HYPOTHESIS_LENGTH
+  ) {
+    return {
+      ok: false,
+      error: `hypothesis must be ${MAX_HYPOTHESIS_LENGTH} characters or fewer`,
     };
   }
 

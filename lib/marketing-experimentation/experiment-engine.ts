@@ -2,10 +2,7 @@
  * Pure experiment lifecycle + measurement helpers.
  */
 
-import {
-  computeExperimentOutcome,
-  emptyExperimentOutcome,
-} from "@/lib/marketing-experimentation/experiment-outcomes";
+import { computeExperimentOutcome } from "@/lib/marketing-experimentation/experiment-outcomes";
 import { getExperimentTemplate } from "@/lib/marketing-experimentation/experiment-templates";
 import {
   advanceExperimentStatus,
@@ -52,10 +49,31 @@ export function progressExperimentLifecycle(
   };
 }
 
+/**
+ * [Claude review] Defensive on its own, matching completeExperimentMeasurement: only
+ * "running" or "measuring" experiments may be measured. Without this, a caller could
+ * invoke this on a draft/proposed/approved experiment (before it has ever started) and
+ * silently populate metrics/outcome while status stayed unchanged, or re-measure a
+ * completed/archived experiment and silently overwrite its historical, already-recorded
+ * outcome. The service layer (experiment-service.ts) rejects those cases before calling
+ * here; this guard means the pure function is safe even if called directly.
+ */
 export function applyExperimentMeasurement(
   experiment: MarketingExperiment,
   metrics: ExperimentMetrics,
 ): Pick<MarketingExperiment, "metrics" | "outcome" | "status" | "measured_at"> {
+  if (
+    experiment.status !== ExperimentStatuses.RUNNING &&
+    experiment.status !== ExperimentStatuses.MEASURING
+  ) {
+    return {
+      metrics: experiment.metrics,
+      outcome: experiment.outcome,
+      status: experiment.status,
+      measured_at: experiment.measured_at,
+    };
+  }
+
   const template = getExperimentTemplate(experiment.experiment_type);
   const primaryMetric = template?.primaryMetric ?? "engagement";
   const outcome = computeExperimentOutcome({
@@ -80,13 +98,20 @@ export function applyExperimentMeasurement(
   };
 }
 
+/**
+ * [Claude review] Only "measuring" may complete, matching the state matrix in
+ * experiment-state.ts (measuring -> completed). A prior version also accepted "running",
+ * silently skipping the measuring step and completing an experiment that had never been
+ * measured — completed_at would be set while outcome/metrics were still whatever they
+ * were before (typically the empty/insufficient defaults). The service layer
+ * (experiment-service.ts) now rejects this case before calling here, but this function
+ * stays defensive on its own — a pure function should not trust its caller for lifecycle
+ * safety.
+ */
 export function completeExperimentMeasurement(
   experiment: MarketingExperiment,
 ): Pick<MarketingExperiment, "status" | "outcome" | "completed_at"> {
-  if (
-    experiment.status !== ExperimentStatuses.MEASURING &&
-    experiment.status !== ExperimentStatuses.RUNNING
-  ) {
+  if (experiment.status !== ExperimentStatuses.MEASURING) {
     return {
       status: experiment.status,
       outcome: experiment.outcome,
@@ -94,14 +119,9 @@ export function completeExperimentMeasurement(
     };
   }
 
-  const outcome =
-    experiment.outcome.summary && experiment.outcome.summary !== emptyExperimentOutcome().summary
-      ? experiment.outcome
-      : experiment.outcome;
-
   return {
     status: ExperimentStatuses.COMPLETED,
-    outcome,
+    outcome: experiment.outcome,
     completed_at: new Date().toISOString(),
   };
 }
