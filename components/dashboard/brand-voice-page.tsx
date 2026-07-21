@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { BusinessProfile } from "@/lib/business-profile";
 import { displayValue, parseWordList } from "@/lib/business-profile";
@@ -307,12 +308,12 @@ export function BrandVoicePage() {
             strategy on its own. A short tone note is enough to start — you can refine later.
           </p>
           <p className="mt-2 text-sm">
-            <a
+            <Link
               href="/dashboard/setup"
               className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
             >
               ← Back to setup checklist
-            </a>
+            </Link>
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
