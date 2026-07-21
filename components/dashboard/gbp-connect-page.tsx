@@ -81,7 +81,8 @@ export function GbpConnectPage({
 
     const error = searchParams.get("error");
     if (error) {
-      return `Google connection failed: ${decodeURIComponent(error).replace(/_/g, " ")}`;
+      // Customer-safe only — never surface raw provider/config internals.
+      return "Google connection did not finish. You can try again, or continue setup without Google for now.";
     }
 
     if (!status.scopesValid && connection) {
@@ -185,8 +186,16 @@ export function GbpConnectPage({
             Connect Google Business Profile
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Connect your Google Business Profile so AJN can monitor visibility, reviews, calls,
-            directions, and optimization opportunities.
+            Optional connection for local posts, reviews, and performance insights. Nothing
+            publishes without your approval. You can skip this and continue setup.
+          </p>
+          <p className="mt-2 text-sm">
+            <Link
+              href="/dashboard/setup"
+              className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
+            >
+              ← Back to setup checklist
+            </Link>
           </p>
         </div>
       </div>
@@ -218,11 +227,12 @@ export function GbpConnectPage({
             {status.setupRequired ? (
               <>
                 <p className="mt-4 text-lg font-semibold text-white">
-                  Google connection setup required.
+                  Google connection is temporarily unavailable.
                 </p>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
-                  {status.setupMessage ??
-                    "Google OAuth is not configured on the server. Contact your workspace administrator."}
+                  Connecting Google is optional. You can keep using Head of Marketing and finish
+                  other setup while this is unavailable. If you need Google features, contact
+                  support — technical configuration stays with your workspace admins.
                 </p>
               </>
             ) : isConnected ? (

@@ -163,6 +163,11 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     href: "/dashboard/command-center",
     icon: iconHome,
   },
+  {
+    label: "Setup checklist",
+    href: "/dashboard/setup",
+    icon: iconSettings,
+  },
 ];
 
 /** Full flat list retained for any legacy consumers; primary experience uses split nav. */

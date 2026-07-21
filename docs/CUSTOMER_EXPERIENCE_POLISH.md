@@ -148,6 +148,10 @@ Review fixes (PR #63 review pass): `RECOMMENDATION_STATUS` previously used inven
 - No database migration
 - No public marketing site redesign
 
+## Follow-on: Phase 3B Guided Setup
+
+Phase 3A primitives (status vocabulary, StatusBadge, PageHeader, empty/partial states) are reused by Guided Onboarding & Setup. See [`GUIDED_ONBOARDING_AND_SETUP.md`](./GUIDED_ONBOARDING_AND_SETUP.md).
+
 ## Remaining UX debt
 
 - Deeper Approvals / Publishing / Recommendations body chrome

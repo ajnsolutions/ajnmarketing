@@ -14,6 +14,9 @@ This framework does **not**:
 - Activate production crons
 - Auto-approve content
 - Auto-publish without an explicit job id / operator action
+- Replace customer guided setup (`/dashboard/setup` — Project Magic Phase 3B)
+
+Customer setup progress is a separate, customer-facing derived checklist. Assisted Pilot readiness remains **admin/ops only** and must not be shown as a second customer onboarding engine. See [`GUIDED_ONBOARDING_AND_SETUP.md`](./GUIDED_ONBOARDING_AND_SETUP.md).
 
 ---
 
