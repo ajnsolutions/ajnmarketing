@@ -90,6 +90,10 @@ No secrets. Clients cannot write completion percentages or mark derived steps co
 2. After completion, `/dashboard` may show First Days home, HoM briefing, or honest setup readiness panel.  
 3. Canonical guided checklist: `/dashboard/setup` — not a modal trap; leave/resume anytime.
 
+## Phase 3C: operational visibility into setup
+
+`GET /api/admin/ops?view=tenants` (admin-only) surfaces a per-tenant `setup` health dimension by calling the same `getCustomerSetupSnapshotForUser` used here — it does not introduce a second setup-completion calculation. See [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md).
+
 ## Surfaces
 
 | Surface | Role |

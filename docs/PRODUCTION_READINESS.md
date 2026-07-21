@@ -13,6 +13,8 @@ Feature work through Weekly Approval Package + One-Click Email Approval is compl
 
 **Production readiness status:** **Ready for a manually operated pilot** once launch blockers below are cleared. **Not ready** to claim fully autonomous scheduled operation until Trigger.dev schedules are intentionally activated in a separate, approved change.
 
+**Update (Phase 3C — Production Operations and Pilot Hardening):** the checks summarized in this document are now composed into a single, richer per-item readiness model at `GET /api/admin/ops?view=readiness` (see [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md)), plus new per-tenant operational health, stuck-job detection, and a safe admin retry action. This assessment's verdict and remaining risks below are otherwise unchanged by that phase.
+
 ---
 
 ## 2. Architecture strengths

@@ -18,6 +18,8 @@ This framework does **not**:
 
 Customer setup progress is a separate, customer-facing derived checklist. Assisted Pilot readiness remains **admin/ops only** and must not be shown as a second customer onboarding engine. See [`GUIDED_ONBOARDING_AND_SETUP.md`](./GUIDED_ONBOARDING_AND_SETUP.md).
 
+**Phase 3C (Production Operations and Pilot Hardening)** added a separate, composed production-readiness model (`lib/production-readiness/model.ts`) and per-tenant operational health view alongside this framework — neither recomputes or conflicts with `computePilotReadinessScore` here, which remains the sole pilot-launch scoring function. See [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md).
+
 ---
 
 ## Architecture
