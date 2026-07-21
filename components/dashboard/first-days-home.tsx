@@ -77,12 +77,19 @@ export function FirstDaysHome({ model }: { model: FirstDaysHomeModel }) {
       </section>
 
       <p className="mt-8 text-center text-sm text-text-muted">
-        Need to adjust something?{" "}
+        Prefer a guided checklist?{" "}
+        <Link
+          href="/dashboard/setup"
+          className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
+        >
+          Open setup
+        </Link>
+        {" · "}
         <Link
           href="/dashboard/settings"
           className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
         >
-          Open Settings
+          Settings
         </Link>
       </p>
     </div>

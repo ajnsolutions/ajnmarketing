@@ -2,6 +2,21 @@ import Link from "next/link";
 
 const SETTINGS_LINKS = [
   {
+    href: "/dashboard/setup",
+    label: "Setup checklist",
+    description: "See what is required, optional, blocked, or ready — and what to do next.",
+  },
+  {
+    href: "/dashboard/setup/business",
+    label: "Business information",
+    description: "Name, industry, location, and contact basics.",
+  },
+  {
+    href: "/dashboard/setup/goals",
+    label: "Marketing goals",
+    description: "What success looks like for your marketing.",
+  },
+  {
     href: "/dashboard/google-business-profile",
     label: "Google Profile",
     description: "Connect and manage how customers find you on Google.",

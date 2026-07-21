@@ -303,7 +303,16 @@ export function BrandVoicePage() {
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">Brand Voice</h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Review and refine how AJN AI writes for your business.
+            Guides how drafts sound before you approve them. It does not publish, approve, or change
+            strategy on its own. A short tone note is enough to start — you can refine later.
+          </p>
+          <p className="mt-2 text-sm">
+            <a
+              href="/dashboard/setup"
+              className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
+            >
+              ← Back to setup checklist
+            </a>
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

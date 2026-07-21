@@ -8,11 +8,14 @@ import {
   WebsiteAnalysisPoller,
   WebsiteAnalysisRefreshButton,
 } from "@/components/dashboard/website-analysis-actions";
+import { WebsiteNoWebsiteAction } from "@/components/dashboard/website-no-website-action";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import { hasNoWebsiteConfirmed } from "@/lib/onboarding-storage";
 import { getAnalysisDisplayMeta } from "@/lib/website-analysis-server";
 import { LOW_CONFIDENCE_CUSTOMER_PERSONA } from "@/lib/website-analysis/customer-persona";
 import { resolveContentOpportunities } from "@/lib/website-analysis/content-opportunities";
 import type { SeoFinding, WebsiteAnalysis } from "@/lib/website-analysis/types";
+import Link from "next/link";
 
 function SectionCard({
   title,
@@ -297,7 +300,15 @@ export function WebsiteAnalysisPage({
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
             {isAnalyzing
               ? "We're learning everything we can from your website to power AJN AI across the platform."
-              : "Our AI has analyzed your website and built a marketing profile for your business."}
+              : "Optional setup — a website helps me learn your services, but you can continue without one."}
+          </p>
+          <p className="mt-2 text-sm">
+            <Link
+              href="/dashboard/setup"
+              className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
+            >
+              ← Back to setup checklist
+            </Link>
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -319,6 +330,20 @@ export function WebsiteAnalysisPage({
         variant={heroVariant}
       />
 
+      {!profile?.website?.trim() && (
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03]">
+          <h2 className="text-base font-bold text-navy-900">No website?</h2>
+          <p className="mt-2 text-sm leading-6 text-text-muted">
+            That is fine. Website analysis is optional and does not block Head of Marketing.
+          </p>
+          <div className="mt-4">
+            <WebsiteNoWebsiteAction
+              initiallyConfirmed={hasNoWebsiteConfirmed(profile?.voice_notes)}
+            />
+          </div>
+        </section>
+      )}
+
       {isAnalyzing && <AnalyzingState />}
 
       {meta.isFailed && (
@@ -326,8 +351,11 @@ export function WebsiteAnalysisPage({
           <h2 className="text-lg font-bold text-navy-900">Analysis could not be completed</h2>
           <p className="mt-2 text-sm leading-7 text-slate-600">
             We couldn&apos;t finish scanning your website. Check that your URL is correct, then try
-            refreshing the analysis.
+            refreshing. Other setup steps and Head of Marketing can continue while this is unresolved.
           </p>
+          <div className="mt-4">
+            <WebsiteAnalysisRefreshButton />
+          </div>
         </section>
       )}
 

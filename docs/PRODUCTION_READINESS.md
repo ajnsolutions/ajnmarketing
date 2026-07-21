@@ -24,6 +24,7 @@ Feature work through Weekly Approval Package + One-Click Email Approval is compl
 - Email-action approve/reject reuses existing `patchContentApprovalForUser` (no second workflow)
 - `GET /api/publishing` is read-only (no page-load publish side effect)
 - Declarative production cron gate with unit-test lock
+- Customer guided setup (Phase 3B) derives readiness from existing tenant data; prefs migration 031 is additive with RLS ownership checks
 
 ---
 

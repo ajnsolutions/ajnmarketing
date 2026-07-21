@@ -141,6 +141,24 @@ export function stripMagicGoalMarkers(goals: string[]): string[] {
   );
 }
 
+/** Persist “no website” without a schema change (setup / onboarding). */
+export const NO_WEBSITE_VOICE_MARKER = "Website: none confirmed.";
+
+export function hasNoWebsiteConfirmed(voiceNotes: string | null | undefined): boolean {
+  return Boolean(voiceNotes?.includes(NO_WEBSITE_VOICE_MARKER));
+}
+
+export function applyNoWebsiteConfirmed(
+  voiceNotes: string | null | undefined,
+  confirmed: boolean,
+): string {
+  const base = (voiceNotes ?? "")
+    .replace(new RegExp(`\\n?${NO_WEBSITE_VOICE_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "g"), "")
+    .trim();
+  if (!confirmed) return base;
+  return base ? `${base}\n${NO_WEBSITE_VOICE_MARKER}` : NO_WEBSITE_VOICE_MARKER;
+}
+
 /** Encode deferred social connects into voice_notes without a schema change. */
 export function buildDeferredConnectionsNote(
   existing: string,
