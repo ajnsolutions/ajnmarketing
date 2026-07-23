@@ -142,6 +142,10 @@ From the manifesto — enforced in review:
 
 Composes the existing production-readiness, assisted-pilot, ops-dashboard, and background-job systems into a richer readiness model, per-tenant operational health, stuck-job detection, and a safe cross-tenant admin retry action. No second operations platform, readiness framework, or job system; no schedule attached; `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains false. See [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md).
 
+## RC-1 — Authenticated Pilot Validation and User-Flow Hardening
+
+Full authenticated customer-journey validation pass across setup, marketing foundation, recommendations, and approvals. Found and fixed a page (Brand Voice) that hardcoded a "Strong Match" badge and a fabricated activity timeline regardless of real data, plus several dead buttons on that same page, and a setup step whose CTA promised functionality its destination didn't have. No new product capabilities, no architecture change, no schedule touched. See [`RC1_AUTHENTICATED_PILOT_VALIDATION.md`](./RC1_AUTHENTICATED_PILOT_VALIDATION.md).
+
 ## Out of scope for this blueprint PR
 
 - Implementing UI/IA changes  

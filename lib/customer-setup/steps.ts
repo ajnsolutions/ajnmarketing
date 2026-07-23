@@ -104,17 +104,21 @@ export const SETUP_STEP_DEFINITIONS: readonly SetupStepDefinition[] = [
     key: SetupStepKeys.NOTIFICATIONS,
     category: SetupStepCategories.CONNECTIONS,
     title: "Notifications",
-    description: "How you prefer to hear about approvals and important updates.",
-    whyItMatters: "Keeps important work from getting buried.",
+    // [RC-1 fix] Previous copy ("How you prefer to hear about...", "Review
+    // notifications") promised a configurable preferences screen. The destination is
+    // an honest "coming soon" page with no settings to review — the CTA and
+    // description must match what customers actually find there.
+    description: "How I'll keep you updated on approvals and important changes for now.",
+    whyItMatters: "Sets expectations so nothing important gets missed while notifications are simple.",
     required: false,
     canSkip: true,
     educationalOnly: true,
     adminOnly: false,
     affectsReadiness: false,
     destinationRoute: "/dashboard/notifications",
-    primaryActionLabel: "Review notifications",
+    primaryActionLabel: "See how updates work",
     estimatedEffort: "About 1 minute",
-    helpText: "Optional for now. Defaults stay conservative until you change them.",
+    helpText: "Optional for now. There are no settings to configure yet — your Weekly Briefing is where I'll ask for your opinion.",
     dependencyKeys: [],
     sortOrder: 60,
   },

@@ -15,6 +15,8 @@ Feature work through Weekly Approval Package + One-Click Email Approval is compl
 
 **Update (Phase 3C — Production Operations and Pilot Hardening):** the checks summarized in this document are now composed into a single, richer per-item readiness model at `GET /api/admin/ops?view=readiness` (see [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md)), plus new per-tenant operational health, stuck-job detection, and a safe admin retry action. This assessment's verdict and remaining risks below are otherwise unchanged by that phase.
 
+**Update (RC-1 — Authenticated Pilot Validation and User-Flow Hardening):** a full authenticated customer-journey validation pass found and fixed a page (Brand Voice) that misrepresented system state with hardcoded "always strong" scoring and a fabricated activity history, plus several non-functional buttons, and a setup step whose call-to-action promised functionality its destination didn't have. See [`RC1_AUTHENTICATED_PILOT_VALIDATION.md`](./RC1_AUTHENTICATED_PILOT_VALIDATION.md). No architecture change; cron gate unchanged.
+
 ---
 
 ## 2. Architecture strengths
