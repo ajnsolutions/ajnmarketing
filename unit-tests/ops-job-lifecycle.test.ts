@@ -57,6 +57,24 @@ test("exhausted automatic retry budget requires operator review even for idempot
   );
 });
 
+test("unrecognized or future job types default to operator review, never to an implied-safe classification", () => {
+  assert.equal(
+    classifyRetrySafety({ job_type: "some_future_job_type", status: "failed", attempts: 0 }),
+    RetrySafetyClassifications.REQUIRES_OPERATOR_REVIEW
+  );
+});
+
+test("every currently-known BackgroundJobType resolves to an explicit, non-dead-fallback classification", () => {
+  for (const jobType of Object.values(BackgroundJobTypes)) {
+    const result = classifyRetrySafety({ job_type: jobType, status: "failed", attempts: 0 });
+    assert.notEqual(
+      result,
+      RetrySafetyClassifications.SAFE_WITH_DEDUPLICATION,
+      `${jobType} should not silently fall through to the reserved-for-future classification`
+    );
+  }
+});
+
 test("thresholds are documented, non-zero constants", () => {
   assert.ok(STUCK_QUEUED_THRESHOLD_MINUTES > 0);
   assert.ok(STUCK_RUNNING_THRESHOLD_MINUTES > 0);

@@ -78,6 +78,15 @@ test("production readiness model ships richer statuses, migration check, and stu
   );
   expect(tenantHealth).toContain("intentionally_unused");
 
+  // Regression lock: bulk tenant health must never call the live-verifying status
+  // function, which can trigger a real Google token-refresh network call per tenant.
+  const tenantHealthIo = readFileSync(
+    join(process.cwd(), "lib/ops-dashboard/tenantHealth.ts"),
+    "utf8",
+  );
+  expect(tenantHealthIo).not.toMatch(/import\s*\{[^}]*getGoogleBusinessProfileConnectionStatusForUser/);
+  expect(tenantHealthIo).toContain("classifyGoogleBusinessConnectionReadOnly");
+
   const gate = readFileSync(join(process.cwd(), "lib/trigger/scheduleActivation.ts"), "utf8");
   expect(gate).toContain("ATTACH_DECLARATIVE_PRODUCTION_CRONS = false");
 });

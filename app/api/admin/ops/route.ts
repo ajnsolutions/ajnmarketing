@@ -13,6 +13,11 @@ import { findStuckBackgroundJobs, classifyRetrySafety } from "@/lib/ops-dashboar
 import { getAutonomousSchedulingHealth } from "@/lib/trigger/schedulingHealth";
 import { buildAssistedPilotDashboard } from "@/lib/assisted-pilot/service";
 
+/** New Phase 3C views reflect live server state — never let these be cached. */
+function jsonNoStore(body: unknown, status = 200): NextResponse {
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
 export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if ("error" in auth) return auth.error;
@@ -75,7 +80,7 @@ export async function GET(request: Request) {
   if (view === "readiness") {
     if (!isSupabaseServiceRoleConfigured()) {
       const summary = await buildProductionReadinessSummary();
-      return NextResponse.json(summary);
+      return jsonNoStore(summary);
     }
     const supabase = createServiceRoleClient();
     let pilotReadiness: { score: number; recommendation: string } | undefined;
@@ -99,12 +104,12 @@ export async function GET(request: Request) {
       migrationSupabase: supabase,
       pilotReadiness,
     });
-    return NextResponse.json(summary);
+    return jsonNoStore(summary);
   }
 
   if (view === "tenants") {
     if (!isSupabaseServiceRoleConfigured()) {
-      return NextResponse.json({ page: 1, pageSize: 20, totalCount: 0, tenants: [] }, { status: 503 });
+      return jsonNoStore({ page: 1, pageSize: 20, totalCount: 0, tenants: [] }, 503);
     }
     const page = Number(url.searchParams.get("page") ?? "1") || 1;
     const pageSize = Number(url.searchParams.get("pageSize") ?? "20") || 20;
@@ -114,12 +119,12 @@ export async function GET(request: Request) {
       pageSize,
       search,
     });
-    return NextResponse.json(result);
+    return jsonNoStore(result);
   }
 
   if (view === "jobs") {
     if (!isSupabaseServiceRoleConfigured()) {
-      return NextResponse.json({ stuckJobs: [], triggerSubsystems: null }, { status: 503 });
+      return jsonNoStore({ stuckJobs: [], triggerSubsystems: null }, 503);
     }
     const supabase = createServiceRoleClient();
     const stuckJobs = await findStuckBackgroundJobs(supabase);
@@ -144,7 +149,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ stuckJobs: stuckJobsWithSafety, triggerSubsystems });
+    return jsonNoStore({ stuckJobs: stuckJobsWithSafety, triggerSubsystems });
   }
 
   if (!isSupabaseServiceRoleConfigured()) {

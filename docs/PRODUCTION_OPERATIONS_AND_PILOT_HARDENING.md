@@ -53,12 +53,14 @@ Surfaced via `GET /api/admin/ops?view=readiness` (admin-only) and the Ops Dashbo
 `lib/ops-dashboard/tenantHealth.ts` (I/O) + `lib/ops-dashboard/tenantHealthClassify.ts` (pure, unit-tested). Bounded and paginated (`?view=tenants&page=&pageSize=&q=`, default page size 20, max 50). For each tenant on the current page:
 
 - **Setup** — from the Phase 3B `getCustomerSetupSnapshotForUser` snapshot (never re-derived).
-- **Google Business connection** — from the existing `getGoogleBusinessProfileConnectionStatusForUser`. Never-connected is `intentionally_unused` (not a failure); globally unavailable (OAuth not configured) is `unavailable` (distinct from a customer simply not connecting); a connection that regressed from connected to expired/revoked/error is `warning`.
+- **Google Business connection** — via `lib/ops-dashboard/googleBusinessReadOnly.ts`'s `classifyGoogleBusinessConnectionReadOnly`. Never-connected is `intentionally_unused` (not a failure); globally unavailable (OAuth not configured) is `unavailable` (distinct from a customer simply not connecting); a connection that regressed from connected to expired/revoked/error is `warning`.
 - **Publishing queue** — failed jobs block the dimension; retrying jobs warn; otherwise healthy.
 - **Approvals** — pending-but-not-overdue is healthy; pending past `APPROVAL_OVERDUE_HOURS` (7 days, a documented constant) is a warning.
 - **Background jobs** — any failure in the last 24h is a warning.
 
-**Query shape:** one paginated `business_profiles` query, plus batched single `IN()` queries for publishing/approval/job-failure counts across the whole page, plus per-tenant calls to the two existing services that don't have batch equivalents (`getCustomerSetupSnapshotForUser`, `getGoogleBusinessProfileConnectionStatusForUser`) — bounded to page size, not the full tenant table.
+**Query shape:** one paginated `business_profiles` query, plus batched single `IN()` queries for publishing/approval/job-failure/Google-connection counts across the whole page, plus per-tenant calls to the one remaining service without a batch equivalent (`getCustomerSetupSnapshotForUser`) — bounded to page size, not the full tenant table.
+
+**Review fix (PR #65 review pass):** the initial implementation called `getGoogleBusinessProfileConnectionStatusForUser` — the *authoritative*, live-verifying function — once per tenant on the page. That function will attempt a real Google token-refresh network call whenever a connection is marked "connected" but its last live verification has gone stale, which is correct for a customer loading their own single GBP page but means an admin merely opening a 50-tenant health page could have fired up to 50 real provider calls (and possibly written connection-record updates) as a side effect of *viewing* operational health. Fixed by adding `lib/ops-dashboard/googleBusinessReadOnly.ts`, which composes the same pure, already-exported primitives (`resolveEffectiveConnectionStatus`, `findMissingRequiredGoogleScopes`) the authoritative function uses, minus the live network call — it trusts the last-known stored state instead. This is not a second connection-state model, only a second composition of the same building blocks that stops short of the side-effecting step. `tenantHealth.ts` now reads connections via one batched `IN()` query rather than N individual calls. Regression-locked in `tests/production-operations.spec.ts` (asserts `tenantHealth.ts` never imports the live-verifying function) and `unit-tests/ops-google-business-readonly.test.ts`.
 
 ## Job lifecycle
 
@@ -67,7 +69,8 @@ Surfaced via `GET /api/admin/ops?view=readiness` (admin-only) and the Ops Dashbo
 **Retry-safety classification** (`classifyRetrySafety`):
 
 - `safe_and_idempotent` — job types that only regenerate/refresh internal state (website analysis, marketing plan generation, AI task generation, GBP sync, content generation, review-reply generation, social syncs, analytics capture, opportunity detection, recommendation pipeline). No external side effect to duplicate.
-- `requires_operator_review` — always for `publishing_execute` (a real external provider side effect — duplicate-publish risk), and for any job that has exhausted `MAX_BACKGROUND_JOB_ATTEMPTS` (3) even if otherwise idempotent.
+- `safe_with_deduplication` — reserved for a future job type with an external side effect but a server-side dedup guarantee. No current `BackgroundJobType` qualifies; `classifyRetrySafety` never actually returns this today (locked by a unit test).
+- `requires_operator_review` — always for `publishing_execute` (a real external provider side effect — duplicate-publish risk), for any job that has exhausted `MAX_BACKGROUND_JOB_ATTEMPTS` (3) even if otherwise idempotent, and — **as of the PR #65 review fix** — the fail-safe default for any job type not explicitly recognized. The initial implementation defaulted unrecognized types to `safe_with_deduplication`, which would have silently offered a one-click retry for a future job type nobody had verified was side-effect-free; every one of today's 13 `BackgroundJobTypes` is still explicitly classified, so this only changes behavior for a type added later without updating `IDEMPOTENT_JOB_TYPES`.
 - `not_retryable` — anything not currently `failed`/`cancelled`.
 
 This classification is display/gating logic only — it never bypasses `resetBackgroundJobForRetry`'s own DB-level guard (`status in ('failed','cancelled')`).
@@ -201,13 +204,15 @@ All new I/O goes through either (a) the existing `requireAdminUser()` gate plus 
 
 New panels use semantic lists, visible status text (never color-only — status pills always pair a color ring with a text label), `role="status"`/`role="alert"` for live feedback, `aria-live="polite"` on the retry-result message, associated `<label htmlFor>` (with `sr-only` visual hiding, not `aria-label` alone) on the tenant search input, and `min-h-11` touch targets throughout, reusing the Phase 3A/3B conventions.
 
+**Review fix (PR #65 review pass):** the confirm/cancel step in `stuck-jobs-panel.tsx` swaps the "Retry" button for "Confirm retry"/"Cancel" buttons — the initial implementation didn't manage focus across that swap, so keyboard and screen-reader users lost their position (focus fell back to the document body) on every confirm/cancel/retry-outcome transition. Fixed with a ref-tracked focus-restoration effect: entering confirmation mode moves focus to "Confirm retry"; cancelling (or a resolved retry) returns focus to the original trigger.
+
 ## Mobile
 
 All new panels use `flex-col gap-2 sm:flex-row` stacking and card-based (not wide-table) layouts, consistent with the existing dashboard patterns — verified via the Playwright assertions in `tests/production-operations.spec.ts`.
 
 ## Performance
 
-Tenant health is paginated (default 20, max 50) with batched count queries; stuck-job detection is bounded to 7 days / 200 rows; the readiness model makes no new database queries beyond the existing health-check DB probe plus one bounded migration probe. No new caching was introduced (each admin request computes fresh data — safe, since these are low-traffic admin-only surfaces, and avoids any tenant-data cache-key bug).
+Tenant health is paginated (default 20, max 50) with batched count queries — including, after the PR #65 review fix, a single batched `IN()` query for Google Business connections rather than one call per tenant; stuck-job detection is bounded to 7 days / 200 rows; the readiness model makes no new database queries beyond the existing health-check DB probe plus one bounded migration probe. No new caching was introduced (each admin request computes fresh data — safe, since these are low-traffic admin-only surfaces, and avoids any tenant-data cache-key bug); all new/changed GET and POST responses set `Cache-Control: no-store` so a cached stale readiness/health/retry result can never mask a real change.
 
 ## Non-goals confirmed
 
@@ -216,16 +221,18 @@ No changes to Marketing Director logic, recommendation ranking/scoring, Campaign
 ## Known limitations
 
 - Analytics freshness is not separately modeled beyond the existing `analytics_queue` ops-summary counts and per-tenant job-failure signal — a dedicated freshness-threshold state machine (fresh/aging/stale/capture-failed) was judged out of scope for this pass given the size of everything else in this phase; flagged as deferred debt below.
-- Tenant health's two per-tenant service calls (`getCustomerSetupSnapshotForUser`, `getGoogleBusinessProfileConnectionStatusForUser`) are not batched — bounded by pagination (≤50 tenants/page) but still O(page size) round trips, not O(1).
+- Tenant health's setup-snapshot call (`getCustomerSetupSnapshotForUser`) is still not batched — bounded by pagination (≤50 tenants/page) but still O(page size) round trips, not O(1). (Google Business connection reads were batched into a single query as part of the PR #65 review pass.)
 - No authenticated admin session was available in this environment — see the smoke checklist below; UI behavior beyond static source assertions is unverified live.
 - `?view=jobs`'s Trigger.dev subsystem data requires `TRIGGER_SECRET_KEY`; without it, the field is `null` (not an error) and the panel shows no subsystem detail.
+- No index exists on `business_profiles.created_at` (the tenant-health pagination sort column) — not a correctness issue at current/expected pilot scale, but worth revisiting if the tenant table grows large.
 
 ## Deferred operational debt
 
 - Dedicated analytics-freshness state machine (never captured / fresh / aging / stale / capture pending / capture failed) with documented thresholds.
-- Batch (single-query) tenant health for setup snapshots and GBP connection status, if the tenant list grows large enough for per-page latency to matter.
+- Batch (single-query) tenant health for setup snapshots, if the tenant list grows large enough for per-page latency to matter (Google Business connections are already batched).
 - A dedicated alert-deduplication/resolution-state layer (today's `evaluateOpsAlerts` is stateless per request).
 - Richer multi-user/team role support once (if) team accounts ship — tracked already in `docs/GUIDED_ONBOARDING_AND_SETUP.md`.
+- An index on `business_profiles.created_at` if tenant-list pagination latency becomes measurable.
 
 ## Authenticated smoke checklist
 

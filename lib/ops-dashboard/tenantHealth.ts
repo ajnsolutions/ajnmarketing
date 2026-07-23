@@ -2,7 +2,10 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCustomerSetupSnapshotForUser } from "@/lib/customer-setup/service";
-import { getGoogleBusinessProfileConnectionStatusForUser } from "@/lib/google-business-profile/service";
+import { inspectGoogleBusinessServerConfig } from "@/lib/google-business-profile/config";
+import { PUBLIC_CONNECTION_COLUMNS } from "@/lib/google-business-profile/persistence";
+import type { GoogleBusinessProfileConnectionPublic } from "@/lib/google-business-profile/types";
+import { classifyGoogleBusinessConnectionReadOnly } from "@/lib/ops-dashboard/googleBusinessReadOnly";
 import {
   APPROVAL_OVERDUE_HOURS,
   classifyTenantDimensions,
@@ -82,7 +85,16 @@ export async function getTenantOperationalHealthPage(
   const businessProfileIds = rows.map((r) => r.id);
   const userIds = rows.map((r) => r.user_id);
 
-  const [publishingCounts, approvalCounts, jobFailureCounts, setupSnapshots, gbpStatuses] =
+  // [Fix, PR #65 review] Reads only — never calls getGoogleBusinessProfileConnectionStatusForUser,
+  // which will attempt a *live* Google token-refresh network call for any TTL-stale
+  // "connected" row. That is correct for a customer's own single-page GBP view, but
+  // would fire up to `pageSize` real provider calls as a side effect of an admin
+  // merely opening this health page. batchGoogleConnections() below is a single
+  // bounded query; classifyGoogleBusinessConnectionReadOnly() reuses the same pure
+  // primitives the authoritative function uses, minus the network call.
+  const gbpConfig = inspectGoogleBusinessServerConfig();
+
+  const [publishingCounts, approvalCounts, jobFailureCounts, setupSnapshots, gbpConnections] =
     await Promise.all([
       batchPublishingCounts(supabase, businessProfileIds),
       batchApprovalCounts(supabase, businessProfileIds),
@@ -92,17 +104,17 @@ export async function getTenantOperationalHealthPage(
           getCustomerSetupSnapshotForUser(r.user_id, { supabaseClient: supabase }).catch(() => null)
         )
       ),
-      Promise.all(
-        rows.map((r) =>
-          getGoogleBusinessProfileConnectionStatusForUser(r.user_id, supabase).catch(() => null)
-        )
-      ),
+      batchGoogleConnections(supabase, userIds),
     ]);
 
   const tenants: TenantHealthSnapshot[] = rows.map((row, index) => {
+    const gbp = classifyGoogleBusinessConnectionReadOnly(gbpConnections.get(row.user_id) ?? null, {
+      oauthConfigured: gbpConfig.oauthConfigured,
+      connectionStorageConfigured: gbpConfig.connectionStorageConfigured,
+    });
     const dimensions = classifyTenantDimensions({
       setup: setupSnapshots[index],
-      gbp: gbpStatuses[index],
+      gbp,
       publishing: publishingCounts.get(row.id) ?? { failed: 0, queued: 0, retrying: 0 },
       approvals: approvalCounts.get(row.id) ?? { pending: 0, overdue: 0 },
       jobFailures: jobFailureCounts.get(row.user_id) ?? 0,
@@ -168,6 +180,26 @@ async function batchApprovalCounts(
     entry.pending += 1;
     if (new Date(row.created_at).getTime() < overdueThreshold) entry.overdue += 1;
     result.set(row.business_profile_id, entry);
+  }
+  return result;
+}
+
+async function batchGoogleConnections(
+  supabase: SupabaseClient,
+  userIds: string[]
+): Promise<Map<string, GoogleBusinessProfileConnectionPublic>> {
+  const result = new Map<string, GoogleBusinessProfileConnectionPublic>();
+  if (userIds.length === 0) return result;
+
+  const { data, error } = await supabase
+    .from("google_business_profile_connections")
+    .select(PUBLIC_CONNECTION_COLUMNS)
+    .in("user_id", userIds);
+
+  if (error || !data) return result;
+
+  for (const row of data as unknown as GoogleBusinessProfileConnectionPublic[]) {
+    result.set(row.user_id, row);
   }
   return result;
 }

@@ -10,6 +10,10 @@ import {
 import { logAuditEvent } from "@/lib/audit-log/service";
 import { AuditActions } from "@/lib/audit-log/types";
 
+function jsonNoStore(body: unknown, status = 200): NextResponse {
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
 /**
  * Admin-only, cross-tenant background job retry. Distinct from POST /api/jobs (PATCH
  * action=retry), which is customer-self-service and already scoped to the caller's
@@ -23,12 +27,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if ("error" in auth) return auth.error;
 
   if (!isSupabaseServiceRoleConfigured()) {
-    return NextResponse.json({ error: "Service-role access is not configured." }, { status: 503 });
+    return jsonNoStore({ error: "Service-role access is not configured." }, 503);
   }
 
   const { id } = await context.params;
   if (!id?.trim()) {
-    return NextResponse.json({ error: "Job id is required." }, { status: 400 });
+    return jsonNoStore({ error: "Job id is required." }, 400);
   }
 
   let body: unknown = {};
@@ -49,7 +53,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     .maybeSingle();
 
   if (lookupError || !existing) {
-    return NextResponse.json({ error: "Job not found." }, { status: 404 });
+    return jsonNoStore({ error: "Job not found." }, 404);
   }
 
   const safety = classifyRetrySafety({
@@ -59,23 +63,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   });
 
   if (safety === RetrySafetyClassifications.NOT_RETRYABLE) {
-    return NextResponse.json(
-      { error: "This job is not in a retryable state.", retrySafety: safety },
-      { status: 409 }
-    );
+    return jsonNoStore({ error: "This job is not in a retryable state.", retrySafety: safety }, 409);
   }
 
   if (
     safety === RetrySafetyClassifications.REQUIRES_OPERATOR_REVIEW &&
     !confirmOperatorReview
   ) {
-    return NextResponse.json(
+    return jsonNoStore(
       {
         error:
           "This job requires operator review before retrying (possible duplicate side effect or exhausted automatic retries). Resubmit with confirmOperatorReview: true after verifying no duplicate work will occur.",
         retrySafety: safety,
       },
-      { status: 409 }
+      409
     );
   }
 
@@ -83,10 +84,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   if (!job) {
     // Another actor already retried/changed this job — idempotent no-op, not an error.
-    return NextResponse.json(
-      { retried: false, message: "Job is no longer in a retryable state (already retried or changed)." },
-      { status: 200 }
-    );
+    return jsonNoStore({ retried: false, message: "Job is no longer in a retryable state (already retried or changed)." });
   }
 
   await logAuditEvent(supabase, {
@@ -106,5 +104,5 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   scheduleBackgroundJobProcessing(job.id);
 
-  return NextResponse.json({ retried: true, job: { id: job.id, status: job.status, jobType: job.job_type } });
+  return jsonNoStore({ retried: true, job: { id: job.id, status: job.status, jobType: job.job_type } });
 }

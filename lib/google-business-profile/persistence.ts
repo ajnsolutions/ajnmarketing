@@ -6,7 +6,7 @@ import type {
   GoogleBusinessProfileConnectionRecord,
 } from "@/lib/google-business-profile/types";
 
-const PUBLIC_CONNECTION_COLUMNS =
+export const PUBLIC_CONNECTION_COLUMNS =
   "id, user_id, business_profile_id, google_account_email, google_account_name, google_account_id, gbp_account_id, gbp_location_id, gbp_location_name, token_expires_at, scopes, connection_status, last_synced_at, last_verified_at, created_at, updated_at";
 
 /** Messages Google's OAuth token endpoint returns when a refresh token is no longer usable. */

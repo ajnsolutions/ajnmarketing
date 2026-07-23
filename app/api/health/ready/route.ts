@@ -11,6 +11,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, timeoutValue: T): Promi
   ]);
 }
 
+/** Never let a CDN or browser cache a point-in-time readiness result. */
+function jsonNoStore(body: unknown, status: number): NextResponse {
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
 /**
  * Readiness tier (distinct from the liveness check at /api/health, which never
  * touches the database). This confirms the platform's *required* dependencies are
@@ -23,13 +28,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number, timeoutValue: T): Promi
  */
 export async function GET() {
   if (!isSupabaseServiceRoleConfigured()) {
-    return NextResponse.json(
+    return jsonNoStore(
       {
         status: "not_configured",
         reason: "Service-role database access is not configured.",
         generatedAt: new Date().toISOString(),
       },
-      { status: 503 }
+      503
     );
   }
 
@@ -45,13 +50,13 @@ export async function GET() {
   );
 
   if (!dbProbe.ok) {
-    return NextResponse.json(
+    return jsonNoStore(
       {
         status: "unavailable",
         reason: "Database is not reachable.",
         generatedAt: new Date().toISOString(),
       },
-      { status: 503 }
+      503
     );
   }
 
@@ -68,13 +73,13 @@ export async function GET() {
   // "unknown" (ambiguous probe failure, not a confirmed missing table) intentionally
   // stays 200 to avoid a deployment restart loop on a transient/ambiguous check —
   // "degraded" (confirmed missing migration) is a definitive, actionable problem.
-  return NextResponse.json(
+  return jsonNoStore(
     {
       status,
       database: "reachable",
       migration031Applied: migration.applied,
       generatedAt: new Date().toISOString(),
     },
-    { status: status === "degraded" ? 503 : 200 }
+    status === "degraded" ? 503 : 200
   );
 }

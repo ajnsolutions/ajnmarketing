@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StuckJobSummary } from "@/lib/ops-dashboard/jobLifecycle";
 
 type StuckJobWithSafety = StuckJobSummary & { retrySafety: string };
@@ -33,6 +33,21 @@ export function StuckJobsPanel({ initialJobs }: { initialJobs: StuckJobWithSafet
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const retryButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const confirmButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previouslyConfirming = useRef<string | null>(null);
+
+  // Move focus onto the confirm step when it appears, and back onto the original
+  // trigger when it's dismissed (cancelled or resolved) — the button swap otherwise
+  // drops keyboard/screen-reader focus to the document body.
+  useEffect(() => {
+    if (confirmingId && confirmingId !== previouslyConfirming.current) {
+      confirmButtonRefs.current.get(confirmingId)?.focus();
+    } else if (!confirmingId && previouslyConfirming.current) {
+      retryButtonRefs.current.get(previouslyConfirming.current)?.focus();
+    }
+    previouslyConfirming.current = confirmingId;
+  }, [confirmingId]);
 
   async function retry(job: StuckJobWithSafety, confirmOperatorReview: boolean) {
     setPendingId(job.id);
@@ -124,6 +139,10 @@ export function StuckJobsPanel({ initialJobs }: { initialJobs: StuckJobWithSafet
                     </p>
                     <button
                       type="button"
+                      ref={(el) => {
+                        if (el) confirmButtonRefs.current.set(job.id, el);
+                        else confirmButtonRefs.current.delete(job.id);
+                      }}
                       disabled={isPending}
                       onClick={() => retry(job, true)}
                       className="hom-focusable min-h-11 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
@@ -142,6 +161,10 @@ export function StuckJobsPanel({ initialJobs }: { initialJobs: StuckJobWithSafet
                 ) : (
                   <button
                     type="button"
+                    ref={(el) => {
+                      if (el) retryButtonRefs.current.set(job.id, el);
+                      else retryButtonRefs.current.delete(job.id);
+                    }}
                     disabled={isPending}
                     onClick={() =>
                       safety.needsConfirmation ? setConfirmingId(job.id) : retry(job, false)

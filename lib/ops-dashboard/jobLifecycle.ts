@@ -15,6 +15,13 @@ export const STUCK_RUNNING_THRESHOLD_MINUTES = 15;
 
 export const RetrySafetyClassifications = {
   SAFE_AND_IDEMPOTENT: "safe_and_idempotent",
+  /**
+   * Reserved for a future job type that has an external side effect but a server-side
+   * dedup guarantee (comparable to publishing_jobs' compare-and-swap claim). No
+   * current BackgroundJobType qualifies — classifyRetrySafety never returns this
+   * today; add an explicit allowlist entry (mirroring IDEMPOTENT_JOB_TYPES) if one
+   * ever does, rather than making this the default for unrecognized types.
+   */
   SAFE_WITH_DEDUPLICATION: "safe_with_deduplication",
   REQUIRES_OPERATOR_REVIEW: "requires_operator_review",
   NOT_RETRYABLE: "not_retryable",
@@ -62,7 +69,13 @@ export function classifyRetrySafety(job: Pick<BackgroundJob, "job_type" | "statu
   if (IDEMPOTENT_JOB_TYPES.has(job.job_type as BackgroundJobType)) {
     return RetrySafetyClassifications.SAFE_AND_IDEMPOTENT;
   }
-  return RetrySafetyClassifications.SAFE_WITH_DEDUPLICATION;
+  // [Fix] Every job type known today (BackgroundJobTypes) is explicitly classified
+  // above (12 idempotent types + publishing_execute). A job type not in either list
+  // is either unrecognized or was added later without updating IDEMPOTENT_JOB_TYPES —
+  // defaulting that case to "safe with deduplication" would silently offer a
+  // one-click retry for a type nobody has actually verified is side-effect-free.
+  // Fail safe: require explicit operator review for anything not explicitly known.
+  return RetrySafetyClassifications.REQUIRES_OPERATOR_REVIEW;
 }
 
 export type StuckJobSummary = {
