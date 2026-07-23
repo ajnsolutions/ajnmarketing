@@ -4,7 +4,13 @@ import type { OpsAlertSnapshot } from "@/lib/production-alerts/types";
 import type { WorkflowValidationReport } from "@/lib/workflow-validation/harness";
 import type { FailureInjectionState } from "@/lib/failure-injection/gate";
 import type { AssistedPilotDashboardData } from "@/lib/assisted-pilot/types";
+import type { ProductionReadinessSummary } from "@/lib/production-readiness/types";
+import type { TenantHealthPage } from "@/lib/ops-dashboard/tenantHealth";
+import type { StuckJobSummary } from "@/lib/ops-dashboard/jobLifecycle";
 import { AssistedPilotPanel } from "@/components/dashboard/assisted-pilot-panel";
+import { ProductionReadinessPanel } from "@/components/dashboard/production-readiness-panel";
+import { TenantOperationalHealthPanel } from "@/components/dashboard/tenant-operational-health-panel";
+import { StuckJobsPanel } from "@/components/dashboard/stuck-jobs-panel";
 
 function statusColor(status: string): string {
   if (status === "healthy" || status === "success" || status === "info") return "text-growth-600";
@@ -33,6 +39,9 @@ export function AdminOpsDashboard({
   workflow,
   failureInjection,
   pilot,
+  readiness,
+  tenantHealth,
+  stuckJobs,
 }: {
   health: ProductionHealthReport;
   summary: OpsDashboardSummary | null;
@@ -40,6 +49,9 @@ export function AdminOpsDashboard({
   workflow: WorkflowValidationReport;
   failureInjection: FailureInjectionState;
   pilot: AssistedPilotDashboardData | null;
+  readiness: ProductionReadinessSummary | null;
+  tenantHealth: TenantHealthPage | null;
+  stuckJobs: (StuckJobSummary & { retrySafety: string })[] | null;
 }) {
   return (
     <div className="space-y-8">
@@ -95,6 +107,13 @@ export function AdminOpsDashboard({
             {pilot?.launchRecommendation ?? "Register pilots after migration"}
           </p>
         </article>
+      </section>
+
+      <ProductionReadinessPanel initialSummary={readiness} />
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <TenantOperationalHealthPanel initialPage={tenantHealth} />
+        <StuckJobsPanel initialJobs={stuckJobs} />
       </section>
 
       {pilot && (
@@ -212,6 +231,29 @@ export function AdminOpsDashboard({
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-6">
+        <h2 className="text-base font-bold text-navy-900">Runbooks</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Symptom → diagnosis → recovery guidance, in the repository (not served by this app —
+          open these paths in your editor or GitHub). Prefer this dashboard for current state; use
+          runbooks for step-by-step incident response.
+        </p>
+        <ul className="mt-3 grid gap-1 text-sm text-navy-900 sm:grid-cols-2">
+          <li>
+            <code className="text-xs">docs/RUNBOOKS.md</code> — full index
+          </li>
+          <li>
+            <code className="text-xs">docs/PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md</code>
+          </li>
+          <li>
+            <code className="text-xs">docs/ASSISTED_PILOT.md</code>
+          </li>
+          <li>
+            <code className="text-xs">docs/PRODUCTION_READINESS.md</code>
+          </li>
+        </ul>
       </section>
     </div>
   );

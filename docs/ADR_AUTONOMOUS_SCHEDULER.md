@@ -306,6 +306,8 @@ At the end of Phase 1, nothing about production behavior has changed; the new pa
 - **Job history retention:** `audit_logs` is the durable, user-facing record — no new retention policy needed, it already exists and is already RLS-protected. Trigger.dev's own run history (14/30/90 days on Cloud tiers, unlimited self-hosted) is the ops/debugging view and does not need to match that retention — it's a different audience with different needs.
 - **Observability:** Continue the structured-metadata discipline established during the AI Marketing Profile error-handling fix (provider/model/status/code/requestId preserved through to `audit_logs`) for every task, not just OpenAI-backed ones — the same shape applies to Google API errors, giving support and engineering a consistent shape to query across every subsystem.
 
+**Update (Phase 3C — Production Operations and Pilot Hardening):** implemented the exact idempotent-vs-side-effecting retry classification described above as `classifyRetrySafety` (`lib/ops-dashboard/jobLifecycle.ts`), applied to today's `background_jobs`-based execution (not yet Trigger.dev-native retries, since schedules remain unattached — see §4). Stuck-job detection (queued/running past a threshold) was added as a deterministic diagnostic on `background_jobs`; this ADR's proposed architecture is otherwise unchanged and still not adopted — the cron gate remains closed. See [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md).
+
 ---
 
 ## 7. Product Behavior Mapping

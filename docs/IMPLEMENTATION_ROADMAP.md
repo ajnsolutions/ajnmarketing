@@ -138,6 +138,10 @@ From the manifesto — enforced in review:
 
 ---
 
+## Phase 3C — Production Operations and Pilot Hardening
+
+Composes the existing production-readiness, assisted-pilot, ops-dashboard, and background-job systems into a richer readiness model, per-tenant operational health, stuck-job detection, and a safe cross-tenant admin retry action. No second operations platform, readiness framework, or job system; no schedule attached; `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains false. See [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md).
+
 ## Out of scope for this blueprint PR
 
 - Implementing UI/IA changes  
