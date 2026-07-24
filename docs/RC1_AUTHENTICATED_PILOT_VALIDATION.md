@@ -71,6 +71,18 @@ None found. No broken authentication, no data loss, no cross-tenant leak, no una
 
 2. **Notifications setup-step CTA/destination mismatch**. Fixed: `lib/customer-setup/steps.ts`'s `NOTIFICATIONS` step description and `primaryActionLabel` no longer promise a configurable preferences screen ("Review notifications" / "How you prefer to hear about approvals and important updates"). The new copy ("See how updates work" / "How I'll keep you updated on approvals and important changes for now") accurately reflects the honest "coming soon, nothing to configure yet, Weekly Briefing is where I'll ask for your opinion" copy already present on the destination page (`components/dashboard/dashboard-feature-placeholder.tsx`, unchanged).
 
+## Focused review pass (pre-merge re-review of this PR)
+
+A second, deeper pass over `components/dashboard/brand-voice-page.tsx` — specifically targeting customer trust, source attribution, tone persistence, buttons, and accessibility — found four more real defects the first pass missed, none of them cosmetic:
+
+1. **`brand_voice_tone` unconditional overwrite risk.** The original fix always wrote `brand_voice_tone` on every save, including a save triggered only to update the notes field. `business_profiles.brand_voice_tone` is read by content-generation prompts, AI Marketing Profile generation, Google review-reply generation, the website-analysis customer-persona extractor, and the setup-readiness calculator, and is independently editable as freeform text via the existing Settings page — a notes-only save could have silently clobbered a richer, real tone description with the default checkbox state. **Fixed:** added a `tonesDirty` flag, set only inside `toggleTone()`, and gated the `brand_voice_tone` key in the save payload behind it.
+2. **`hasWebsiteAnalysis` too loose.** It was computed as `Boolean(analysis)`, but a `website_analyses` row can exist in `pending`/`running`/`failed` states with `analysis_score` still `null` — "Sources analyzed: Website" could display at the same time as the score badge honestly said "Not yet analyzed." **Fixed:** tightened to `analysis?.analysis_status === "completed"`.
+3. **Blank example quote on a failed analysis.** `exampleParagraph` fell back through a `??` chain ending at `analysis?.raw_summary?.brandVoice`. `markWebsiteAnalysisFailed` (`lib/website-analysis/persistence.ts`) always writes `raw_summary.brandVoice` as `""` (never `null`) on a real failure, since the only real call site (`lib/website-analysis/service.ts`) always passes a non-empty `safeError` string — so a customer whose first website analysis fails would see an empty `""` quote in the "Example from your business profile" block instead of the honest default paragraph. **Fixed:** switched to `displayValue()`, which already treats an empty string the same as absent everywhere else on this page.
+4. **Dead `SectionCard` `action` prop.** The shared local `SectionCard` component still accepted an `action?: string` prop and rendered a button with no `onClick` at all — the same dead-button pattern already fixed twice elsewhere in this file. Confirmed unreachable today (none of the file's 7 `<SectionCard>` call sites pass `action`), but a latent trap for future edits. **Fixed:** removed the prop and its rendering.
+5. **Missing `aria-pressed` on tone chips.** The Tone Adjustment toggle buttons conveyed selected/unselected state only through color, with no `aria-pressed`, unlike every other toggle-button group in this codebase (`marketing-recommendations-page.tsx`, `setup-goals-form.tsx`, `strategic-marketing-calendar-page.tsx`). **Fixed:** added `aria-pressed={selectedTones.includes(option)}`.
+
+All five re-verified via `npm run build`, the full unit suite, lint, and an expanded Playwright spec (see Tests below). No other focus area (setup-checklist copy, cron gate, regression scope) required changes in this pass — re-confirmed unchanged.
+
 ## P2 improvements completed
 
 - Added `role="status"` to the Brand Voice save-confirmation message (accessibility).
@@ -119,7 +131,7 @@ No security-relevant surface was touched. The Brand Voice tone-persistence fix r
 
 - `unit-tests/brand-voice-match-score.test.ts` (4 tests) — locks in the honest, tiered `matchScoreLabel` behavior.
 - `unit-tests/customer-setup-step-definitions.test.ts` (2 tests) — locks in the notifications-step copy fix and a general sanity check that every setup step has a real action label and app-relative destination.
-- `tests/rc1-user-flow-hardening.spec.ts` (7 Playwright tests) — unauthenticated redirects for the two changed pages, source-level regression locks for every fabricated/dead element removed from Brand Voice, and a cron-gate regression check.
+- `tests/rc1-user-flow-hardening.spec.ts` (12 Playwright tests) — unauthenticated redirects for the two changed pages, source-level regression locks for every fabricated/dead element removed from Brand Voice, a cron-gate regression check, and five additional locks from the focused review pass (`tonesDirty` gating, `hasWebsiteAnalysis` status check, no dead `SectionCard` action prop, honest `exampleParagraph` fallback, `aria-pressed` on tone chips).
 
 ## Authenticated smoke result
 

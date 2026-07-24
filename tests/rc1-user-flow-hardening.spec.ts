@@ -71,3 +71,66 @@ test("guided-onboarding-setup and customer-experience-polish regressions remain 
   const gate = readFileSync(join(process.cwd(), "lib/trigger/scheduleActivation.ts"), "utf8");
   expect(gate).toContain("ATTACH_DECLARATIVE_PRODUCTION_CRONS = false");
 });
+
+test("Brand Voice save never overwrites brand_voice_tone unless the customer touched a tone chip", async () => {
+  const source = readFileSync(
+    join(process.cwd(), "components/dashboard/brand-voice-page.tsx"),
+    "utf8",
+  );
+
+  // brand_voice_tone is a shared field (content-generation prompts, AI Marketing
+  // Profile, review replies, Marketing Memory, setup readiness) and independently
+  // freeform-editable via Settings — an unconditional overwrite on every notes-only
+  // save would silently destroy a richer existing value.
+  expect(source).toContain("tonesDirty");
+  expect(source).toMatch(/setTonesDirty\(true\)/);
+  expect(source).toMatch(/tonesDirty\s*\n?\s*\?\s*\{\s*brand_voice_tone:/);
+});
+
+test("Brand Voice source attribution only claims Website once analysis actually completed", async () => {
+  const source = readFileSync(
+    join(process.cwd(), "components/dashboard/brand-voice-page.tsx"),
+    "utf8",
+  );
+
+  // A website_analyses row can exist while pending/running/failed — analysis_score
+  // stays null until analysis_status is "completed". Claiming "Website" as an
+  // analyzed source in those states would contradict a simultaneous "Not yet
+  // analyzed" score badge.
+  expect(source).toContain('hasWebsiteAnalysis={analysis?.analysis_status === "completed"}');
+  expect(source).not.toContain("hasWebsiteAnalysis={Boolean(analysis)}");
+});
+
+test("Brand Voice SectionCard has no dead action button", async () => {
+  const source = readFileSync(
+    join(process.cwd(), "components/dashboard/brand-voice-page.tsx"),
+    "utf8",
+  );
+
+  // The local SectionCard component previously accepted an `action` label and
+  // rendered a button with no onClick at all — unreachable from any of the file's
+  // call sites, but a trap for future edits.
+  expect(source).not.toContain("action?: string");
+});
+
+test("Brand Voice example quote falls back honestly instead of rendering blank on a failed analysis", async () => {
+  const source = readFileSync(
+    join(process.cwd(), "components/dashboard/brand-voice-page.tsx"),
+    "utf8",
+  );
+
+  // markWebsiteAnalysisFailed always writes raw_summary.brandVoice as "" (never
+  // null) on a real failure. A `??` chain stops at that empty string and renders a
+  // blank quote; displayValue treats an empty string as absent and falls through
+  // to the honest default paragraph.
+  expect(source).toContain("const exampleParagraph = displayValue(");
+  expect(source).not.toMatch(/analysis\?\.brand_voice \?\?\s*\n\s*analysis\?\.raw_summary\?\.brandVoice \?\?/);
+});
+
+test("Brand Voice tone chips expose pressed state to assistive tech", async () => {
+  const source = readFileSync(
+    join(process.cwd(), "components/dashboard/brand-voice-page.tsx"),
+    "utf8",
+  );
+  expect(source).toContain("aria-pressed={selectedTones.includes(option)}");
+});

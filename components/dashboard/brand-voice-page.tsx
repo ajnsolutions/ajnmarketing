@@ -13,13 +13,11 @@ import { matchScoreLabel } from "@/lib/brand-voice/matchScoreLabel";
 function SectionCard({
   title,
   subtitle,
-  action,
   children,
   className = "",
 }: {
   title: string;
   subtitle?: string;
-  action?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -34,14 +32,6 @@ function SectionCard({
           </h2>
           {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
         </div>
-        {action && (
-          <button
-            type="button"
-            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
-          >
-            {action}
-          </button>
-        )}
       </div>
       <div className="px-5 py-4 sm:px-6 sm:py-5">{children}</div>
     </section>
@@ -147,6 +137,14 @@ export function BrandVoicePage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [analysis, setAnalysis] = useState<WebsiteAnalysis | null>(null);
   const [selectedTones, setSelectedTones] = useState<string[]>(["More Friendly"]);
+  // [Review fix] business_profiles.brand_voice_tone is also a plain freeform text
+  // field editable via Settings (lib/business-profile.ts's settingsFormToProfileRow)
+  // and is read by content-generation prompts, AI review replies, AI Marketing
+  // Profile generation, and the setup-readiness calculator. Only include it in the
+  // save payload when the customer has actually touched a tone chip this session —
+  // otherwise a customer who opens this page only to save a note would silently
+  // overwrite a richer, real tone description with the default checkbox state.
+  const [tonesDirty, setTonesDirty] = useState(false);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -208,11 +206,14 @@ export function BrandVoicePage() {
     "complicated jargon",
     "aggressive sales language",
   ]);
-  const exampleParagraph =
-    analysis?.brand_voice ??
-    analysis?.raw_summary?.brandVoice ??
-    profile?.voice_notes?.trim() ??
-    "We are a local team focused on honest service, fast response, and building long-term trust in our community.";
+  // [Review fix] markWebsiteAnalysisFailed always writes raw_summary.brandVoice as
+  // "" (never null) on a real failure — a `??` chain would stop at that empty
+  // string and render a blank quote. Use displayValue so an empty string falls
+  // through to the honest default like every other field on this page.
+  const exampleParagraph = displayValue(
+    analysis?.brand_voice || analysis?.raw_summary?.brandVoice || profile?.voice_notes,
+    "We are a local team focused on honest service, fast response, and building long-term trust in our community."
+  );
 
   const writingStyle = [
     { label: "Tone", value: tone },
@@ -272,6 +273,7 @@ export function BrandVoicePage() {
   ];
 
   function toggleTone(option: string) {
+    setTonesDirty(true);
     setSelectedTones((current) =>
       current.includes(option)
         ? current.filter((item) => item !== option)
@@ -288,11 +290,16 @@ export function BrandVoicePage() {
 
     // [RC-1 fix] Tone selection previously only lived in local component state —
     // "AJN will apply these to future content drafts" was not true. Persist the
-    // selection to the real brand_voice_tone field alongside notes.
+    // selection to the real brand_voice_tone field alongside notes — but only when
+    // the customer actually changed it this session (see tonesDirty above), so a
+    // save triggered only to update notes never overwrites an existing, richer
+    // tone description with the default checkbox state.
     void upsertBusinessProfile({
       ...profile,
       voice_notes: notes || null,
-      brand_voice_tone: selectedTones.length > 0 ? selectedTones.join(", ") : null,
+      ...(tonesDirty
+        ? { brand_voice_tone: selectedTones.length > 0 ? selectedTones.join(", ") : null }
+        : {}),
     }).then(({ error }) => {
       if (!error) {
         setNotesSaved(true);
@@ -332,7 +339,11 @@ export function BrandVoicePage() {
       <VoiceHero
         matchScore={analysis?.analysis_score ?? null}
         lastLearned={formatRelativeTime(analysis?.updated_at ?? analysis?.created_at)}
-        hasWebsiteAnalysis={Boolean(analysis)}
+        // [Review fix] A website_analyses row can exist while still pending/running/
+        // failed (analysis_score stays null until analysis_status === "completed") —
+        // claiming "Website" as an analyzed source in those states would contradict
+        // the score badge showing "Not yet analyzed" right next to it.
+        hasWebsiteAnalysis={analysis?.analysis_status === "completed"}
       />
 
       <SectionCard title="Brand Personality" subtitle="Core traits AJN AI uses when writing for you">
@@ -423,6 +434,7 @@ export function BrandVoicePage() {
                 key={option}
                 type="button"
                 onClick={() => toggleTone(option)}
+                aria-pressed={selectedTones.includes(option)}
                 className={`rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
                   selectedTones.includes(option)
                     ? "bg-brand-600 text-white ring-brand-600"
