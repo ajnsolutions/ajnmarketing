@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { PublishingQueuePanel } from "@/components/dashboard/publishing-queue-panel";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import {
+  FULL_CUSTOMER_JOURNEY_STEPS,
+  NextStepHint,
+  OrientationNote,
+  PageHeader,
+  WorkflowTrail,
+} from "@/components/dashboard/ui/page-chrome";
+import { LIBRARY_ZONES } from "@/lib/customer-ux/workflowPresentation";
 import type { ContentApproval, ContentApprovalStats } from "@/lib/content-approval/types";
 import type { PublishingQueueItem, PublishingQueueStats } from "@/lib/publishing-queue/types";
 
@@ -119,32 +127,70 @@ export function ContentPage({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-            Your Head of Marketing
-          </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            Library
-          </h1>
-          <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Everything we&apos;ve created together — content, posts, and assets ready for review or
-            already on their way out.
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <Link
-            href="/dashboard/content/generator"
-            className="hom-focusable motion-safe-lift inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
-          >
-            Create something new
-          </Link>
-          <Link
-            href="/dashboard/approvals"
-            className="hom-focusable text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
-          >
-            Review This Week
-          </Link>
+          <PageHeader
+            eyebrow="Library"
+            title="Your content home"
+            description="Where drafts, reviews, scheduled work, and published history live — so you always know what’s in progress."
+            actions={
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <Link
+                  href="/dashboard/content/generator"
+                  className="hom-focusable motion-safe-lift inline-flex min-h-11 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
+                >
+                  Create something new
+                </Link>
+                <Link
+                  href="/dashboard/approvals"
+                  className="hom-focusable text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
+                >
+                  Review This Week
+                </Link>
+              </div>
+            }
+          />
+          <OrientationNote
+            whyItMatters="Library is your map of marketing work — not a dumping ground of files."
+            whatHappensNext="Use the zones below to jump to Approvals, Publishing, or Results without guessing."
+          />
+          <nav aria-label="Library breadcrumb" className="mt-3 text-sm text-text-muted">
+            <ol className="flex flex-wrap items-center gap-2">
+              <li>
+                <Link href="/dashboard" className="hom-focusable font-medium text-brand-600">
+                  Head of Marketing
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li className="font-semibold text-navy-900" aria-current="page">
+                Library
+              </li>
+            </ol>
+          </nav>
         </div>
       </div>
+
+      <section
+        aria-label="Where content lives"
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
+      >
+        <h2 className="text-base font-bold text-navy-900">Where things live</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Generated drafts, pending reviews, publishing, published work, and history — each has a
+          clear home.
+        </p>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {LIBRARY_ZONES.map((zone) => (
+            <li key={zone.id}>
+              <Link
+                href={zone.href}
+                className="hom-focusable block min-h-11 rounded-xl border border-slate-100 bg-[#F8FAFC] p-4 ring-1 ring-slate-200/60 transition-colors hover:border-brand-200"
+              >
+                <p className="text-sm font-semibold text-navy-900">{zone.label}</p>
+                <p className="mt-1 text-xs leading-5 text-text-muted">{zone.description}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
@@ -159,9 +205,9 @@ export function ContentPage({
           }
         />
         <KpiCard
-          label="Ready to Publish"
+          label="Approved · Ready"
           value={String(publishingStats.ready)}
-          helper="Approved content"
+          helper="Ready to publish"
           trend="neutral"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -170,9 +216,9 @@ export function ContentPage({
           }
         />
         <KpiCard
-          label="Scheduled"
+          label="Waiting · Scheduled"
           value={String(publishingStats.scheduled)}
-          helper="Preparing to go live"
+          helper="No action needed"
           trend="up"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -183,7 +229,7 @@ export function ContentPage({
         <KpiCard
           label="Published"
           value={String(publishingStats.published)}
-          helper="Completed posts"
+          helper="Completed marketing"
           trend="up"
           icon={
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -299,6 +345,37 @@ export function ContentPage({
           </ol>
         )}
       </SectionCard>
+
+      <NextStepHint
+        finished="You’re oriented in Library — drafts, reviews, publishing, and history."
+        next={
+          approvalStats.pending > 0
+            ? "Review what needs your opinion this week."
+            : publishingStats.ready > 0
+              ? "Send approved work live from Publishing."
+              : "Create something new, or check Results for what’s improving."
+        }
+        href={
+          approvalStats.pending > 0
+            ? "/dashboard/approvals"
+            : publishingStats.ready > 0
+              ? "/dashboard/publishing"
+              : "/dashboard/results"
+        }
+        ctaLabel={
+          approvalStats.pending > 0
+            ? "Open Approvals"
+            : publishingStats.ready > 0
+              ? "Open Publishing"
+              : "See Results"
+        }
+      />
+      <WorkflowTrail
+        ariaLabel="Full customer journey"
+        steps={FULL_CUSTOMER_JOURNEY_STEPS.map((step) =>
+          step.href === "/dashboard/library" ? { ...step, current: true } : step,
+        )}
+      />
     </div>
   );
 }

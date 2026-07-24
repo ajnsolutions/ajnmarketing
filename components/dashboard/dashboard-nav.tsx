@@ -150,6 +150,16 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Marketing profile",
+    href: "/dashboard/ai-profile",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 20a8 8 0 0 1 16 0" />
+      </svg>
+    ),
+  },
+  {
     label: "Website analysis",
     href: "/dashboard/website-analysis",
     icon: (

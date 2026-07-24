@@ -7,6 +7,7 @@ import type { MarketingPlanPageData } from "@/lib/marketing-planner/types";
 import { MarketingPlanRefreshButton } from "@/components/dashboard/marketing-plan-actions";
 import { MarketingPlanContent } from "@/components/dashboard/marketing-plan-content";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import { OrientationNote, PageHeader } from "@/components/dashboard/ui/page-chrome";
 
 function SectionCard({
   title,
@@ -64,15 +65,17 @@ export function MarketingPlanPage({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            Marketing Plan
-          </h1>
-          <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            AI-generated monthly strategy built from your AI Marketing Profile, website analysis,
-            brand voice, and business goals. Turn recommendations into approval-ready content.
-          </p>
+          <PageHeader
+            eyebrow="Marketing foundation"
+            title="This month's plan"
+            description="Your monthly themes and focus, built from your marketing profile, website understanding, brand voice, and goals."
+            actions={<MarketingPlanRefreshButton />}
+          />
+          <OrientationNote
+            whyItMatters="The plan gives Head of Marketing a concrete month to work from."
+            whatHappensNext="Use recommendations and This Week to turn plan themes into drafts you approve."
+          />
         </div>
-        <MarketingPlanRefreshButton />
       </div>
 
       <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#081426] to-[#0B1426] p-6 shadow-lg shadow-slate-300/30 ring-1 ring-slate-900/[0.04] sm:p-8">
