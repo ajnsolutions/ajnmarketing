@@ -19,8 +19,11 @@ import { DashboardLoadingSkeleton } from "@/components/dashboard/ui/dashboard-st
 import {
   CONTENT_WORKFLOW_STEPS,
   OrientationNote,
+  ProcessingNotice,
+  RecoveryNotice,
   WorkflowTrail,
 } from "@/components/dashboard/ui/page-chrome";
+import { recoveryGenerationInterrupted } from "@/lib/customer-ux/trustPresentation";
 import { formatAnalysisStatus } from "@/lib/website-analysis/persistence";
 import { formatProfileStatus } from "@/lib/ai-marketing-profile/persistence";
 import type { ContentApproval } from "@/lib/content-approval/types";
@@ -232,12 +235,17 @@ export function ContentGeneratorPage() {
     if (error || !result?.variations?.length) {
       setVariations([]);
       setGenerationError(
-        error ?? "We couldn't generate content right now. Please try again in a moment."
+        error ??
+          "Generation was interrupted. Your inputs are still here — try again in a moment. Drafts already sent to Approvals stay safe.",
       );
       return;
     }
 
     setVariations(result.variations);
+    setApprovalToast(
+      `${result.variations.length} draft${result.variations.length === 1 ? "" : "s"} ready — pick one and send it to Approvals. Nothing publishes until you approve.`,
+    );
+    window.setTimeout(() => setApprovalToast(null), 6000);
   }
 
   async function handleSendToApproval(variationIndex: number) {
@@ -259,7 +267,9 @@ export function ContentGeneratorPage() {
     if (error) {
       setApprovalToast(error);
     } else {
-      setApprovalToast("Content sent for approval.");
+      setApprovalToast(
+        "Sent for your review — find it in Approvals (This Week). Approve when ready; publishing stays a separate step.",
+      );
       const { approvals } = await fetchContentApprovals();
       setHistoryRows(
         approvals
@@ -268,7 +278,7 @@ export function ContentGeneratorPage() {
       );
     }
 
-    window.setTimeout(() => setApprovalToast(null), 3000);
+    window.setTimeout(() => setApprovalToast(null), 6000);
   }
 
   return (
@@ -309,24 +319,36 @@ export function ContentGeneratorPage() {
             disabled={generating}
             className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {generating ? "Generating..." : "Generate Content"}
+            {generating ? "Generating drafts…" : "Generate Content"}
           </button>
         </div>
       </div>
 
+      {generating ? (
+        <ProcessingNotice
+          label="Generating drafts from your profile and brand voice…"
+          hint="Usually under a minute. You can stay on this page — I’m not finished until drafts appear."
+        />
+      ) : null}
+
       {approvalToast && (
-        <p className="rounded-xl border border-emerald-200 bg-growth-50 px-4 py-3 text-sm font-medium text-growth-600">
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-emerald-200 bg-growth-50 px-4 py-3 text-sm font-medium text-growth-600"
+        >
           {approvalToast}
         </p>
       )}
 
       {generationError && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-          {generationError}
-        </p>
+        <RecoveryNotice {...recoveryGenerationInterrupted()} />
       )}
 
-      <SectionCard title="Content Type" subtitle="Choose what you want AJN AI to create">
+      <SectionCard
+        title="Content Type"
+        subtitle="Choose what to create — drafts use your profile, website understanding, and brand voice (not raw prompts)"
+      >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {CONTENT_TYPE_OPTIONS.map((type) => (
             <button

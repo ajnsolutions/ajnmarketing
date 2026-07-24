@@ -7,31 +7,13 @@ import type { MarketingPlanPageData } from "@/lib/marketing-planner/types";
 import { MarketingPlanRefreshButton } from "@/components/dashboard/marketing-plan-actions";
 import { MarketingPlanContent } from "@/components/dashboard/marketing-plan-content";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
-import { OrientationNote, PageHeader } from "@/components/dashboard/ui/page-chrome";
-
-function SectionCard({
-  title,
-  subtitle,
-  children,
-  className = "",
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] ${className}`}
-    >
-      <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
-        <h2 className="text-base font-bold tracking-tight text-navy-900 sm:text-lg">{title}</h2>
-        {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
-      </div>
-      <div className="px-5 py-4 sm:px-6 sm:py-5">{children}</div>
-    </section>
-  );
-}
+import {
+  LastUpdatedIndicator,
+  OrientationNote,
+  PageHeader,
+  ProcessingNotice,
+  RecoveryNotice,
+} from "@/components/dashboard/ui/page-chrome";
 
 function StatusBadge({ status }: { status: string }) {
   const styles =
@@ -96,31 +78,50 @@ export function MarketingPlanPage({
       </section>
 
       {plan?.status === "generating" && (
-        <p className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700">
-          Your marketing plan is generating. Refresh this page in a moment if it does not update
-          automatically.
-        </p>
+        <ProcessingNotice
+          label="Your marketing plan is generating…"
+          hint="This can take a short while. Refresh if it doesn’t update — your previous plan stays available if you had one."
+        />
       )}
 
       {plan?.status === "failed" && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-          The last plan generation failed. Click Refresh Plan to try again.
-        </p>
+        <RecoveryNotice
+          title="Plan generation didn’t finish"
+          whatHappened="I couldn’t complete the latest marketing plan."
+          workSafe="Any earlier plan you already had remains available."
+          whatYouCanDo="Click Refresh Plan to try again when you’re ready."
+          whatYouCanIgnore="Approvals, publishing, and Head of Marketing still work."
+        />
       )}
 
       {!plan && (
         <DashboardEmptyState
+          kind="no_data_yet"
           title="No marketing plan yet"
           description={`Create your first Marketing Plan to see recommendations for ${monthName} ${currentYear}.`}
         />
       )}
 
-      {planJson && activePlan && (
-        <MarketingPlanContent
-          planJson={planJson}
-          currentMonth={currentMonth}
-          currentYear={currentYear}
-        />
+      {planJson && activePlan && plan?.status !== "generating" && plan?.status !== "failed" && (
+        <>
+          <div
+            role="status"
+            className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 ring-1 ring-emerald-100 sm:p-5"
+          >
+            <p className="text-sm font-semibold text-navy-900">Marketing plan ready</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              What changed: monthly themes and focus are set. Where to find it: this page and Head of
+              Marketing. What next: turn themes into drafts via recommendations — you still approve
+              before publishing.
+            </p>
+            <LastUpdatedIndicator isoDate={plan?.updated_at} prefix="Last updated" />
+          </div>
+          <MarketingPlanContent
+            planJson={planJson}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+          />
+        </>
       )}
     </div>
   );

@@ -121,6 +121,21 @@ export type HeadOfMarketingBriefing = {
    */
   whyPlanChanged: WhyPlanChangedPreview | null;
   /**
+   * Phase 4C — presentation-only confidence facts already computed for this briefing.
+   * No new engines or fetches; mirrors WeeklyBriefingInput counts for trust UI.
+   */
+  confidence: {
+    pendingApprovals: number;
+    publishFailures: number;
+    openRecommendations: number;
+    publishingReadyOrScheduled: number;
+    weeklyPublishedPosts: number;
+    weeklyNewReviews: number;
+    gbpConnected: boolean;
+    hasMarketingPlan: boolean;
+    profileCreatedAt: string | null;
+  };
+  /**
    * Internal only — the already-computed MarketingDirectorDecision this briefing's
    * primaryAction/lead were derived from (see weeklyBriefing.ts). Exists so the HoM
    * service can record a Decision Intelligence snapshot from a decision that was already

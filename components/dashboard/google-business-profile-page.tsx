@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { GoogleBusinessReviewCard } from "@/components/dashboard/google-business-review-card";
 import { GoogleBusinessSyncButton } from "@/components/dashboard/google-business-sync-button";
-import { OrientationNote, PageHeader } from "@/components/dashboard/ui/page-chrome";
+import {
+  OrientationNote,
+  PageHeader,
+  RecoveryNotice,
+  TrustSignalList,
+} from "@/components/dashboard/ui/page-chrome";
+import {
+  buildTrustSignals,
+  recoveryGoogleUnavailable,
+} from "@/lib/customer-ux/trustPresentation";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import { formatGoogleSyncDate } from "@/lib/google-business/persistence";
 import type { GoogleBusinessDashboardData, GoogleBusinessPost } from "@/lib/google-business/types";
@@ -152,8 +161,9 @@ export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashbo
           title="Google Business Profile"
           description="Optional connection for local posts, reviews, and performance insights."
         />
+        <RecoveryNotice {...recoveryGoogleUnavailable()} />
         <DashboardEmptyState
-          kind="not_configured"
+          kind="source_unavailable"
           title="Google connection is temporarily unavailable"
           description="You can keep using Head of Marketing and finish other setup. Contact support if you need Google features enabled for your workspace."
           actionLabel="Open connection help"
@@ -208,6 +218,15 @@ export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashbo
           <OrientationNote
             whyItMatters="This is your local marketing hub on Google."
             whatHappensNext="Sync when data looks stale. Reconnect if access expires."
+          />
+          <TrustSignalList
+            signals={buildTrustSignals([
+              { label: "Last synced", isoDate: data.lastSyncedAt },
+              {
+                label: "Last sync run",
+                isoDate: data.latestSync?.completed_at ?? data.latestSync?.started_at ?? null,
+              },
+            ])}
           />
         </div>
         <div className="flex flex-wrap gap-3">

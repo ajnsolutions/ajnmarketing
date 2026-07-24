@@ -317,3 +317,206 @@ export function NextStepHint({
     </aside>
   );
 }
+
+/** Success state — what changed, where to find it, what next. */
+export function SuccessNotice({
+  title,
+  whatChanged,
+  whereToFind,
+  whatNext,
+  href,
+  ctaLabel,
+}: {
+  title: string;
+  whatChanged: string;
+  whereToFind: string;
+  whatNext: string;
+  href?: string;
+  ctaLabel?: string;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 ring-1 ring-emerald-100 sm:p-5"
+    >
+      <p className="text-sm font-semibold text-navy-900">{title}</p>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+        <li>
+          <span className="font-semibold text-navy-900">What changed: </span>
+          {whatChanged}
+        </li>
+        <li>
+          <span className="font-semibold text-navy-900">Where to find it: </span>
+          {whereToFind}
+        </li>
+        <li>
+          <span className="font-semibold text-navy-900">What to do next: </span>
+          {whatNext}
+        </li>
+      </ul>
+      {href && ctaLabel ? (
+        <Link
+          href={href}
+          className="hom-focusable mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:text-brand-700"
+        >
+          {ctaLabel} →
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+/** Failure recovery — calm, work-preserving, no engineering internals. */
+export function RecoveryNotice({
+  title,
+  whatHappened,
+  workSafe,
+  whatYouCanDo,
+  whatYouCanIgnore,
+  href,
+  ctaLabel,
+  onRetry,
+}: {
+  title: string;
+  whatHappened: string;
+  workSafe: string;
+  whatYouCanDo: string;
+  whatYouCanIgnore: string;
+  href?: string;
+  ctaLabel?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 ring-1 ring-amber-100 sm:p-5"
+    >
+      <p className="text-sm font-semibold text-navy-900">{title}</p>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+        <li>
+          <span className="font-semibold text-navy-900">What happened: </span>
+          {whatHappened}
+        </li>
+        <li>
+          <span className="font-semibold text-navy-900">Is your work safe? </span>
+          {workSafe}
+        </li>
+        <li>
+          <span className="font-semibold text-navy-900">What you can do: </span>
+          {whatYouCanDo}
+        </li>
+        <li>
+          <span className="font-semibold text-navy-900">What you can ignore: </span>
+          {whatYouCanIgnore}
+        </li>
+      </ul>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="hom-focusable inline-flex min-h-11 items-center rounded-full bg-[#081426] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Try again
+          </button>
+        ) : null}
+        {href && ctaLabel ? (
+          <Link
+            href={href}
+            className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900"
+          >
+            {ctaLabel}
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** Plain-language awareness chip (waiting / processing / caught up). */
+export function AwarenessChip({
+  label,
+  detail,
+  tone = "neutral",
+}: {
+  label: string;
+  detail?: string;
+  tone?: "neutral" | "success" | "warning" | "info";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "bg-growth-50 text-growth-700 ring-emerald-100"
+      : tone === "warning"
+        ? "bg-amber-50 text-amber-800 ring-amber-100"
+        : tone === "info"
+          ? "bg-brand-50 text-brand-700 ring-brand-100"
+          : "bg-slate-100 text-slate-700 ring-slate-200";
+
+  return (
+    <span
+      className={`inline-flex min-h-11 flex-col justify-center rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${toneClass}`}
+      title={detail}
+    >
+      <span>{label}</span>
+      {detail ? <span className="sr-only">{detail}</span> : null}
+    </span>
+  );
+}
+
+/** Real timestamps only — omit when data is missing. */
+export function TrustSignalList({
+  signals,
+}: {
+  signals: Array<{ label: string; isoDate: string }>;
+}) {
+  if (signals.length === 0) return null;
+  return (
+    <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-text-muted" aria-label="Trust signals">
+      {signals.map((signal) => {
+        const formatted = new Date(signal.isoDate).toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+        return (
+          <li key={`${signal.label}-${signal.isoDate}`}>
+            <span className="font-semibold text-navy-900">{signal.label}: </span>
+            {formatted}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Calm milestone celebration — not a distracting confetti moment. */
+export function MilestoneNotice({
+  title,
+  detail,
+  href,
+  ctaLabel,
+}: {
+  title: string;
+  detail: string;
+  href?: string;
+  ctaLabel?: string;
+}) {
+  return (
+    <div
+      role="status"
+      className="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 ring-1 ring-brand-100 sm:p-5"
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">Milestone</p>
+      <p className="mt-2 text-sm font-semibold text-navy-900">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-text-muted">{detail}</p>
+      {href && ctaLabel ? (
+        <Link
+          href={href}
+          className="hom-focusable mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:text-brand-700"
+        >
+          {ctaLabel} →
+        </Link>
+      ) : null}
+    </div>
+  );
+}
