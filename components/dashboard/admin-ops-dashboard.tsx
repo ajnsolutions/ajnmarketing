@@ -7,6 +7,7 @@ import type { AssistedPilotDashboardData } from "@/lib/assisted-pilot/types";
 import type { ProductionReadinessSummary } from "@/lib/production-readiness/types";
 import type { TenantHealthPage } from "@/lib/ops-dashboard/tenantHealth";
 import type { StuckJobSummary } from "@/lib/ops-dashboard/jobLifecycle";
+import Link from "next/link";
 import { AssistedPilotPanel } from "@/components/dashboard/assisted-pilot-panel";
 import { ProductionReadinessPanel } from "@/components/dashboard/production-readiness-panel";
 import { TenantOperationalHealthPanel } from "@/components/dashboard/tenant-operational-health-panel";
@@ -65,7 +66,71 @@ export function AdminOpsDashboard({
           gates. This surface is admin-allowlist only and does not activate schedules, auto-approve,
           or auto-publish.
         </p>
+        <p className="mt-3">
+          <Link
+            href="/dashboard/admin/customer-success"
+            className="hom-focusable inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Open Customer Success Dashboard →
+          </Link>
+        </p>
       </div>
+
+      <section
+        className="rounded-2xl border border-slate-200/80 bg-[#F8FAFC] p-5 ring-1 ring-slate-200/60 sm:p-6"
+        aria-label="System readiness"
+      >
+        <h2 className="text-base font-bold text-navy-900">System readiness</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Current deployment signals from existing ops/readiness probes — schedules remain gated.
+        </p>
+        <ul className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+          <li>
+            Deployment / overall health: <strong>{health.overall}</strong>
+          </li>
+          <li>
+            Cron gate:{" "}
+            <strong>{summary?.scheduleGateOpen ? "OPEN" : "CLOSED"}</strong>{" "}
+            (ATTACH_DECLARATIVE_PRODUCTION_CRONS)
+          </li>
+          <li>
+            Publishing health (failed):{" "}
+            <strong>
+              {summary?.sections.find((s) => s.id === "publishing_failures")?.counts.failed ?? 0}
+            </strong>
+          </li>
+          <li>
+            Google integrations / OAuth issues:{" "}
+            <strong>
+              {summary?.sections.find((s) => s.id === "oauth_health")?.counts.failed ?? 0}
+            </strong>
+          </li>
+          <li>
+            Recent failures (publishing + retry queue):{" "}
+            <strong>
+              {(summary?.sections.find((s) => s.id === "publishing_failures")?.counts.failed ?? 0) +
+                (summary?.sections.find((s) => s.id === "retry_queue")?.counts.failed ?? 0)}
+            </strong>
+          </li>
+          <li>
+            Recent recoveries (publishing completed):{" "}
+            <strong>
+              {summary?.sections.find((s) => s.id === "publishing_queue")?.counts.completed ?? 0}
+            </strong>
+          </li>
+          <li>
+            Customers needing attention:{" "}
+            <strong>
+              {tenantHealth?.tenants.filter(
+                (t) => t.overallState === "warning" || t.overallState === "blocked",
+              ).length ?? "—"}
+            </strong>
+          </li>
+          <li>
+            Stuck jobs / retries available: <strong>{stuckJobs?.length ?? 0}</strong>
+          </li>
+        </ul>
+      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03]">
