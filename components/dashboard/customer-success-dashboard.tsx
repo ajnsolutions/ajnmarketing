@@ -302,6 +302,12 @@ export function CustomerSuccessDashboard({ data }: { data: CustomerSuccessDashbo
           >
             ← Operations dashboard
           </Link>
+          <Link
+            href="/dashboard/admin/pilot-validation"
+            className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Pilot Validation →
+          </Link>
         </div>
       </header>
 

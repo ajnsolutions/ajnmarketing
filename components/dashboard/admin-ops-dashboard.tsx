@@ -66,12 +66,18 @@ export function AdminOpsDashboard({
           gates. This surface is admin-allowlist only and does not activate schedules, auto-approve,
           or auto-publish.
         </p>
-        <p className="mt-3">
+        <p className="mt-3 flex flex-wrap gap-4">
           <Link
             href="/dashboard/admin/customer-success"
             className="hom-focusable inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:text-brand-700"
           >
             Open Customer Success Dashboard →
+          </Link>
+          <Link
+            href="/dashboard/admin/pilot-validation"
+            className="hom-focusable inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Open Pilot Validation →
           </Link>
         </p>
       </div>

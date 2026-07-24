@@ -14,6 +14,7 @@ Related docs: [`ASSISTED_PILOT.md`](./ASSISTED_PILOT.md), [`RUNBOOKS.md`](./RUNB
 |---|---|---|
 | Operations | `/dashboard/admin/ops` | Health, cron gate, queues, stuck jobs, production readiness, assisted pilot console |
 | Customer Success | `/dashboard/admin/customer-success` | Per-customer checklist, timeline, attention center, guided recovery, pilot feedback |
+| Pilot Validation | `/dashboard/admin/pilot-validation` | Phase 6 go-live readiness audit, journey checklist, readiness report (see [`PILOT_VALIDATION_GUIDE.md`](./PILOT_VALIDATION_GUIDE.md)) |
 
 Access: signed-in users listed in `ADMIN_USER_IDS`.
 
