@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import {
   advancedDashboardNavItems,
   primaryDashboardNavItems,
+  type DashboardNavItem,
 } from "./dashboard-nav";
+import { ADVANCED_NAV_GROUPS } from "@/lib/customer-ux/navGroups";
 
 export function DashboardSidebar({
   mobileOpen,
@@ -20,6 +22,10 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const primaryItems = primaryDashboardNavItems;
   const showAdvanced = !focusedNav;
+
+  const byHref = new Map(advancedDashboardNavItems.map((item) => [item.href, item]));
+  const groupedHrefs = new Set(ADVANCED_NAV_GROUPS.flatMap((group) => group.hrefs));
+  const ungrouped = advancedDashboardNavItems.filter((item) => !groupedHrefs.has(item.href));
 
   const sidebarLogo = (
     <Link
@@ -39,7 +45,7 @@ export function DashboardSidebar({
     </Link>
   );
 
-  function renderLink(item: { href: string; label: string; icon: React.ReactNode }) {
+  function renderLink(item: DashboardNavItem) {
     const active =
       item.href === "/dashboard"
         ? pathname === "/dashboard"
@@ -50,13 +56,15 @@ export function DashboardSidebar({
         key={item.href}
         href={item.href}
         onClick={onNavigate}
-        className={`hom-focusable flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
+        className={`hom-focusable flex min-h-11 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all ${
           active
             ? "bg-white text-[#081426] shadow-sm"
             : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
         }`}
       >
-        <span className={active ? "text-brand-600" : "text-slate-500"}>{item.icon}</span>
+        <span className={active ? "text-brand-600" : "text-slate-500"} aria-hidden>
+          {item.icon}
+        </span>
         {item.label}
       </Link>
     );
@@ -67,12 +75,14 @@ export function DashboardSidebar({
       <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {focusedNav ? "Getting started" : "Main"}
       </p>
-      <nav className="flex flex-col gap-2">{primaryItems.map(renderLink)}</nav>
+      <nav aria-label={focusedNav ? "Getting started" : "Main"} className="flex flex-col gap-1">
+        {primaryItems.map(renderLink)}
+      </nav>
 
       {showAdvanced && (
         <details className="group mt-6">
-          <summary className="hom-focusable cursor-pointer list-none rounded-md px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-2">
+          <summary className="hom-focusable cursor-pointer list-none rounded-md px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex min-h-11 items-center gap-2">
               More tools
               <span
                 className="text-slate-600 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
@@ -82,9 +92,33 @@ export function DashboardSidebar({
               </span>
             </span>
           </summary>
-          <nav className="hom-disclose-content mt-3 flex flex-col gap-2" aria-label="More tools">
-            {advancedDashboardNavItems.map(renderLink)}
-          </nav>
+          <div className="hom-disclose-content mt-3 space-y-5">
+            {ADVANCED_NAV_GROUPS.map((group) => {
+              const items = group.hrefs
+                .map((href) => byHref.get(href))
+                .filter((item): item is DashboardNavItem => Boolean(item));
+              if (items.length === 0) return null;
+              return (
+                <div key={group.id}>
+                  <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    {group.label}
+                  </p>
+                  <p className="mt-1 px-3 text-[11px] leading-4 text-slate-600">{group.description}</p>
+                  <nav
+                    aria-label={group.label}
+                    className="mt-2 flex flex-col gap-1"
+                  >
+                    {items.map(renderLink)}
+                  </nav>
+                </div>
+              );
+            })}
+            {ungrouped.length > 0 && (
+              <nav aria-label="Other tools" className="flex flex-col gap-1">
+                {ungrouped.map(renderLink)}
+              </nav>
+            )}
+          </div>
         </details>
       )}
 
@@ -117,7 +151,7 @@ export function DashboardSidebar({
             className="absolute inset-0 bg-[#081426]/60 backdrop-blur-sm"
             onClick={onNavigate}
           />
-          <aside className="relative flex h-full w-64 max-w-[85vw] flex-col bg-[#081426] shadow-2xl">
+          <aside className="relative flex h-full w-64 max-w-[85vw] flex-col overflow-y-auto bg-[#081426] shadow-2xl">
             <div className="border-b border-white/10 px-4 py-5">{sidebarLogo}</div>
             {nav}
           </aside>

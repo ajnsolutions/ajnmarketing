@@ -2,6 +2,13 @@ import Link from "next/link";
 import { AnalyticsRefreshButton } from "@/components/dashboard/analytics-actions";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import {
+  FULL_CUSTOMER_JOURNEY_STEPS,
+  NextStepHint,
+  OrientationNote,
+  PageHeader,
+  WorkflowTrail,
+} from "@/components/dashboard/ui/page-chrome";
+import {
   formatAnalyticsCategory,
   formatAnalyticsDate,
   formatAnalyticsPriority,
@@ -117,25 +124,34 @@ export function AnalyticsPage({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-            Your Head of Marketing
-          </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            {isResults ? "Results" : "What's improving"}
-          </h1>
-          <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Visibility, reviews, engagement, and progress over time — so you can see what&apos;s
-            working without digging through raw reports.
-          </p>
+          <PageHeader
+            eyebrow={isResults ? "Results" : "Progress"}
+            title={isResults ? "Your marketing wins" : "What's improving"}
+            description={
+              isResults
+                ? "Completed marketing, successful publications, and engagement progress — without the operational noise."
+                : "Visibility, reviews, engagement, and progress over time — so you can see what’s working without digging through raw reports."
+            }
+            actions={<AnalyticsRefreshButton />}
+          />
+          <OrientationNote
+            whyItMatters="This is where finished work becomes proof — wins, not pipeline events."
+            whatHappensNext="Use insights here to guide the next recommendation or draft."
+          />
+          <WorkflowTrail
+            ariaLabel="Full customer journey"
+            steps={FULL_CUSTOMER_JOURNEY_STEPS.map((step) =>
+              step.href === "/dashboard/results" ? { ...step, current: true } : step,
+            )}
+          />
         </div>
-        <AnalyticsRefreshButton />
       </div>
 
       <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#081426] to-[#0B1426] p-6 shadow-lg shadow-slate-300/30 ring-1 ring-slate-900/[0.04] sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
-              How things look
+              Customer progress
             </p>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
               {feedback.learningSummary}
@@ -148,7 +164,7 @@ export function AnalyticsPage({
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Opportunity
+              Opportunity ahead
             </p>
             <p className="mt-2 text-4xl font-bold text-white">{feedback.opportunityScore}</p>
           </div>
@@ -158,7 +174,7 @@ export function AnalyticsPage({
       {!hasData && (
         <DashboardEmptyState
           title="Results are warming up"
-          description="Once Google is connected and we've published together, I'll show what's improving here."
+          description="Once Google is connected and we've published together, I'll highlight wins and progress here."
           actionLabel="Open Google Profile"
           actionHref="/dashboard/google-business-profile"
         />
@@ -168,11 +184,11 @@ export function AnalyticsPage({
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              label="Google Views"
+              label="Visibility (views)"
               value={latestSnapshot ? latestSnapshot.google_views.toLocaleString() : "—"}
             />
             <MetricCard
-              label="Engagement Score"
+              label="Engagement progress"
               value={latestSnapshot ? `${Math.round(latestSnapshot.engagement_score)}` : "—"}
             />
             <MetricCard
@@ -184,7 +200,7 @@ export function AnalyticsPage({
               }
             />
             <MetricCard
-              label="Posts Published"
+              label="Successful publications"
               value={latestSnapshot ? latestSnapshot.posts_published.toLocaleString() : "—"}
             />
           </div>
@@ -259,10 +275,10 @@ export function AnalyticsPage({
           </SectionCard>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <SectionCard
-              title="What's working well"
-              subtitle="Published updates that are performing strongest."
-            >
+          <SectionCard
+            title="Wins worth celebrating"
+            subtitle="Completed marketing that is performing strongest."
+          >
               {feedback.contentWinners.length > 0 ? (
                 <div className="space-y-3">
                   {feedback.contentWinners.map((item) => (
@@ -274,8 +290,8 @@ export function AnalyticsPage({
                         <h3 className="font-semibold text-navy-900">
                           {String(item.metadata.title ?? "Published content")}
                         </h3>
-                        <span className="text-sm font-bold text-growth-500">
-                          {Math.round(item.performance_score)} score
+                        <span className="rounded-full bg-growth-50 px-2.5 py-1 text-[11px] font-semibold text-growth-600 ring-1 ring-emerald-100">
+                          Strong result
                         </span>
                       </div>
                       <p className="mt-2 text-sm text-slate-600">
@@ -371,6 +387,13 @@ export function AnalyticsPage({
               </div>
             </details>
           )}
+
+          <NextStepHint
+            finished="You’ve reviewed wins, completed publications, and engagement progress."
+            next="Choose a recommendation or create the next draft to keep momentum going."
+            href="/dashboard/marketing-recommendations"
+            ctaLabel="See recommendations"
+          />
 
           <p className="text-sm text-text-muted">
             Want Google reviews or profile details? Visit{" "}

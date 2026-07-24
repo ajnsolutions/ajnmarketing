@@ -16,6 +16,14 @@ import {
 import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
 import { fetchAiMarketingProfile } from "@/lib/ai-marketing-profile-client";
 import { DashboardLoadingSkeleton } from "@/components/dashboard/ui/dashboard-states";
+import {
+  CONTENT_WORKFLOW_STEPS,
+  OrientationNote,
+  ProcessingNotice,
+  RecoveryNotice,
+  WorkflowTrail,
+} from "@/components/dashboard/ui/page-chrome";
+import { recoveryGenerationInterrupted } from "@/lib/customer-ux/trustPresentation";
 import { formatAnalysisStatus } from "@/lib/website-analysis/persistence";
 import { formatProfileStatus } from "@/lib/ai-marketing-profile/persistence";
 import type { ContentApproval } from "@/lib/content-approval/types";
@@ -227,12 +235,17 @@ export function ContentGeneratorPage() {
     if (error || !result?.variations?.length) {
       setVariations([]);
       setGenerationError(
-        error ?? "We couldn't generate content right now. Please try again in a moment."
+        error ??
+          "Generation was interrupted. Your inputs are still here — try again in a moment. Drafts already sent to Approvals stay safe.",
       );
       return;
     }
 
     setVariations(result.variations);
+    setApprovalToast(
+      `${result.variations.length} draft${result.variations.length === 1 ? "" : "s"} ready — pick one and send it to Approvals. Nothing publishes until you approve.`,
+    );
+    window.setTimeout(() => setApprovalToast(null), 6000);
   }
 
   async function handleSendToApproval(variationIndex: number) {
@@ -254,7 +267,9 @@ export function ContentGeneratorPage() {
     if (error) {
       setApprovalToast(error);
     } else {
-      setApprovalToast("Content sent for approval.");
+      setApprovalToast(
+        "Sent for your review — find it in Approvals (This Week). Approve when ready; publishing stays a separate step.",
+      );
       const { approvals } = await fetchContentApprovals();
       setHistoryRows(
         approvals
@@ -263,7 +278,7 @@ export function ContentGeneratorPage() {
       );
     }
 
-    window.setTimeout(() => setApprovalToast(null), 3000);
+    window.setTimeout(() => setApprovalToast(null), 6000);
   }
 
   return (
@@ -276,43 +291,64 @@ export function ContentGeneratorPage() {
         <div className="max-w-3xl">
           <Link
             href="/dashboard/content"
-            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+            className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
             ← Back to Content
           </Link>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            AI Content Generator
+            Content Generator
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Generate ready-to-review marketing content from your AI Marketing Profile, website
-            analysis, brand voice, and business profile.
+            Create ready-to-review drafts from your marketing profile, website understanding, and
+            brand voice. Generated content still needs your approval before publishing.
           </p>
+          <OrientationNote
+            whyItMatters="Drafts are step one of the content workflow — create here, approve next, publish last."
+            whatHappensNext="After generation, send a draft to This Week for your opinion."
+          />
+          <WorkflowTrail
+            steps={CONTENT_WORKFLOW_STEPS.map((step) =>
+              step.href === "/dashboard/content/generator" ? { ...step, current: true } : step,
+            )}
+          />
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => void handleGenerate()}
             disabled={generating}
-            className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+            className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {generating ? "Generating..." : "Generate Content"}
+            {generating ? "Generating drafts…" : "Generate Content"}
           </button>
         </div>
       </div>
 
+      {generating ? (
+        <ProcessingNotice
+          label="Generating drafts from your profile and brand voice…"
+          hint="Usually under a minute. You can stay on this page — I’m not finished until drafts appear."
+        />
+      ) : null}
+
       {approvalToast && (
-        <p className="rounded-xl border border-emerald-200 bg-growth-50 px-4 py-3 text-sm font-medium text-growth-600">
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-emerald-200 bg-growth-50 px-4 py-3 text-sm font-medium text-growth-600"
+        >
           {approvalToast}
         </p>
       )}
 
       {generationError && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-          {generationError}
-        </p>
+        <RecoveryNotice {...recoveryGenerationInterrupted()} />
       )}
 
-      <SectionCard title="Content Type" subtitle="Choose what you want AJN AI to create">
+      <SectionCard
+        title="Content Type"
+        subtitle="Choose what to create — drafts use your profile, website understanding, and brand voice (not raw prompts)"
+      >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {CONTENT_TYPE_OPTIONS.map((type) => (
             <button
