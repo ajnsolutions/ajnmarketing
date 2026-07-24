@@ -92,7 +92,7 @@ test("Customer Experience Polish ships hierarchy, honest experiments, and cron g
   expect(calendar).toContain("dialogRef");
 
   const vocab = readFileSync(join(process.cwd(), "lib/customer-ux/statusVocabulary.ts"), "utf8");
-  expect(vocab).toContain("Awaiting approval");
+  expect(vocab).toContain("Needs your opinion");
   expect(vocab).toContain("Early signal");
 
   const gate = readFileSync(join(process.cwd(), "lib/trigger/scheduleActivation.ts"), "utf8");

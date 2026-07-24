@@ -24,15 +24,16 @@ export function formatPublishingPlatform(platform: PublishingPlatform | null | u
 }
 
 export function formatPublishingStatus(status: PublishingQueueStatus | null | undefined): string {
+  // Customer-facing labels (Phase 4B). Internal queue statuses unchanged.
   switch (status) {
     case "ready":
-      return "Ready to Publish";
+      return "Approved · Ready";
     case "scheduled":
-      return "Scheduled";
+      return "Waiting · Scheduled";
     case "published":
       return "Published";
     case "failed":
-      return "Failed";
+      return "Failed · Retry available";
     default:
       return "Unknown";
   }

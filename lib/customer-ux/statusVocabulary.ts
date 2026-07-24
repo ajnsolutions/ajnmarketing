@@ -50,19 +50,41 @@ const EXPERIMENT_STATUS: Record<string, CustomerStatusPresentation> = {
 
 const PUBLISHING_STATUS: Record<string, CustomerStatusPresentation> = {
   draft: { label: "Draft", description: "Content is still a draft.", tone: "muted" },
-  pending: { label: "Awaiting approval", description: "Waiting for your approval.", tone: "warning" },
+  pending: { label: "Needs your opinion", description: "Waiting for your approval.", tone: "warning" },
   awaiting_approval: {
-    label: "Awaiting approval",
+    label: "Needs your opinion",
     description: "Waiting for your approval.",
     tone: "warning",
   },
   approved: { label: "Approved", description: "Approved and ready for publishing.", tone: "success" },
-  queued: { label: "Queued", description: "Queued for publishing.", tone: "info" },
-  scheduled: { label: "Scheduled", description: "Scheduled for a future publish time.", tone: "info" },
-  publishing: { label: "Publishing", description: "Publish is in progress.", tone: "info" },
+  ready: {
+    label: "Approved · Ready",
+    description: "Approved and ready to publish or schedule.",
+    tone: "success",
+  },
+  queued: { label: "Queued", description: "In line and waiting to start publishing.", tone: "info" },
+  scheduled: {
+    label: "Waiting · Scheduled",
+    description: "Waiting for its scheduled publish time.",
+    tone: "info",
+  },
+  publishing: { label: "Publishing", description: "Publish is in progress — please wait.", tone: "info" },
+  verified: {
+    label: "Published · Confirmed",
+    description: "Live and confirmed on the destination.",
+    tone: "success",
+  },
   published: { label: "Published", description: "Successfully published.", tone: "success" },
-  failed: { label: "Failed", description: "Publishing failed and may need a retry.", tone: "danger" },
-  retrying: { label: "Retrying", description: "A retry is in progress.", tone: "warning" },
+  failed: {
+    label: "Failed · Retry available",
+    description: "Publishing failed and may need a retry.",
+    tone: "danger",
+  },
+  retrying: {
+    label: "Retry available",
+    description: "A retry is available or in progress.",
+    tone: "warning",
+  },
   cancelled: { label: "Cancelled", description: "Publishing was cancelled.", tone: "muted" },
 };
 

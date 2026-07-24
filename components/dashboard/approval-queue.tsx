@@ -7,9 +7,11 @@ import {
   formatApprovalStatus,
 } from "@/lib/content-approval/persistence";
 import { patchContentApprovalRequest } from "@/lib/content-approval-client";
+import { approvalStatusGuide } from "@/lib/customer-ux/workflowPresentation";
 import { createPublishingQueueRequest } from "@/lib/publishing-queue-client";
 import type { ContentApproval, ContentApprovalStatus } from "@/lib/content-approval/types";
 import type { ClientRecommendationDecisionPackage } from "@/lib/recommendation-presentation/types";
+import { ProcessingNotice } from "@/components/dashboard/ui/page-chrome";
 
 const REJECTION_REASON_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "too_promotional", label: "Too promotional" },
@@ -192,13 +194,16 @@ function ApprovalCard({
             v{item.version}
           </span>
           {item.ai_score != null && (
-            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
-              AI Score: {item.ai_score}
+            <span
+              className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100"
+              title="A confidence signal for this draft — not a ranking score that changes order"
+            >
+              Confidence: {item.ai_score}/100
             </span>
           )}
           {item.marketing_recommendation_id && (
             <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-600 ring-1 ring-violet-100">
-              From Recommendation
+              From a recommendation
             </span>
           )}
         </div>
@@ -266,9 +271,15 @@ function ApprovalCard({
         )}
 
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-          <span>Created: {formatApprovalDate(item.created_at)}</span>
-          <span>Source: {item.source}</span>
+          <span>Waiting since: {formatApprovalDate(item.created_at)}</span>
+          {item.status === "pending" ? <span>Review when you can</span> : null}
         </div>
+
+        {item.status === "pending" && (
+          <p className="text-xs leading-5 text-text-muted" role="note">
+            {approvalStatusGuide(item.status).happening} {approvalStatusGuide(item.status).needAction}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {editing ? (
@@ -277,9 +288,9 @@ function ApprovalCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => void runAction("update")}
-                className="rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
               >
-                {busy === "update" ? "Saving..." : "Save Edit"}
+                {busy === "update" ? "Saving…" : "Save changes"}
               </button>
               <button
                 type="button"
@@ -288,20 +299,23 @@ function ApprovalCard({
                   setTitle(item.title);
                   setContent(item.content);
                 }}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
               >
                 Cancel
               </button>
             </>
           ) : rejecting ? (
             <>
+              <p className="w-full text-sm leading-6 text-slate-600" role="note">
+                Rejecting keeps this draft out of publishing. You can regenerate a new version later.
+              </p>
               <button
                 type="button"
                 disabled={!!busy}
                 onClick={() => void runAction("reject")}
-                className="rounded-full bg-rose-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full bg-rose-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-700 disabled:opacity-60"
               >
-                {busy === "reject" ? "Rejecting..." : "Confirm Reject"}
+                {busy === "reject" ? "Rejecting…" : "Confirm reject"}
               </button>
               <button
                 type="button"
@@ -309,9 +323,9 @@ function ApprovalCard({
                   setRejecting(false);
                   setRejectionComment("");
                 }}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
               >
-                Cancel
+                Keep reviewing
               </button>
             </>
           ) : (
@@ -320,15 +334,15 @@ function ApprovalCard({
                 type="button"
                 disabled={!!busy || item.status !== "pending"}
                 onClick={() => void runAction("approve")}
-                className="rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
               >
-                {busy === "approve" ? "Approving..." : "Approve"}
+                {busy === "approve" ? "Approving…" : "Approve"}
               </button>
               <button
                 type="button"
                 disabled={!!busy || item.status !== "pending"}
                 onClick={() => setRejecting(true)}
-                className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-60"
               >
                 Reject
               </button>
@@ -336,7 +350,7 @@ function ApprovalCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => setEditing(true)}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
               >
                 Edit
               </button>
@@ -344,18 +358,18 @@ function ApprovalCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => void runAction("regenerate")}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
               >
-                {busy === "regenerate" ? "Regenerating..." : "Regenerate"}
+                {busy === "regenerate" ? "Preparing a new draft…" : "Try a new version"}
               </button>
               {item.status === "approved" && (
                 <button
                   type="button"
                   disabled={!!busy}
                   onClick={() => void handleAddToQueue()}
-                  className="rounded-full border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
+                  className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
                 >
-                  {busy === "queue" ? "Adding..." : "Add to Publishing Queue"}
+                  {busy === "queue" ? "Adding…" : "Send to publishing"}
                 </button>
               )}
               {recommendationPackage && (
@@ -364,10 +378,10 @@ function ApprovalCard({
                   disabled={!!busy}
                   aria-label="Do more like this recommendation"
                   onClick={() => void runAction("more_like_this")}
-                  className="rounded-full border border-growth-200 bg-growth-50 px-3.5 py-2 text-sm font-semibold text-growth-600 transition-colors hover:bg-growth-100 disabled:opacity-60"
+                  className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-growth-200 bg-growth-50 px-3.5 py-2 text-sm font-semibold text-growth-600 transition-colors hover:bg-growth-100 disabled:opacity-60"
                 >
                   {busy === "more_like_this"
-                    ? "Saving..."
+                    ? "Saving…"
                     : feedbackSent
                       ? "Thanks — noted!"
                       : "Do more like this"}
@@ -376,6 +390,22 @@ function ApprovalCard({
             </>
           )}
         </div>
+        {busy && (
+          <ProcessingNotice
+            label={
+              busy === "approve"
+                ? "Saving your approval…"
+                : busy === "reject"
+                  ? "Saving your decision…"
+                  : busy === "regenerate"
+                    ? "Preparing a new draft…"
+                    : busy === "queue"
+                      ? "Sending to publishing…"
+                      : "Working on it…"
+            }
+            hint="This usually takes a moment. You can stay on this page."
+          />
+        )}
       </div>
     </article>
   );
@@ -394,6 +424,14 @@ export function ApprovalQueue({
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | ContentApprovalStatus>(initialFilter);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const filtersId = useId();
+
+  const pendingCount = useMemo(
+    () => initialApprovals.filter((item) => item.status === "pending").length,
+    [initialApprovals],
+  );
 
   const approvals = useMemo(() => {
     if (filter === "all") return initialApprovals;
@@ -406,38 +444,113 @@ export function ApprovalQueue({
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [focusApprovalId, filter, approvals]);
 
+  async function approveAllPending() {
+    const pending = initialApprovals.filter((item) => item.status === "pending");
+    if (pending.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Approve all ${pending.length} item${pending.length === 1 ? "" : "s"} that need your opinion? Nothing publishes until you send approved work to publishing.`,
+    );
+    if (!confirmed) return;
+
+    setBulkBusy(true);
+    setBulkMessage(`Approving ${pending.length} item${pending.length === 1 ? "" : "s"}…`);
+
+    let failed = 0;
+    for (const item of pending) {
+      const { error } = await patchContentApprovalRequest({
+        id: item.id,
+        action: "approve",
+        title: item.title,
+        content: item.content,
+      });
+      if (error) failed += 1;
+    }
+
+    setBulkBusy(false);
+    setBulkMessage(
+      failed > 0
+        ? `Finished with ${failed} issue${failed === 1 ? "" : "s"}. Refresh and review anything still pending.`
+        : "All set — approved items are ready for publishing when you are.",
+    );
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {(["all", "pending", "approved", "rejected", "published"] as const).map((value) => (
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2" role="group" aria-labelledby={filtersId}>
+          <span id={filtersId} className="sr-only">
+            Filter approval queue
+          </span>
+          {(["all", "pending", "approved", "rejected", "published"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              aria-pressed={filter === value}
+              className={`hom-focusable inline-flex min-h-11 items-center rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
+                filter === value
+                  ? "bg-brand-600 text-white ring-brand-600"
+                  : "border border-slate-200 bg-white text-navy-900 ring-slate-200 hover:border-brand-300 hover:text-brand-700"
+              }`}
+            >
+              {value === "all" ? "All" : formatApprovalStatus(value)}
+            </button>
+          ))}
           <button
-            key={value}
             type="button"
-            onClick={() => setFilter(value)}
-            className={`rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
-              filter === value
-                ? "bg-brand-600 text-white ring-brand-600"
-                : "border border-slate-200 bg-white text-navy-900 ring-slate-200 hover:border-brand-300 hover:text-brand-700"
-            }`}
+            onClick={() => router.refresh()}
+            className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
           >
-            {value === "all" ? "All" : formatApprovalStatus(value)}
+            Refresh
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => router.refresh()}
-          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-        >
-          Refresh Queue
-        </button>
+        </div>
+
+        {pendingCount > 0 ? (
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => void approveAllPending()}
+            className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
+          >
+            {bulkBusy ? "Approving…" : `Approve all needing review (${pendingCount})`}
+          </button>
+        ) : null}
       </div>
+
+      {bulkBusy || bulkMessage ? (
+        <ProcessingNotice
+          label={bulkMessage ?? "Working…"}
+          hint={bulkBusy ? "Please wait — approving one item at a time." : undefined}
+        />
+      ) : null}
 
       {approvals.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-10 text-center ring-1 ring-slate-200/60">
-          <p className="text-sm font-semibold text-navy-900">No approval items yet</p>
-          <p className="mt-2 text-sm text-text-muted">
-            Send content from the AI Content Generator to start your approval queue.
-          </p>
+          {filter === "pending" ? (
+            <>
+              <p className="text-sm font-semibold text-navy-900">You’re caught up</p>
+              <p className="mt-2 text-sm text-text-muted">
+                Nothing needs your opinion right now. New drafts will appear here before anything goes
+                live.
+              </p>
+            </>
+          ) : filter === "approved" || filter === "published" || filter === "rejected" ? (
+            <>
+              <p className="text-sm font-semibold text-navy-900">No items in this view yet</p>
+              <p className="mt-2 text-sm text-text-muted">
+                Switch to “Needs your opinion” or All to see your full history.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-navy-900">Nothing in Approvals yet</p>
+              <p className="mt-2 text-sm text-text-muted">
+                Create a draft and I’ll bring it here for a calm review before publishing.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

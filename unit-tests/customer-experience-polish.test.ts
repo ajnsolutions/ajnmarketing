@@ -24,7 +24,7 @@ test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false for Customer Experience 
 test("status vocabulary maps closed enums to customer labels (not raw snake_case)", () => {
   assert.equal(campaignStatusLabel("in_progress").label, "Active");
   assert.equal(experimentStatusLabel("proposed").label, "Proposed");
-  assert.equal(publishingStatusLabel("awaiting_approval").label, "Awaiting approval");
+  assert.equal(publishingStatusLabel("awaiting_approval").label, "Needs your opinion");
   assert.equal(recommendationStatusLabel("dismissed").label, "Dismissed");
   assert.equal(memoryKindLabel("temporary_override").label, "Temporary override");
   assert.equal(confidenceLabel("early").label, "Early signal");

@@ -7,9 +7,10 @@ import type {
 } from "@/lib/content-approval/types";
 
 export function formatApprovalStatus(status: ContentApprovalStatus | null | undefined): string {
+  // Customer-facing labels (Phase 4B). Internal statuses unchanged.
   switch (status) {
     case "pending":
-      return "Pending";
+      return "Needs your opinion";
     case "approved":
       return "Approved";
     case "rejected":

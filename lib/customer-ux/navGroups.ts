@@ -20,7 +20,7 @@ export const ADVANCED_NAV_GROUPS: readonly AdvancedNavGroup[] = [
   {
     id: "this_week",
     label: "This week",
-    description: "Work that may need your opinion",
+    description: "Review, publish, and act on what needs you",
     hrefs: [
       "/dashboard/approvals",
       "/dashboard/publishing",
@@ -31,7 +31,7 @@ export const ADVANCED_NAV_GROUPS: readonly AdvancedNavGroup[] = [
   {
     id: "foundation",
     label: "Marketing foundation",
-    description: "How I understand your business",
+    description: "Business setup and brand context",
     hrefs: [
       "/dashboard/setup",
       "/dashboard/brand-voice",
@@ -44,8 +44,8 @@ export const ADVANCED_NAV_GROUPS: readonly AdvancedNavGroup[] = [
   },
   {
     id: "insights",
-    label: "Insights",
-    description: "Context and plan history",
+    label: "Deeper insights",
+    description: "Optional detail when you want more context",
     hrefs: [
       "/dashboard/decision-intelligence",
       "/dashboard/strategic-marketing-calendar",
@@ -54,7 +54,7 @@ export const ADVANCED_NAV_GROUPS: readonly AdvancedNavGroup[] = [
   {
     id: "workspace",
     label: "Advanced workspace",
-    description: "Detailed views for power use",
+    description: "Power tools — keep folded away until you need them",
     hrefs: ["/dashboard/command-center"],
   },
 ] as const;

@@ -10,6 +10,7 @@ import {
   patchPublishingQueueRequest,
 } from "@/lib/publishing-queue-client";
 import { publishNowRequest, schedulePublishRequest } from "@/lib/publishing-client";
+import { publishingQueueStatusGuide } from "@/lib/customer-ux/workflowPresentation";
 import type {
   PublishingPlatform,
   PublishingQueueItem,
@@ -18,9 +19,10 @@ import type {
 } from "@/lib/publishing-queue/types";
 import { PUBLISHING_PLATFORMS } from "@/lib/publishing-queue/types";
 import { SchedulePostModal } from "@/components/dashboard/schedule-post-modal";
+import { ProcessingNotice } from "@/components/dashboard/ui/page-chrome";
 
 function StatusBadge({ status }: { status: PublishingQueueStatus }) {
-  const label = formatPublishingStatus(status);
+  const guide = publishingQueueStatusGuide(status);
   const styles = {
     ready: "bg-brand-50 text-brand-600 ring-brand-100",
     scheduled: "bg-amber-50 text-amber-700 ring-amber-100",
@@ -29,8 +31,11 @@ function StatusBadge({ status }: { status: PublishingQueueStatus }) {
   }[status];
 
   return (
-    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${styles}`}>
-      {label}
+    <span
+      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${styles}`}
+      title={`${guide.happening} ${guide.needAction}`}
+    >
+      {formatPublishingStatus(status)}
     </span>
   );
 }
@@ -93,6 +98,13 @@ function QueueItemCard({
             <p className="line-clamp-2 text-sm leading-7 text-slate-600">{item.content}</p>
           )}
 
+          <p className="text-xs leading-5 text-text-muted" role="note">
+            <span className="font-semibold text-navy-900">What’s happening: </span>
+            {publishingQueueStatusGuide(item.status).happening}{" "}
+            <span className="font-semibold text-navy-900">Do you need to act? </span>
+            {publishingQueueStatusGuide(item.status).needAction}
+          </p>
+
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
             <span>Scheduled: {formatPublishingDate(item.scheduled_for)}</span>
             {item.published_at && (
@@ -109,9 +121,13 @@ function QueueItemCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => void runAction("publish_now")}
-                className="rounded-full bg-[#081426] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0B1426] disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full bg-[#081426] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0B1426] disabled:opacity-60"
               >
-                {busy === "publish_now" ? "Publishing..." : "Publish Now"}
+                {busy === "publish_now"
+                  ? "Publishing…"
+                  : item.status === "failed"
+                    ? "Retry publish"
+                    : "Publish now"}
               </button>
             )}
             {(item.status === "ready" || item.status === "failed") && (
@@ -119,9 +135,9 @@ function QueueItemCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => setScheduleOpen(true)}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
               >
-                Schedule
+                Schedule for later
               </button>
             )}
             {item.status !== "published" && (
@@ -129,20 +145,32 @@ function QueueItemCard({
                 type="button"
                 disabled={!!busy}
                 onClick={() => void runAction("mark_published")}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
+                className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
               >
-                {busy === "mark_published" ? "Updating..." : "Mark Published"}
+                {busy === "mark_published" ? "Updating…" : "Mark as published"}
               </button>
             )}
             <button
               type="button"
               disabled={!!busy}
               onClick={() => void runAction("remove")}
-              className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-60"
+              className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-60"
             >
-              {busy === "remove" ? "Removing..." : "Remove"}
+              {busy === "remove" ? "Removing…" : "Remove"}
             </button>
           </div>
+          {busy ? (
+            <ProcessingNotice
+              label={
+                busy === "publish_now"
+                  ? "Publishing now…"
+                  : busy === "schedule"
+                    ? "Scheduling…"
+                    : "Updating…"
+              }
+              hint="This usually finishes in a few seconds. You can stay on this page."
+            />
+          ) : null}
         </div>
       </article>
 
@@ -240,10 +268,10 @@ export function PublishingQueuePanel({
       {!compact && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Ready to Publish", value: stats.ready },
-            { label: "Scheduled", value: stats.scheduled },
-            { label: "Published", value: stats.published },
-            { label: "Failed", value: stats.failed },
+            { label: "Approved · Ready", value: stats.ready, hint: "You can publish or schedule" },
+            { label: "Waiting · Scheduled", value: stats.scheduled, hint: "No action needed" },
+            { label: "Published", value: stats.published, hint: "Live successfully" },
+            { label: "Failed · Retry available", value: stats.failed, hint: "Needs a retry" },
           ].map((kpi) => (
             <article
               key={kpi.label}
@@ -251,6 +279,7 @@ export function PublishingQueuePanel({
             >
               <p className="text-sm font-medium text-text-muted">{kpi.label}</p>
               <p className="mt-2 text-3xl font-bold tracking-tight text-navy-900">{kpi.value}</p>
+              <p className="mt-1 text-xs text-text-muted">{kpi.hint}</p>
             </article>
           ))}
         </div>
@@ -309,13 +338,13 @@ export function PublishingQueuePanel({
       )}
 
       {filteredItems.length === 0 ? (
-        <EmptyState message="Nothing is preparing for publication yet. Approve This Week's items and I'll take it from there." />
+        <EmptyState message="Nothing is preparing for publication yet. Approve This Week’s items and I’ll take it from there." />
       ) : showSections ? (
         <div className="space-y-8">
-          {renderSection("Ready to Publish", grouped.ready)}
-          {renderSection("Scheduled Posts", grouped.scheduled)}
-          {renderSection("Published History", grouped.published)}
-          {renderSection("Failed Items", grouped.failed)}
+          {renderSection("Approved · Ready", grouped.ready)}
+          {renderSection("Waiting · Scheduled", grouped.scheduled)}
+          {renderSection("Published history", grouped.published)}
+          {renderSection("Failed · Retry available", grouped.failed)}
         </div>
       ) : (
         <div className={`grid gap-4 ${compact ? "" : "lg:grid-cols-2"}`}>

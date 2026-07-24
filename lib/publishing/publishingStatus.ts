@@ -4,21 +4,22 @@ import {
 } from "@/lib/publishing/publishingTypes";
 
 export function formatPublishingJobStatus(status: PublishingJobStatus | string): string {
+  // Customer-facing labels (Phase 4B). Internal enum values unchanged.
   switch (status) {
     case PublishingJobStatuses.QUEUED:
       return "Queued";
     case PublishingJobStatuses.SCHEDULED:
-      return "Scheduled";
+      return "Waiting";
     case PublishingJobStatuses.PUBLISHING:
       return "Publishing";
     case PublishingJobStatuses.PUBLISHED:
       return "Published";
     case PublishingJobStatuses.VERIFIED:
-      return "Verified";
+      return "Published · Confirmed";
     case PublishingJobStatuses.RETRYING:
-      return "Retrying";
+      return "Retry available";
     case PublishingJobStatuses.FAILED:
-      return "Failed";
+      return "Failed · Retry available";
     case PublishingJobStatuses.CANCELLED:
       return "Cancelled";
     default:
