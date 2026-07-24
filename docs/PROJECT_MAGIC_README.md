@@ -39,6 +39,7 @@ Implementation notes (post-blueprint):
 - PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md — Phase 3C: Production Operations and Pilot Hardening (readiness model, per-tenant operational health, stuck-job detection, admin retry, tiered health endpoints — composes existing ops/pilot/job systems; no second operations platform, no schedule attached)
 - RC1_AUTHENTICATED_PILOT_VALIDATION.md — RC-1: full authenticated customer-journey validation and fix cycle (found and fixed fabricated content on the Brand Voice page and a setup-step CTA/destination mismatch; no new capabilities, no architecture change)
 - PHASE4A_PILOT_EXPERIENCE_POLISH.md — Phase 4A: Pilot Experience & UX Polish (orientation notes, workflow trail, grouped nav, HoM noise reduction — presentation only; engines frozen)
+- PILOT_RUNBOOK.md — Phase 5: Assisted Pilot Readiness operator runbook (onboarding, daily/weekly loops, recovery, limitations, escalation, exit)
 - MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (Phases 1-4 consumption implemented; decision_links persistence still future)
 - MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 tables implemented; decision links remain a proposal)
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)

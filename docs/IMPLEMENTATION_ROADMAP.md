@@ -59,6 +59,7 @@
 - **Shipped (Customer Experience Polish — Phase 3A):** Presentation polish for pilot readiness — HoM information hierarchy, shared empty/loading/error/partial-data primitives, centralized status vocabulary, Decision Intelligence discoverability, grouped Ask prompts, honest experiment language, mobile/a11y touch-ups. No new strategy engines, mutations, providers, or schedules. See [`CUSTOMER_EXPERIENCE_POLISH.md`](./CUSTOMER_EXPERIENCE_POLISH.md).  
 - **Shipped (Guided Onboarding & Setup — Phase 3B):** Canonical `/dashboard/setup` checklist with derived progress, optional skip/ack preferences (migration 031), Command Center setup card, HoM readiness panel, business/goals forms, customer-safe Google/website states. Reuses Phase 3A primitives; does not duplicate assisted-pilot readiness or Marketing Director. See [`GUIDED_ONBOARDING_AND_SETUP.md`](./GUIDED_ONBOARDING_AND_SETUP.md).  
 - **Shipped (Pilot Experience & UX Polish — Phase 4A):** Post-RC-1 presentation polish — orientation notes, content workflow trail, grouped advanced nav, quieter HoM supporting detail, recommendation/approval/publish clarity. No engine or schedule changes. See [`PHASE4A_PILOT_EXPERIENCE_POLISH.md`](./PHASE4A_PILOT_EXPERIENCE_POLISH.md).  
+- **Shipped (Assisted Pilot Readiness — Phase 5):** Operator Customer Success Dashboard, guided checklist/timeline/attention/recovery, pilot feedback, Ops system-readiness strip, and [`PILOT_RUNBOOK.md`](./PILOT_RUNBOOK.md). Composes existing assisted-pilot + tenant-health + readiness signals; cron gate remains closed.  
 
 
 
