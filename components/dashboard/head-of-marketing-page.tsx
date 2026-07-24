@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AskHeadOfMarketingPanel } from "@/components/dashboard/ask-head-of-marketing";
 import { CampaignsSection } from "@/components/dashboard/campaigns-section";
+import { CustomerConfidencePanel } from "@/components/dashboard/customer-confidence";
 import { ExperimentsSection } from "@/components/dashboard/experiments-section";
 import { ExecutiveBriefSection } from "@/components/dashboard/executive-brief-section";
 import { HeadOfMarketingJournalSection } from "@/components/dashboard/head-of-marketing-journal";
@@ -13,6 +14,7 @@ import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 import { StatusBadge } from "@/components/dashboard/ui/status-badge";
 import type { CustomerStatusPresentation } from "@/lib/customer-ux/statusVocabulary";
+import { buildTrustSignals } from "@/lib/customer-ux/trustPresentation";
 
 function healthPresentation(briefing: HeadOfMarketingBriefing): CustomerStatusPresentation {
   const toneByState: Record<MarketingHealthState, CustomerStatusPresentation["tone"]> = {
@@ -48,6 +50,11 @@ function Section({
  * Hierarchy: summary → next action → why it changed → calendar → execution → ask → history.
  */
 export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBriefing }) {
+  const trustSignals = buildTrustSignals([
+    { label: "Briefing generated", isoDate: briefing.executiveBrief.generatedAt },
+    { label: "Profile since", isoDate: briefing.confidence.profileCreatedAt },
+  ]);
+
   return (
     <div className="mx-auto max-w-3xl">
       <a href="#hom-primary-action" className="hom-skip-link">
@@ -72,6 +79,26 @@ export function HeadOfMarketingPage({ briefing }: { briefing: HeadOfMarketingBri
           <p className="mt-3 text-sm leading-7 text-text-muted">{briefing.relationshipMemory}</p>
         )}
       </header>
+
+      <CustomerConfidencePanel
+        facts={{
+          thisWeek: briefing.thisWeek,
+          celebrations: briefing.proactive.celebrations.map((item) => item.message),
+          pendingApprovals: briefing.confidence.pendingApprovals,
+          publishFailures: briefing.confidence.publishFailures,
+          openRecommendations: briefing.confidence.openRecommendations,
+          publishingReady: briefing.confidence.publishingReadyOrScheduled,
+          primaryActionKind: briefing.primaryAction.kind,
+          primaryActionLabel: briefing.primaryAction.label,
+          primaryActionHref: briefing.primaryAction.href,
+          hasBusinessProfile: Boolean(briefing.businessName && briefing.businessName !== "your business"),
+          hasMarketingPlan: briefing.confidence.hasMarketingPlan,
+          hasPublishedContent: briefing.confidence.weeklyPublishedPosts > 0,
+          hasGoogleSync: briefing.confidence.gbpConnected,
+          hasCompletedRecommendation: briefing.experiments.completed.length > 0,
+          trustSignals,
+        }}
+      />
 
       {/* 1. Executive summary / current priorities */}
       <ProactivePresenceSection presence={briefing.proactive} />

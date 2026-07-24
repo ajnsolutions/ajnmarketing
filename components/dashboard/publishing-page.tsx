@@ -8,8 +8,10 @@ import {
   NextStepHint,
   OrientationNote,
   PageHeader,
+  RecoveryNotice,
   WorkflowTrail,
 } from "@/components/dashboard/ui/page-chrome";
+import { recoveryPublishingFailed } from "@/lib/customer-ux/trustPresentation";
 import type { PublishingJob } from "@/lib/publishing/publishingTypes";
 import type { PublishingQueueItem, PublishingQueueStats } from "@/lib/publishing-queue/types";
 
@@ -77,6 +79,8 @@ export function PublishingPage({
           />
         </div>
       </div>
+
+      {stats.failed > 0 ? <RecoveryNotice {...recoveryPublishingFailed()} /> : null}
 
       <PublishingJobsPanel initialJobs={jobs} />
       <PublishingQueuePanel initialItems={items} initialStats={stats} />

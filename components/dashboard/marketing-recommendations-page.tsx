@@ -107,6 +107,7 @@ export function MarketingRecommendationsPage({
       >
         {data.items.length === 0 ? (
           <DashboardEmptyState
+            kind="no_activity"
             title="Nothing to recommend yet"
             description="I'll surface ideas from your Google activity, reviews, and seasonal timing as soon as I have enough signal. In the meantime, your Weekly Briefing remains the calm place to check in."
             actionLabel="Your Head of Marketing"

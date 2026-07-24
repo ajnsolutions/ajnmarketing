@@ -10,6 +10,8 @@ import {
 } from "@/components/dashboard/website-analysis-actions";
 import { WebsiteNoWebsiteAction } from "@/components/dashboard/website-no-website-action";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import { LastUpdatedIndicator, RecoveryNotice } from "@/components/dashboard/ui/page-chrome";
+import { recoveryWebsiteAnalysisFailed } from "@/lib/customer-ux/trustPresentation";
 import { hasNoWebsiteConfirmed } from "@/lib/onboarding-storage";
 import { getAnalysisDisplayMeta } from "@/lib/website-analysis-server";
 import { LOW_CONFIDENCE_CUSTOMER_PERSONA } from "@/lib/website-analysis/customer-persona";
@@ -347,13 +349,9 @@ export function WebsiteAnalysisPage({
       {isAnalyzing && <AnalyzingState />}
 
       {meta.isFailed && (
-        <section className="rounded-2xl border border-rose-100 bg-rose-50/50 p-6 ring-1 ring-rose-100">
-          <h2 className="text-lg font-bold text-navy-900">Analysis could not be completed</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            We couldn&apos;t finish scanning your website. Check that your URL is correct, then try
-            refreshing. Other setup steps and Head of Marketing can continue while this is unresolved.
-          </p>
-          <div className="mt-4">
+        <section className="space-y-4">
+          <RecoveryNotice {...recoveryWebsiteAnalysisFailed()} />
+          <div>
             <WebsiteAnalysisRefreshButton />
           </div>
         </section>
@@ -361,13 +359,26 @@ export function WebsiteAnalysisPage({
 
       {!isAnalyzing && !isComplete && !meta.isFailed && (
         <DashboardEmptyState
+          kind="no_data_yet"
           title="No website analysis yet"
-          description="Click Refresh Analysis above to scan your website and generate marketing insights."
+          description="A scan hasn’t run for this site. Use Refresh Analysis above when you’re ready — Head of Marketing still works without it."
         />
       )}
 
       {!isAnalyzing && isComplete && (
         <>
+          <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 ring-1 ring-emerald-100 sm:p-5">
+            <p className="text-sm font-semibold text-navy-900">Website analysis complete</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              What changed: I updated what I know from your website. Where to find it: on this page
+              and in your marketing profile. What next: review Brand Voice if anything looks off —
+              regeneration is optional.
+            </p>
+            <LastUpdatedIndicator
+              isoDate={analysis?.updated_at ?? analysis?.created_at ?? null}
+              prefix="Last analyzed"
+            />
+          </div>
           <SectionCard
             title="Business Profile Learned"
             subtitle="Key details extracted from your website"

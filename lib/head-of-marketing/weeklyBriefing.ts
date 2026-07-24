@@ -446,6 +446,17 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     calendarPreview: null,
     /** Filled by the HoM service from Decision Intelligence. */
     whyPlanChanged: null,
+    confidence: {
+      pendingApprovals: input.pendingApprovals,
+      publishFailures: input.publishFailures,
+      openRecommendations: input.openRecommendations,
+      publishingReadyOrScheduled: input.publishingReadyOrScheduled,
+      weeklyPublishedPosts: input.weeklyWins.posts,
+      weeklyNewReviews: input.weeklyWins.reviews,
+      gbpConnected: input.gbpConnected,
+      hasMarketingPlan: Boolean(input.planSummary?.trim()),
+      profileCreatedAt: input.profileCreatedAt,
+    },
     internalDecision: decision,
   };
 }
