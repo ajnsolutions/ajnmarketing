@@ -5,6 +5,7 @@ import {
 } from "@/lib/ai-marketing-profile/persistence";
 import type { AiMarketingProfile } from "@/lib/ai-marketing-profile/types";
 import { AiMarketingProfileRefreshButton } from "@/components/dashboard/ai-marketing-profile-actions";
+import { OrientationNote, PageHeader } from "@/components/dashboard/ui/page-chrome";
 
 function SectionCard({
   title,
@@ -93,17 +94,17 @@ function ProfileHero({ profile }: { profile: AiMarketingProfile | null }) {
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
-            AI Marketing Brain
+            Marketing foundation
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Centralized Strategy Profile
+              Your marketing profile
             </h2>
             <StatusBadge status={statusLabel} />
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-            One reusable knowledge base combining onboarding preferences, website analysis, brand voice,
-            services, audience insights, and channel strategies for all AJN AI features.
+            Built from your business setup, website understanding, and brand voice — used to keep
+            plans and drafts consistent.
           </p>
           <p className="mt-4 text-sm text-slate-400">
             Last updated: <span className="font-medium text-slate-300">{lastUpdated}</span>
@@ -142,12 +143,17 @@ export function AiMarketingProfilePage({ profile }: { profile: AiMarketingProfil
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">AI Profile</h1>
-          <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Your centralized AI marketing brain for content, SEO, reviews, and Google Business Profile.
-          </p>
+          <PageHeader
+            eyebrow="Marketing foundation"
+            title="Marketing profile"
+            description="A reusable summary of your business for plans and drafts. It sits between business setup and your monthly marketing plan."
+            actions={<AiMarketingProfileRefreshButton />}
+          />
+          <OrientationNote
+            whyItMatters="Content and planning work better when this profile is current."
+            whatHappensNext="When ready, review your Marketing Plan, then return to Head of Marketing for priorities."
+          />
         </div>
-        <AiMarketingProfileRefreshButton />
       </div>
 
       <ProfileHero profile={profile} />

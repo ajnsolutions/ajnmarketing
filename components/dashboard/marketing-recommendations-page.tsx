@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import { MarketingRecommendationCard } from "@/components/dashboard/marketing-recommendation-card";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import {
+  OrientationNote,
+  PageHeader,
+  RECOMMENDATION_WORKFLOW_STEPS,
+  WorkflowTrail,
+} from "@/components/dashboard/ui/page-chrome";
+import {
   filterRecommendationItems,
   type MarketingRecommendationsPageData,
   type RecommendationListFilter,
@@ -50,13 +56,22 @@ export function MarketingRecommendationsPage({
   return (
     <div className="space-y-8">
       <div className="max-w-3xl">
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-          What I&apos;d recommend
-        </h1>
-        <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-          Prioritized next steps for your business. When you&apos;re ready, I&apos;ll prepare a draft
-          for your opinion before anything goes live.
-        </p>
+        <PageHeader
+          eyebrow="Recommendations"
+          title="What I'd recommend"
+          description="Prioritized next steps based on your business signals. Accepting a recommendation prepares a draft for your review — it never publishes on its own."
+        />
+        <OrientationNote
+          whyItMatters="These ideas help you decide where marketing effort should go next, without drowning you in options."
+          whatHappensNext="If you accept, I'll prepare a draft. You'll still approve before anything can publish."
+        />
+        <WorkflowTrail
+          steps={RECOMMENDATION_WORKFLOW_STEPS.map((step) =>
+            step.href === "/dashboard/marketing-recommendations"
+              ? { ...step, current: true }
+              : step,
+          )}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

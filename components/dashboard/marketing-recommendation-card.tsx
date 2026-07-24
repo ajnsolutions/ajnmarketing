@@ -65,16 +65,16 @@ export function MarketingRecommendationCard({ item }: { item: RecommendationList
         <Badge className={statusBadgeClass(recommendation.status)}>
           {formatRecommendationStatus(recommendation.status)}
         </Badge>
-        <Badge className="bg-[#081426]/5 text-navy-900 ring-slate-200">
-          Score {Math.round(recommendation.priority_score)}
-        </Badge>
         <Badge className="bg-slate-100 text-slate-600 ring-slate-200">
           {Math.round(recommendation.confidence)}% confidence
         </Badge>
       </div>
 
       <h3 className="mt-3 text-base font-semibold text-navy-900 sm:text-lg">{item.title}</h3>
-      <p className="mt-2 text-sm leading-7 text-slate-600">{recommendation.reasoning}</p>
+      <p className="mt-2 text-sm leading-7 text-slate-600">
+        <span className="font-semibold text-navy-900">Why you&apos;re seeing this: </span>
+        {recommendation.reasoning}
+      </p>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
@@ -84,12 +84,18 @@ export function MarketingRecommendationCard({ item }: { item: RecommendationList
           </dd>
         </div>
         <div>
-          <dt className="font-semibold text-navy-900">Business impact</dt>
+          <dt className="font-semibold text-navy-900">Expected impact</dt>
           <dd className="mt-1 text-slate-600">{formatImpact(recommendation.business_impact)}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-navy-900">Effort</dt>
+          <dt className="font-semibold text-navy-900">Effort from you</dt>
           <dd className="mt-1 text-slate-600">{formatEffort(recommendation.estimated_effort)}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-navy-900">If you accept</dt>
+          <dd className="mt-1 text-slate-600">
+            I prepare a draft for your review. Approval still comes before publishing.
+          </dd>
         </div>
         <div>
           <dt className="font-semibold text-navy-900">Related signals</dt>

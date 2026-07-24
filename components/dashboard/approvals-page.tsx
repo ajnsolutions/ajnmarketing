@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { ApprovalQueue } from "@/components/dashboard/approval-queue";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
+import {
+  CONTENT_WORKFLOW_STEPS,
+  OrientationNote,
+  PageHeader,
+  WorkflowTrail,
+} from "@/components/dashboard/ui/page-chrome";
 import type { ContentApproval, ContentApprovalStats } from "@/lib/content-approval/types";
 import type { ClientRecommendationDecisionPackage } from "@/lib/recommendation-presentation/types";
 
@@ -357,27 +363,36 @@ export function ApprovalsPage({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            This Week
-          </h1>
-          <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Here&apos;s what I&apos;d like your opinion on. One calm review — then I&apos;ll handle
-            the rest.
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <Link
-            href="/dashboard/approvals?view=pending"
-            className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
-          >
-            Review This Week
-          </Link>
-          <Link
-            href="/dashboard/approvals/delivery"
-            className="text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
-          >
-            Preview email delivery
-          </Link>
+          <PageHeader
+            eyebrow="Approvals"
+            title="This Week"
+            description="Here's what I'd like your opinion on. Approving means the draft is ready — publishing still happens as a separate step."
+            actions={
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <Link
+                  href="/dashboard/approvals?view=pending"
+                  className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
+                >
+                  Review This Week
+                </Link>
+                <Link
+                  href="/dashboard/approvals/delivery"
+                  className="hom-focusable text-sm font-medium text-text-muted transition-colors hover:text-brand-700"
+                >
+                  Preview email delivery
+                </Link>
+              </div>
+            }
+          />
+          <OrientationNote
+            whyItMatters="This is your control point. Nothing goes live until you approve it."
+            whatHappensNext="Approved items move toward publishing. Rejected items stay out of the queue."
+          />
+          <WorkflowTrail
+            steps={CONTENT_WORKFLOW_STEPS.map((step) =>
+              step.href === "/dashboard/approvals" ? { ...step, current: true } : step,
+            )}
+          />
         </div>
       </div>
 
