@@ -2,7 +2,10 @@ import Link from "next/link";
 import { PublishingJobsPanel } from "@/components/dashboard/publishing-jobs-panel";
 import { PublishingQueuePanel } from "@/components/dashboard/publishing-queue-panel";
 import {
+  AttentionBanner,
   CONTENT_WORKFLOW_STEPS,
+  FULL_CUSTOMER_JOURNEY_STEPS,
+  NextStepHint,
   OrientationNote,
   PageHeader,
   WorkflowTrail,
@@ -19,6 +22,8 @@ export function PublishingPage({
   stats: PublishingQueueStats;
   jobs: PublishingJob[];
 }) {
+  const needsAttention = stats.failed > 0 || stats.ready > 0;
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -48,6 +53,23 @@ export function PublishingPage({
             whyItMatters="This page shows what is approved and ready (or already queued) for destinations like Google."
             whatHappensNext="Failed items can be retried safely. Approval is never the same as publishing."
           />
+          <AttentionBanner
+            headline={
+              stats.failed > 0
+                ? `${stats.failed} item${stats.failed === 1 ? "" : "s"} need a retry`
+                : stats.ready > 0
+                  ? `${stats.ready} approved item${stats.ready === 1 ? "" : "s"} ready to publish`
+                  : "Nothing needs you in publishing right now"
+            }
+            detail={
+              stats.failed > 0
+                ? "Retry when you’re ready — a successful retry moves the update toward published."
+                : stats.ready > 0
+                  ? "Publish now or schedule for later. Waiting/scheduled items need no action."
+                  : "Scheduled and published work continues without you."
+            }
+            tone={stats.failed > 0 ? "warning" : needsAttention ? "info" : "success"}
+          />
           <WorkflowTrail
             steps={CONTENT_WORKFLOW_STEPS.map((step) =>
               step.href === "/dashboard/publishing" ? { ...step, current: true } : step,
@@ -58,6 +80,19 @@ export function PublishingPage({
 
       <PublishingJobsPanel initialJobs={jobs} />
       <PublishingQueuePanel initialItems={items} initialStats={stats} />
+
+      <NextStepHint
+        finished="You’ve reached the publishing step for approved work."
+        next="After something goes live, Results highlights what’s improving — not operational noise."
+        href="/dashboard/results"
+        ctaLabel="See results"
+      />
+      <WorkflowTrail
+        ariaLabel="Full customer journey"
+        steps={FULL_CUSTOMER_JOURNEY_STEPS.map((step) =>
+          step.href === "/dashboard/publishing" ? { ...step, current: true } : step,
+        )}
+      />
     </div>
   );
 }

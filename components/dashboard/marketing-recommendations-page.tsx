@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { MarketingRecommendationCard } from "@/components/dashboard/marketing-recommendation-card";
 import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import {
+  NextStepHint,
   OrientationNote,
   PageHeader,
   RECOMMENDATION_WORKFLOW_STEPS,
@@ -153,6 +154,13 @@ export function MarketingRecommendationsPage({
           </div>
         )}
       </SectionCard>
+
+      <NextStepHint
+        finished="You’ve reviewed recommended next steps for your business."
+        next="Accepting prepares a draft in Content/Library — you’ll still approve before anything can publish."
+        href="/dashboard/library"
+        ctaLabel="Open Library"
+      />
     </div>
   );
 }
