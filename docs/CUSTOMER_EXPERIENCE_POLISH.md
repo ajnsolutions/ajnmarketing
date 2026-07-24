@@ -161,6 +161,8 @@ Phase 3A primitives (status vocabulary, StatusBadge, PageHeader, empty/partial s
 - Optional future: responsive table → list conversions on dense admin tables
 - `experiments-section.tsx`'s measured (non-inconclusive) confidence badge builds an inline presentation object from `ExperimentDashboardCard.confidenceLabel` (already a formatted string) with a hardcoded `tone: "info"`, so it doesn't get success/muted color-coding by actual confidence level. Fixing properly requires threading the raw `ExperimentConfidenceLevels` enum onto the card type instead of a pre-formatted string — left as debt rather than reshaping the data layer in a presentation-only PR.
 - `publishingStatusLabel` (`lib/customer-ux/statusVocabulary.ts`) is unwired and its `PUBLISHING_STATUS` map conflates three different real enums; needs a product decision on which one it should represent before it's wired into any page.
+- **[RC-1]** Fixed: `components/dashboard/brand-voice-page.tsx` previously hardcoded a "Strong Match" badge and a fabricated "AI Learning Timeline" (fake dated events) regardless of real data, plus several dead buttons with no `onClick` handler. See [`RC1_AUTHENTICATED_PILOT_VALIDATION.md`](./RC1_AUTHENTICATED_PILOT_VALIDATION.md).
+- Approval Center's "Approved" and "Published" status badges use identical visual styling despite distinct, accurate text labels — a low-risk visual clarity follow-up, not fixed in RC-1.
 
 ## Manual smoke-test checklist
 

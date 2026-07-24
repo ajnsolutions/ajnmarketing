@@ -218,6 +218,8 @@ Tenant health is paginated (default 20, max 50) with batched count queries — i
 
 No changes to Marketing Director logic, recommendation ranking/scoring, Campaign Intelligence, Experimentation, Decision Intelligence (still read-only), Strategic Calendar (still read-only), Marketing Memory, OAuth architecture, billing, or the public marketing site. No LLM, ML, or provider was added. No autonomous action, campaign/experiment creation, auto-approval, or auto-publishing was added.
 
+**Update (RC-1):** a full authenticated customer-journey validation pass ran after this phase, covering setup, marketing foundation, recommendations, and approvals — customer-facing findings and fixes are documented separately in [`RC1_AUTHENTICATED_PILOT_VALIDATION.md`](./RC1_AUTHENTICATED_PILOT_VALIDATION.md). This phase's readiness/tenant-health/job-lifecycle/retry model was not modified by that pass.
+
 ## Known limitations
 
 - Analytics freshness is not separately modeled beyond the existing `analytics_queue` ops-summary counts and per-tenant job-failure signal — a dedicated freshness-threshold state machine (fresh/aging/stale/capture-failed) was judged out of scope for this pass given the size of everything else in this phase; flagged as deferred debt below.

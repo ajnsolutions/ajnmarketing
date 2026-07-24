@@ -46,6 +46,8 @@ Categories: Foundation · Connections · Strategy readiness · Execution readine
 | `content_ready` | No | Voice or profile present |
 | `marketing_preferences` | No | Optional enhancement |
 
+**[RC-1]** The `notifications` step's CTA previously read "Review notifications" with a description implying configurable preferences ("How you prefer to hear about approvals and important updates") — but its destination (`/dashboard/notifications`) is an honest "coming soon" page with nothing to review. Copy corrected to accurately set expectations (`See how updates work`) rather than promising functionality that doesn't exist yet. See [`RC1_AUTHENTICATED_PILOT_VALIDATION.md`](./RC1_AUTHENTICATED_PILOT_VALIDATION.md).
+
 ## Required versus optional
 
 Required setup is limited to foundation for a useful Head of Marketing:

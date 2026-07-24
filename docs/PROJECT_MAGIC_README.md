@@ -37,6 +37,7 @@ Implementation notes (post-blueprint):
 - CUSTOMER_EXPERIENCE_POLISH.md — Phase 3A: Customer Experience Polish (hierarchy, shared states/status vocabulary, a11y/mobile, terminology — presentation only; no new intelligence engines)
 - GUIDED_ONBOARDING_AND_SETUP.md — Phase 3B: Guided Onboarding & Setup Experience (derived setup checklist, progress, resume/dismiss, HoM readiness — no second strategic/pilot engine)
 - PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md — Phase 3C: Production Operations and Pilot Hardening (readiness model, per-tenant operational health, stuck-job detection, admin retry, tiered health endpoints — composes existing ops/pilot/job systems; no second operations platform, no schedule attached)
+- RC1_AUTHENTICATED_PILOT_VALIDATION.md — RC-1: full authenticated customer-journey validation and fix cycle (found and fixed fabricated content on the Brand Voice page and a setup-step CTA/destination mismatch; no new capabilities, no architecture change)
 - MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (Phases 1-4 consumption implemented; decision_links persistence still future)
 - MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 tables implemented; decision links remain a proposal)
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)

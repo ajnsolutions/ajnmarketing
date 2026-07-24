@@ -20,6 +20,8 @@ Customer setup progress is a separate, customer-facing derived checklist. Assist
 
 **Phase 3C (Production Operations and Pilot Hardening)** added a separate, composed production-readiness model (`lib/production-readiness/model.ts`) and per-tenant operational health view alongside this framework — neither recomputes or conflicts with `computePilotReadinessScore` here, which remains the sole pilot-launch scoring function. See [`PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md`](./PRODUCTION_OPERATIONS_AND_PILOT_HARDENING.md).
 
+**RC-1 (Authenticated Pilot Validation and User-Flow Hardening)** validated the authenticated customer journey a pilot tenant would actually walk through and fixed real friction found along the way (fabricated content on the Brand Voice page, a misleading setup-step CTA) — this did not touch the pilot checklist, its scoring, or the pilot issue tracker. See [`RC1_AUTHENTICATED_PILOT_VALIDATION.md`](./RC1_AUTHENTICATED_PILOT_VALIDATION.md).
+
 ---
 
 ## Architecture

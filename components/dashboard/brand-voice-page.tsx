@@ -8,17 +8,16 @@ import { fetchBusinessProfile, upsertBusinessProfile } from "@/lib/business-prof
 import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
 import { formatRelativeTime } from "@/lib/website-analysis/persistence";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
+import { matchScoreLabel } from "@/lib/brand-voice/matchScoreLabel";
 
 function SectionCard({
   title,
   subtitle,
-  action,
   children,
   className = "",
 }: {
   title: string;
   subtitle?: string;
-  action?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -33,14 +32,6 @@ function SectionCard({
           </h2>
           {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
         </div>
-        {action && (
-          <button
-            type="button"
-            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
-          >
-            {action}
-          </button>
-        )}
       </div>
       <div className="px-5 py-4 sm:px-6 sm:py-5">{children}</div>
     </section>
@@ -63,12 +54,14 @@ function WordChip({ word, tone }: { word: string; tone: "use" | "avoid" }) {
 function VoiceHero({
   matchScore,
   lastLearned,
+  hasWebsiteAnalysis,
 }: {
   matchScore: number | null;
   lastLearned: string;
+  hasWebsiteAnalysis: boolean;
 }) {
-  const sources = ["Website", "Google Profile", "Reviews"];
   const score = matchScore ?? 0;
+  const scoreLabel = matchScoreLabel(matchScore);
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#081426] to-[#0B1426] p-6 shadow-lg shadow-slate-300/30 ring-1 ring-slate-900/[0.04] sm:p-8">
@@ -81,8 +74,10 @@ function VoiceHero({
             <p className="text-5xl font-bold tracking-tight text-white sm:text-6xl">
               {matchScore != null ? `${matchScore}%` : "—"}
             </p>
-            <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-growth-500/15 px-3 py-1.5 text-sm font-semibold text-growth-500 ring-1 ring-emerald-400/20">
-              Strong Match
+            <span
+              className={`mb-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${scoreLabel.tone}`}
+            >
+              {scoreLabel.label}
             </span>
           </div>
           <p className="mt-4 text-sm text-slate-400">
@@ -92,14 +87,15 @@ function VoiceHero({
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Sources analyzed:
             </span>
-            {sources.map((source) => (
-              <span
-                key={source}
-                className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-slate-200 ring-1 ring-white/10"
-              >
-                {source}
+            {hasWebsiteAnalysis ? (
+              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-slate-200 ring-1 ring-white/10">
+                Website
               </span>
-            ))}
+            ) : (
+              <span className="text-xs font-medium text-slate-500">
+                None yet — add a website or share notes below.
+              </span>
+            )}
           </div>
         </div>
 
@@ -141,6 +137,14 @@ export function BrandVoicePage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [analysis, setAnalysis] = useState<WebsiteAnalysis | null>(null);
   const [selectedTones, setSelectedTones] = useState<string[]>(["More Friendly"]);
+  // [Review fix] business_profiles.brand_voice_tone is also a plain freeform text
+  // field editable via Settings (lib/business-profile.ts's settingsFormToProfileRow)
+  // and is read by content-generation prompts, AI review replies, AI Marketing
+  // Profile generation, and the setup-readiness calculator. Only include it in the
+  // save payload when the customer has actually touched a tone chip this session —
+  // otherwise a customer who opens this page only to save a note would silently
+  // overwrite a richer, real tone description with the default checkbox state.
+  const [tonesDirty, setTonesDirty] = useState(false);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -155,6 +159,15 @@ export function BrandVoicePage() {
       if (savedProfile) {
         setProfile(savedProfile);
         setNotes(savedProfile.voice_notes ?? "");
+        // Restore a previously saved tone selection so the checklist reflects real
+        // state on return visits, rather than always resetting to the default.
+        const savedTones = (savedProfile.brand_voice_tone ?? "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => toneOptions.includes(t));
+        if (savedTones.length > 0) {
+          setSelectedTones(savedTones);
+        }
       }
 
       if (savedAnalysis) {
@@ -193,11 +206,14 @@ export function BrandVoicePage() {
     "complicated jargon",
     "aggressive sales language",
   ]);
-  const exampleParagraph =
-    analysis?.brand_voice ??
-    analysis?.raw_summary?.brandVoice ??
-    profile?.voice_notes?.trim() ??
-    "We are a local team focused on honest service, fast response, and building long-term trust in our community.";
+  // [Review fix] markWebsiteAnalysisFailed always writes raw_summary.brandVoice as
+  // "" (never null) on a real failure — a `??` chain would stop at that empty
+  // string and render a blank quote. Use displayValue so an empty string falls
+  // through to the honest default like every other field on this page.
+  const exampleParagraph = displayValue(
+    analysis?.brand_voice || analysis?.raw_summary?.brandVoice || profile?.voice_notes,
+    "We are a local team focused on honest service, fast response, and building long-term trust in our community."
+  );
 
   const writingStyle = [
     { label: "Tone", value: tone },
@@ -256,15 +272,8 @@ export function BrandVoicePage() {
     },
   ];
 
-  const timeline = [
-    { text: "Website scanned", tone: "blue" as const, time: "Jun 18, 2:00 PM" },
-    { text: "Reviews analyzed", tone: "green" as const, time: "Jun 18, 2:15 PM" },
-    { text: "Google profile reviewed", tone: "blue" as const, time: "Jun 18, 2:30 PM" },
-    { text: "Voice profile created", tone: "green" as const, time: "Jun 18, 2:45 PM" },
-    { text: "Customer preferences saved", tone: "amber" as const, time: "Jun 18, 3:00 PM" },
-  ];
-
   function toggleTone(option: string) {
+    setTonesDirty(true);
     setSelectedTones((current) =>
       current.includes(option)
         ? current.filter((item) => item !== option)
@@ -279,9 +288,18 @@ export function BrandVoicePage() {
       return;
     }
 
+    // [RC-1 fix] Tone selection previously only lived in local component state —
+    // "AJN will apply these to future content drafts" was not true. Persist the
+    // selection to the real brand_voice_tone field alongside notes — but only when
+    // the customer actually changed it this session (see tonesDirty above), so a
+    // save triggered only to update notes never overwrites an existing, richer
+    // tone description with the default checkbox state.
     void upsertBusinessProfile({
       ...profile,
       voice_notes: notes || null,
+      ...(tonesDirty
+        ? { brand_voice_tone: selectedTones.length > 0 ? selectedTones.join(", ") : null }
+        : {}),
     }).then(({ error }) => {
       if (!error) {
         setNotesSaved(true);
@@ -316,25 +334,16 @@ export function BrandVoicePage() {
             </Link>
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-          >
-            Refresh Voice Profile
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg"
-          >
-            Save Voice Settings
-          </button>
-        </div>
       </div>
 
       <VoiceHero
         matchScore={analysis?.analysis_score ?? null}
         lastLearned={formatRelativeTime(analysis?.updated_at ?? analysis?.created_at)}
+        // [Review fix] A website_analyses row can exist while still pending/running/
+        // failed (analysis_score stays null until analysis_status === "completed") —
+        // claiming "Website" as an analyzed source in those states would contradict
+        // the score badge showing "Not yet analyzed" right next to it.
+        hasWebsiteAnalysis={analysis?.analysis_status === "completed"}
       />
 
       <SectionCard title="Brand Personality" subtitle="Core traits AJN AI uses when writing for you">
@@ -391,7 +400,10 @@ export function BrandVoicePage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Sample AI Content" subtitle="Preview how AJN writes in your voice">
+      <SectionCard
+        title="Example Drafts"
+        subtitle="Illustrative examples of the tone AJN AI aims for — not this business's actual generated content"
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           {samples.map((sample) => (
             <article
@@ -400,25 +412,11 @@ export function BrandVoicePage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h3 className="font-semibold text-navy-900">{sample.type}</h3>
-                <span className="rounded-full bg-growth-50 px-2.5 py-1 text-[11px] font-semibold text-growth-500 ring-1 ring-emerald-100">
-                  {sample.match}% match
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                  Example
                 </span>
               </div>
               <p className="mt-3 text-sm leading-7 text-slate-600">{sample.text}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
-                >
-                  Approve Style
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
-                >
-                  Edit Tone
-                </button>
-              </div>
             </article>
           ))}
         </div>
@@ -427,7 +425,8 @@ export function BrandVoicePage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Tone Adjustment" subtitle="Fine-tune how AJN AI sounds">
           <p className="mb-4 text-sm text-text-muted">
-            Select preferences — AJN will apply these to future content drafts.
+            Select preferences, then save with the notes below — I&apos;ll use these for future
+            content drafts.
           </p>
           <div className="flex flex-wrap gap-2">
             {toneOptions.map((option) => (
@@ -435,6 +434,7 @@ export function BrandVoicePage() {
                 key={option}
                 type="button"
                 onClick={() => toggleTone(option)}
+                aria-pressed={selectedTones.includes(option)}
                 className={`rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
                   selectedTones.includes(option)
                     ? "bg-brand-600 text-white ring-brand-600"
@@ -460,45 +460,19 @@ export function BrandVoicePage() {
             className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] px-4 py-3 text-sm text-navy-900 placeholder:text-slate-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
           {notesSaved && (
-            <p className="mt-3 text-sm font-medium text-growth-500">Notes saved to your business profile.</p>
+            <p role="status" className="mt-3 text-sm font-medium text-growth-500">
+              Voice preferences saved to your business profile.
+            </p>
           )}
           <button
             type="button"
             onClick={handleSaveNotes}
             className="mt-4 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
           >
-            Save Notes
+            Save Voice Preferences
           </button>
         </SectionCard>
       </div>
-
-      <SectionCard title="AI Learning Timeline" subtitle="How your voice profile was built">
-        <ol className="relative space-y-0">
-          {timeline.map((item, index) => (
-            <li key={item.text} className="relative flex gap-4 pb-6 last:pb-0">
-              {index < timeline.length - 1 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute left-[7px] top-4 h-[calc(100%-0.5rem)] w-px bg-slate-200"
-                />
-              )}
-              <span
-                className={`relative mt-1.5 flex h-3.5 w-3.5 shrink-0 rounded-full border-2 border-white ring-2 ${
-                  item.tone === "green"
-                    ? "bg-growth-500 ring-emerald-100"
-                    : item.tone === "amber"
-                      ? "bg-amber-500 ring-amber-100"
-                      : "bg-brand-600 ring-brand-100"
-                }`}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-navy-900">{item.text}</p>
-                <p className="mt-1 text-xs text-text-muted">{item.time}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </SectionCard>
     </div>
   );
 }
