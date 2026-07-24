@@ -9,6 +9,7 @@ import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
 import { formatRelativeTime } from "@/lib/website-analysis/persistence";
 import type { WebsiteAnalysis } from "@/lib/website-analysis/types";
 import { matchScoreLabel } from "@/lib/brand-voice/matchScoreLabel";
+import { OrientationNote } from "@/components/dashboard/ui/page-chrome";
 
 function SectionCard({
   title,
@@ -325,7 +326,11 @@ export function BrandVoicePage() {
             Guides how drafts sound before you approve them. It does not publish, approve, or change
             strategy on its own. A short tone note is enough to start — you can refine later.
           </p>
-          <p className="mt-2 text-sm">
+          <OrientationNote
+            whyItMatters="Clear voice guidance keeps drafts on-brand before they reach This Week."
+            whatHappensNext="Save your tone, then continue setup or return to Head of Marketing."
+          />
+          <p className="mt-3 text-sm">
             <Link
               href="/dashboard/setup"
               className="hom-focusable font-semibold text-brand-600 hover:text-brand-700"

@@ -2,8 +2,8 @@ import { AiMarketingProfilePage } from "@/components/dashboard/ai-marketing-prof
 import { getAiMarketingProfileForUserPage } from "@/lib/ai-marketing-profile-server";
 
 export const metadata = {
-  title: "AI Profile",
-  description: "Centralized AI marketing brain and strategy profile for your business.",
+  title: "Marketing profile",
+  description: "Reusable business summary that feeds plans and drafts.",
 };
 
 export default async function AiMarketingProfileRoute() {

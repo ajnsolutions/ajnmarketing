@@ -16,6 +16,11 @@ import {
 import { fetchWebsiteAnalysis } from "@/lib/website-analysis-client";
 import { fetchAiMarketingProfile } from "@/lib/ai-marketing-profile-client";
 import { DashboardLoadingSkeleton } from "@/components/dashboard/ui/dashboard-states";
+import {
+  CONTENT_WORKFLOW_STEPS,
+  OrientationNote,
+  WorkflowTrail,
+} from "@/components/dashboard/ui/page-chrome";
 import { formatAnalysisStatus } from "@/lib/website-analysis/persistence";
 import { formatProfileStatus } from "@/lib/ai-marketing-profile/persistence";
 import type { ContentApproval } from "@/lib/content-approval/types";
@@ -276,24 +281,33 @@ export function ContentGeneratorPage() {
         <div className="max-w-3xl">
           <Link
             href="/dashboard/content"
-            className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+            className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
             ← Back to Content
           </Link>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-            AI Content Generator
+            Content Generator
           </h1>
           <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Generate ready-to-review marketing content from your AI Marketing Profile, website
-            analysis, brand voice, and business profile.
+            Create ready-to-review drafts from your marketing profile, website understanding, and
+            brand voice. Generated content still needs your approval before publishing.
           </p>
+          <OrientationNote
+            whyItMatters="Drafts are step one of the content workflow — create here, approve next, publish last."
+            whatHappensNext="After generation, send a draft to This Week for your opinion."
+          />
+          <WorkflowTrail
+            steps={CONTENT_WORKFLOW_STEPS.map((step) =>
+              step.href === "/dashboard/content/generator" ? { ...step, current: true } : step,
+            )}
+          />
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => void handleGenerate()}
             disabled={generating}
-            className="inline-flex items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-all hover:-translate-y-0.5 hover:bg-[#0B1426] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+            className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-full bg-[#081426] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {generating ? "Generating..." : "Generate Content"}
           </button>

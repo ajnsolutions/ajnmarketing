@@ -71,7 +71,7 @@ test("customer language replaces software titles on key surfaces", () => {
     join(root, "components/dashboard/marketing-recommendations-page.tsx"),
     "utf8",
   );
-  assert.match(recommendations, /What I&apos;d recommend/);
+  assert.match(recommendations, /What I(?:'|\&apos;)d recommend/);
   assert.equal(recommendations.includes("Marketing Recommendations"), false);
 
   const tasks = readFileSync(

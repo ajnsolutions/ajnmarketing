@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { GoogleBusinessReviewCard } from "@/components/dashboard/google-business-review-card";
 import { GoogleBusinessSyncButton } from "@/components/dashboard/google-business-sync-button";
+import { OrientationNote, PageHeader } from "@/components/dashboard/ui/page-chrome";
+import { DashboardEmptyState } from "@/components/dashboard/ui/dashboard-states";
 import { formatGoogleSyncDate } from "@/lib/google-business/persistence";
 import type { GoogleBusinessDashboardData, GoogleBusinessPost } from "@/lib/google-business/types";
 
@@ -145,16 +147,18 @@ export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashbo
   if (data.setupRequired) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-          Google Business Profile
-        </h1>
-        <EmptyState message={data.setupMessage ?? "Google OAuth setup is required before connecting."} />
-        <Link
-          href="/dashboard/google-business-profile/connect"
-          className="inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Open Connection Settings
-        </Link>
+        <PageHeader
+          eyebrow="Connections"
+          title="Google Business Profile"
+          description="Optional connection for local posts, reviews, and performance insights."
+        />
+        <DashboardEmptyState
+          kind="not_configured"
+          title="Google connection is temporarily unavailable"
+          description="You can keep using Head of Marketing and finish other setup. Contact support if you need Google features enabled for your workspace."
+          actionLabel="Open connection help"
+          actionHref="/dashboard/google-business-profile/connect"
+        />
       </div>
     );
   }
@@ -162,16 +166,22 @@ export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashbo
   if (!data.connected) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-          Google Business Profile
-        </h1>
-        <EmptyState message="Connect your Google Business Profile to sync locations, reviews, posts, and performance insights." />
-        <Link
-          href="/dashboard/google-business-profile/connect"
-          className="inline-flex rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Connect Google Business Profile
-        </Link>
+        <PageHeader
+          eyebrow="Connections"
+          title="Google Business Profile"
+          description="Optional — unlocks local posts, reviews, and performance insights when you're ready."
+        />
+        <OrientationNote
+          whyItMatters="Connecting Google helps me prepare local posts and review replies for your approval."
+          whatHappensNext="You'll sign in with Google, choose your profile, and nothing publishes without approval."
+        />
+        <DashboardEmptyState
+          kind="not_configured"
+          title="Google isn't connected yet"
+          description="Connect when you're ready. Other parts of AJN Marketing still work without Google."
+          actionLabel="Connect Google Business Profile"
+          actionHref="/dashboard/google-business-profile/connect"
+        />
       </div>
     );
   }
@@ -180,21 +190,25 @@ export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashbo
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-              Google Business Profile
-            </h1>
-            <span className="inline-flex items-center gap-2 rounded-full bg-growth-50 px-3 py-1 text-xs font-semibold text-growth-500 ring-1 ring-emerald-100">
+          <PageHeader
+            eyebrow="Connections"
+            title="Google Business Profile"
+            description="Local visibility, reviews, and posts for your connected profile. Publishing still requires your approval."
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full bg-growth-50 px-3 py-1 text-xs font-semibold text-growth-700 ring-1 ring-emerald-100">
               <span className="h-2 w-2 rounded-full bg-growth-500" aria-hidden="true" />
+              <span className="sr-only">Connection status: </span>
               {data.connectionStatus}
             </span>
+            <p className="text-xs font-medium text-slate-500">
+              Last sync: {formatGoogleSyncDate(data.lastSyncedAt)}
+            </p>
           </div>
-          <p className="mt-2 text-sm leading-7 text-text-muted sm:text-base">
-            Monitor and manage your connected Google Business Profile with live synced data.
-          </p>
-          <p className="mt-1 text-xs font-medium text-slate-500">
-            Last Sync: {formatGoogleSyncDate(data.lastSyncedAt)}
-          </p>
+          <OrientationNote
+            whyItMatters="This is your local marketing hub on Google."
+            whatHappensNext="Sync when data looks stale. Reconnect if access expires."
+          />
         </div>
         <div className="flex flex-wrap gap-3">
           <Link
