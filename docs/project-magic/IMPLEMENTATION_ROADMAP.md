@@ -24,7 +24,9 @@ Prioritization rule: **highest customer impact first**, informed by the [`EXISTI
 
 **Shipped (AI Business Discovery — orchestration layer):** The composition engine behind the Snapshot — collects, normalizes, and explains an existing business's understanding (Known/Assumed/Missing) from website analysis, the AI Marketing Profile, Google Business Profile connection state, public reviews, and Market Context. Backend only, authenticated-session only (the public pre-auth entry point is explicitly Phase 2, see below). No UI, no new schema, no new decision engine. See [`../BUSINESS_DISCOVERY_ENGINE.md`](../BUSINESS_DISCOVERY_ENGINE.md).
 
-**Still open in Wave I:** the public, pre-auth entry point; the presentation layer; the approve/edit/comment/correct feedback loop that converts Assumed insights to Known; session-to-account carryover into Signup.
+**Shipped (Public Snapshot foundation):** The secure, pre-auth backend contract the Snapshot UI will call — SSRF-hardened URL/fetch validation (IP/hostname blocklist, DNS-resolution check, redirect revalidation, size/timeout caps), a versioned public request/response contract intentionally narrower than the authenticated one (drops Customer Perception and Competitive Position, which need reviews/Market Context this path never touches), an explicit public source allowlist enforced at the type and runtime level, rate limiting (5/hour/IP, reusing the existing interactive-demo limiter), a 15-minute TTL cache, and an unguessable, time-limited conversion-handoff reference. No account/tenant/database write of any kind. No landing page or results UI yet — see [`../BUSINESS_DISCOVERY_PUBLIC_SNAPSHOT.md`](../BUSINESS_DISCOVERY_PUBLIC_SNAPSHOT.md).
+
+**Still open in Wave I:** the landing page and results presentation UI; the actual signup-time conversion endpoint that resolves a snapshot reference; the approve/edit/comment/correct feedback loop that converts Assumed insights to Known; session-to-account carryover into Signup.
 
 ---
 
