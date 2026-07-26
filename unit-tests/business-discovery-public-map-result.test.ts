@@ -42,21 +42,21 @@ function buildInternalResult(overrides: Partial<BusinessDiscoveryResult> = {}): 
 }
 
 test("drops customerPerception and competitivePosition from the public contract entirely", () => {
-  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.equal("customerPerception" in publicResult, false);
   assert.equal("competitivePosition" in publicResult, false);
 });
 
 test("renames fields to the public contract's vocabulary", () => {
   const internal = buildInternalResult();
-  const publicResult = mapToPublicBusinessDiscoveryResult(internal, "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(internal, "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.equal(publicResult.likelyTargetCustomers.value, "Homeowners");
   assert.equal(publicResult.visibleStrengths.confidenceTier, DiscoveryConfidenceTiers.MISSING);
   assert.equal(publicResult.possibleGrowthOpportunities.confidenceTier, DiscoveryConfidenceTiers.MISSING);
 });
 
 test("missingOrUnclearInformation excludes the two dropped fields and renames the rest", () => {
-  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   const fields = publicResult.missingOrUnclearInformation.map((item) => item.field);
   assert.equal(fields.includes("customerPerception"), false);
   assert.equal(fields.includes("competitivePosition"), false);
@@ -66,13 +66,13 @@ test("missingOrUnclearInformation excludes the two dropped fields and renames th
 });
 
 test("embeds the given snapshotReference and contract version", () => {
-  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "opaque-ref-abc");
+  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "opaque-ref-abc", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.equal(publicResult.snapshotReference, "opaque-ref-abc");
   assert.equal(publicResult.contractVersion, "v1");
 });
 
 test("never exposes a raw confidence score at the top level — only a label and explanation", () => {
-  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.equal("score" in publicResult.overallConfidence, false);
   assert.ok(publicResult.overallConfidence.label.length > 0);
   assert.ok(publicResult.overallConfidence.explanation.length > 0);
@@ -89,7 +89,7 @@ test("overall confidence tier is Known only when every public-relevant field is 
       socialPresence: missingInsight(),
     },
   });
-  const publicResult = mapToPublicBusinessDiscoveryResult(allKnown, "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(allKnown, "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.equal(publicResult.overallConfidence.tier, DiscoveryConfidenceTiers.KNOWN);
 });
 
@@ -104,7 +104,7 @@ test("overall confidence tier is Missing only when every public-relevant field i
       socialPresence: missingInsight(),
     },
   });
-  const publicResult = mapToPublicBusinessDiscoveryResult(allMissing, "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(allMissing, "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.equal(publicResult.overallConfidence.tier, DiscoveryConfidenceTiers.MISSING);
 });
 
@@ -122,6 +122,6 @@ test("a real mix of Known and Missing fields never gets stuck permanently low du
       socialPresence: missingInsight(),
     },
   });
-  const publicResult = mapToPublicBusinessDiscoveryResult(strongPublicSignal, "ref-123");
+  const publicResult = mapToPublicBusinessDiscoveryResult(strongPublicSignal, "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.notEqual(publicResult.overallConfidence.tier, DiscoveryConfidenceTiers.MISSING);
 });

@@ -28,6 +28,10 @@ Prioritization rule: **highest customer impact first**, informed by the [`EXISTI
 
 **Still open in Wave I:** the landing page and results presentation UI; the actual signup-time conversion endpoint that resolves a snapshot reference; the approve/edit/comment/correct feedback loop that converts Assumed insights to Known; session-to-account carryover into Signup.
 
+**Shipped (Snapshot continuation — anonymous-to-authenticated bridge):** closes the DNS-rebinding gap in PR #74's fetch path (outbound connections now pin to the literal, already-validated IP address); authenticated resolve/claim/confirm endpoints for a `snapshotReference`; a tamper-resistant confirmation contract (Confirm/Correct/Reject/Review Later) that only ever produces a user-confirmed fact through an explicit authenticated decision; additive Guided Onboarding prefill (business name, website, city, state) with full graceful fallback when no reference is present. No migration — confirmation records live in the same ephemeral, TTL-bound store class as the rest of this feature; the one field with a durable existing column (`primary_services`) writes there directly. See [`../BUSINESS_DISCOVERY_CONTINUATION.md`](../BUSINESS_DISCOVERY_CONTINUATION.md).
+
+**Still open after this pass:** the actual per-insight review UI (the contract and backend are ready for it); a durable, cross-24h-window store for the 7 confirmation fields without an existing column (see that document's Recommended Phase 2B2).
+
 ---
 
 ## Wave II — Connector Framework + Smart Uploads

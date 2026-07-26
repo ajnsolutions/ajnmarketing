@@ -21,6 +21,43 @@ test("accepts a valid public https website", async () => {
   assert.equal(result.hostname, "example.com");
 });
 
+test("returns the validated resolved address as the pinned connection target", async () => {
+  const result = await validatePublicSnapshotUrl("https://example.com", { resolver: publicResolver });
+  assert.equal(result.pinnedAddress, "93.184.216.34");
+  assert.equal(result.protocol, "https:");
+  assert.equal(result.port, 443);
+});
+
+test("pins to the first validated address when DNS returns multiple answers", async () => {
+  const multiAnswerResolver = async () => ["93.184.216.34", "93.184.216.35"];
+  const result = await validatePublicSnapshotUrl("https://example.com", { resolver: multiAnswerResolver });
+  assert.equal(result.pinnedAddress, "93.184.216.34");
+});
+
+test("a later, different DNS answer cannot retroactively change an already-validated pin", async () => {
+  // Simulates the DNS-rebinding scenario directly: the resolver's *first* call
+  // (at validation time) determines the pin; nothing later can un-pin it,
+  // because validatePublicSnapshotUrl is the only place that ever calls the
+  // resolver, and the returned pinnedAddress is then used verbatim by the
+  // fetch layer without a second lookup (see fetchWebsite.ts / pinnedRequest.ts).
+  let callCount = 0;
+  const rebindingResolver = async () => {
+    callCount += 1;
+    return callCount === 1 ? ["93.184.216.34"] : ["10.0.0.5"]; // a hypothetical second call would return a private IP
+  };
+  const result = await validatePublicSnapshotUrl("https://example.com", { resolver: rebindingResolver });
+  assert.equal(result.pinnedAddress, "93.184.216.34");
+  assert.equal(callCount, 1); // confirms the resolver is never called a second time for this validation
+});
+
+test("an IP-literal URL pins to itself, bracket-free for IPv6", async () => {
+  const ipv4Result = await validatePublicSnapshotUrl("http://93.184.216.34/");
+  assert.equal(ipv4Result.pinnedAddress, "93.184.216.34");
+
+  const ipv6Result = await validatePublicSnapshotUrl("http://[2001:4860:4860::8888]/");
+  assert.equal(ipv6Result.pinnedAddress, "2001:4860:4860::8888");
+});
+
 test("accepts a bare domain and adds https automatically", async () => {
   const result = await validatePublicSnapshotUrl("example.com", { resolver: publicResolver });
   assert.equal(result.hostname, "example.com");

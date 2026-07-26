@@ -14,6 +14,8 @@ import {
 } from "@/lib/onboarding-storage";
 import { profileRowToOnboardingData } from "@/lib/business-profile";
 import { fetchBusinessProfile, saveOnboardingProgress } from "@/lib/business-profile-client";
+import { mergeOnboardingPrefill } from "@/lib/business-discovery/continuation/onboardingPrefill";
+import type { OnboardingSnapshotPrefill } from "@/lib/business-discovery/continuation/types";
 
 type MagicStep =
   | "welcome"
@@ -105,10 +107,17 @@ function SocialConnectStep({
   );
 }
 
-export function OnboardingWizard() {
+export function OnboardingWizard({
+  snapshotPrefill = null,
+}: {
+  /** Resolved server-side from an optional Free Marketing Snapshot reference — see app/onboarding/page.tsx. Absent/null is the normal case and behaves exactly as before this prop existed. */
+  snapshotPrefill?: OnboardingSnapshotPrefill | null;
+} = {}) {
   const router = useRouter();
   const [step, setStep] = useState<MagicStep>("welcome");
-  const [data, setData] = useState<OnboardingData>(initialOnboardingData);
+  const [data, setData] = useState<OnboardingData>(
+    snapshotPrefill ? mergeOnboardingPrefill(initialOnboardingData, snapshotPrefill) : initialOnboardingData,
+  );
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
