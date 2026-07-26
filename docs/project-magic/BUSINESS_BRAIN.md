@@ -6,6 +6,8 @@ The Business Brain is the single, durable, structured understanding of a real bu
 
 **It is not a new engine.** It's the 2.0 name and expanded scope for what already exists as **Marketing Memory** (observations, learnings, preferences, decisions, outcomes — see [`../MARKETING_MEMORY_ARCHITECTURE.md`](../MARKETING_MEMORY_ARCHITECTURE.md) and [`../MARKETING_MEMORY_DATA_MODEL.md`](../MARKETING_MEMORY_DATA_MODEL.md)), broadened in input surface and output surface. Marketing Director remains the sole decision-maker; the Business Brain is what it — and, in future waves, other growth-decision surfaces — learns from.
 
+**Shipped (AI Business Discovery — Wave I):** the first real composition layer over multiple sources into one explainable understanding, with an explicit Known/Assumed/Missing confidence vocabulary and a "raw observations" type (`BusinessDiscoveryObservation`) that maps directly onto this document's Observations layer. It composes read-only from existing tables — it does not yet write a new Business Brain record, and does not yet feed Marketing Memory's `learnings` layer. See [`../BUSINESS_DISCOVERY_ENGINE.md`](../BUSINESS_DISCOVERY_ENGINE.md) for the full architecture and its explicit mapping onto this document's four layers.
+
 ---
 
 ## Architecture at a glance
