@@ -4,6 +4,8 @@
 
 The Free Marketing Snapshot is the first thing a prospect experiences and the first row ever written to their Business Brain. It replaces a generic interactive demo with something no competitor can copy: **a real read of the prospect's own business**, delivered before they've created an account or given us anything but a name and a URL (or platform profile — see [`CUSTOMER_TYPES.md`](./CUSTOMER_TYPES.md)).
 
+**Status:** its backend foundation — the AI Business Discovery orchestration layer — now exists (authenticated-session only; see [`../BUSINESS_DISCOVERY_ENGINE.md`](../BUSINESS_DISCOVERY_ENGINE.md)). The public, pre-auth entry point described below and the actual presentation UI are not yet built — see that document's Recommended Phase 2.
+
 ---
 
 ## Purpose

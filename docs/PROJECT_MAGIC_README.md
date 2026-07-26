@@ -46,3 +46,4 @@ Implementation notes (post-blueprint):
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)
 - MARKETING_MEMORY_LEARNINGS.md — Phase 2 implementation record: learnings/confidence model, cohort and baseline rules, correlation safeguards, reconciliation, RLS, testing
 - MARKETING_MEMORY_PREFERENCES.md — Phase 3 implementation record: preferences/overrides, actor attribution, supersession, precedence vocabulary, minimal settings UI
+- BUSINESS_DISCOVERY_ENGINE.md — Project Magic 2.0, Wave I: AI Business Discovery orchestration layer composing existing website analysis / AI Marketing Profile / Google Business Profile / public reviews / Market Context into an explainable Known/Assumed/Missing business understanding (backend only; foundation for the future Free Marketing Snapshot; no new decision engine, no schema change)

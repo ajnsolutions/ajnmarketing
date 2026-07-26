@@ -22,6 +22,10 @@ Prioritization rule: **highest customer impact first**, informed by the [`EXISTI
 
 **Acceptance:** A prospect can see an honest, business-specific "What Customers See" without an account; approving/editing/commenting there means zero re-asked questions in onboarding; a platform-business prospect gets a profile-based equivalent, not a broken "enter your website" dead end.
 
+**Shipped (AI Business Discovery — orchestration layer):** The composition engine behind the Snapshot — collects, normalizes, and explains an existing business's understanding (Known/Assumed/Missing) from website analysis, the AI Marketing Profile, Google Business Profile connection state, public reviews, and Market Context. Backend only, authenticated-session only (the public pre-auth entry point is explicitly Phase 2, see below). No UI, no new schema, no new decision engine. See [`../BUSINESS_DISCOVERY_ENGINE.md`](../BUSINESS_DISCOVERY_ENGINE.md).
+
+**Still open in Wave I:** the public, pre-auth entry point; the presentation layer; the approve/edit/comment/correct feedback loop that converts Assumed insights to Known; session-to-account carryover into Signup.
+
 ---
 
 ## Wave II — Connector Framework + Smart Uploads

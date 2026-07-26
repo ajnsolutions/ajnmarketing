@@ -18,6 +18,7 @@ This audit is written from direct inspection of `lib/`, `app/`, and the existing
 | Component | Classification | Notes |
 |---|---|---|
 | Marketing Memory (observations/learnings/preferences/decisions/outcomes) | **Already Exists** | `lib/marketing-memory/` — full four-layer model, RLS-protected, Phases 1–4 implemented and consumed by Marketing Director. This *is* the Business Brain's foundation. |
+| Multi-source composition into one explainable understanding (Known/Assumed/Missing) | **Shipped since this audit (Wave I)** | `lib/business-discovery/` — see [`../BUSINESS_DISCOVERY_ENGINE.md`](../BUSINESS_DISCOVERY_ENGINE.md). Read-only composition over existing sources; does not yet persist a Business Brain record or feed Marketing Memory's `learnings` layer. |
 | Broader input surface (connectors beyond GBP, uploads, Customer Voice, Market Radar) | **Needs Expansion** | The data model already accepts evidence-linked observations from any source; what's missing is the sources themselves, not the structure. |
 | Cross-domain output surface (beyond marketing recommendations) | **New Functionality** | Marketing Director is, deliberately, marketing-only today. A broader Growth Engine decision surface is genuinely new, and must not become a second decision engine competing with Marketing Director (see [`../MARKETING_DIRECTOR_ARCHITECTURE.md`](../MARKETING_DIRECTOR_ARCHITECTURE.md)). |
 
@@ -27,7 +28,7 @@ This audit is written from direct inspection of `lib/`, `app/`, and the existing
 |---|---|---|
 | Website analysis pipeline | **Already Exists** | `lib/website-analysis/` — extraction, tone, keywords, SEO findings, scored analysis. Authenticated-session only today. |
 | AI Marketing Profile generation | **Already Exists** | `lib/ai-marketing-profile/` — synthesizes a business profile from analysis + business data. |
-| Public, pre-auth "What Customers See" experience | **New Functionality** | Nothing today runs this analysis before signup/login. This is the single biggest net-new build in Wave I — see [`IMPLEMENTATION_ROADMAP.md`](./IMPLEMENTATION_ROADMAP.md). |
+| Public, pre-auth "What Customers See" experience | **New Functionality** (orchestration foundation shipped) | Nothing today runs this analysis before signup/login. The authenticated-session orchestration layer (AI Business Discovery) now exists — see [`../BUSINESS_DISCOVERY_ENGINE.md`](../BUSINESS_DISCOVERY_ENGINE.md) — but the pre-auth entry point and presentation UI remain the single biggest net-new build in Wave I — see [`IMPLEMENTATION_ROADMAP.md`](./IMPLEMENTATION_ROADMAP.md). |
 | Interactive demo | **Already Exists** (different shape) | `lib/interactive-demo/` provides a generic, non-business-specific proof experience. Stays as a secondary path; does not need to be replaced. |
 
 ## Connector Framework
