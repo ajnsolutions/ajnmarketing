@@ -96,8 +96,13 @@ export function SnapshotResults({
             Possibilities worth a closer look — not guarantees, and nothing happens automatically.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            {opportunities.map((notice) => (
-              <GrowthOpportunityCard key={notice} notice={notice} reason={snapshot.possibleGrowthOpportunities.reason} />
+            {opportunities.map((notice, index) => (
+              <GrowthOpportunityCard
+                key={notice}
+                notice={notice}
+                reason={snapshot.possibleGrowthOpportunities.reason}
+                highlightAsTop={index === 0}
+              />
             ))}
           </div>
         </section>

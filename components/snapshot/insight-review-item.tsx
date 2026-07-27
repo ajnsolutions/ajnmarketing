@@ -82,8 +82,13 @@ export function InsightReviewItem({
           [InsightDecisionTypes.CONFIRM, InsightDecisionTypes.CORRECT, InsightDecisionTypes.REJECT, InsightDecisionTypes.REVIEW_LATER] as const
         ).map((option) => {
           const selected = decision?.decision === option;
-          if (option === InsightDecisionTypes.CONFIRM && insight.confidenceTier === DiscoveryConfidenceTiers.MISSING) {
-            return null; // Nothing to confirm on a Missing insight — only Correct/Review Later make sense.
+          const isMissing = insight.confidenceTier === DiscoveryConfidenceTiers.MISSING;
+          if (isMissing && (option === InsightDecisionTypes.CONFIRM || option === InsightDecisionTypes.REJECT)) {
+            // Nothing to confirm or reject on a Missing insight — we made no
+            // claim at all, so "That's not right" reads as nonsensical here.
+            // Only "Let me correct it" (tell us the answer) and "Review
+            // later" make sense when the honest state is "I don't know yet."
+            return null;
           }
           return (
             <button
