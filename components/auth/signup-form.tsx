@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
 import { AuthField, AuthMessage, AuthShell } from "@/components/auth/auth-shell";
 import { createClient } from "@/lib/supabase/client";
 
 export function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Preserved end-to-end but never dereferenced or validated here — it's an
+  // opaque token (see docs/BUSINESS_DISCOVERY_CONTINUATION.md); the
+  // authenticated /onboarding page is what actually resolves it, safely,
+  // server-side. Account creation never depends on this being present or valid.
+  const snapshotRef = useMemo(() => searchParams.get("snapshotRef"), [searchParams]);
+  const onboardingPath = snapshotRef ? `/onboarding?snapshotRef=${encodeURIComponent(snapshotRef)}` : "/onboarding";
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +38,7 @@ export function SignupForm() {
           full_name: name,
           business_name: businessName,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`,
       },
     });
 
@@ -43,7 +50,7 @@ export function SignupForm() {
     }
 
     if (data.session) {
-      router.push("/onboarding");
+      router.push(onboardingPath);
       router.refresh();
       return;
     }
