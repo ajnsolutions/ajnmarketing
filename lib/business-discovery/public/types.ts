@@ -102,6 +102,13 @@ export type PublicBusinessDiscoveryResultV1 = {
   generatedAt: string;
   /** Opaque, time-limited handoff token — never a raw database identifier. See public/cache.ts. */
   snapshotReference: string;
+  /** The visitor-supplied, canonicalized website URL this snapshot describes — not sensitive, the visitor entered it themselves; needed so a later continuation/onboarding step doesn't have to re-ask for it. */
+  websiteUrl: string;
+  /** The visitor-supplied business name, if given — not AI-derived, so it carries no confidence tier of its own. */
+  businessName: string | null;
+  /** Visitor-supplied location hints, if given — same reasoning as businessName. */
+  city: string | null;
+  stateOrRegion: string | null;
   businessSummary: DiscoveryInsight<string>;
   primaryServices: DiscoveryInsight<string[]>;
   likelyTargetCustomers: DiscoveryInsight<string>;

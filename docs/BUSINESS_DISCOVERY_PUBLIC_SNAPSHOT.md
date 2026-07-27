@@ -141,7 +141,7 @@ Cache the public result; return it
 
 **Explicit known limitations (honest, not solved by this foundation):**
 
-- **DNS-rebinding mid-request.** This validates the resolved address(es) *before* fetching, but does not pin the fetch to that specific validated IP — a sufficiently well-timed DNS rebind between validation and the actual TCP connection is not defended against. True IP-pinning (resolving once, connecting directly to that IP with the original `Host` header) is a reasonable Phase 2B hardening step, not attempted here to keep this foundation's scope bounded.
+- ~~**DNS-rebinding mid-request.**~~ **Closed.** The fetch layer now pins the outbound connection to the literal, already-validated IP address returned by `validatePublicSnapshotUrl` (via `node:http`/`node:https`, no new dependency) — nothing in the runtime can silently re-resolve the hostname to a different address between validation and connection. See [`BUSINESS_DISCOVERY_CONTINUATION.md`](./BUSINESS_DISCOVERY_CONTINUATION.md#part-1-dns-pinned-outbound-fetching) for the full model, including what remains a genuine (network-layer, not DNS) limitation.
 - **In-memory rate limiter and cache are single-node.** Both reuse the existing `lib/interactive-demo` pattern's documented caveat: fine for a single-instance or warm-serverless deployment, not a distributed limiter/cache. If this needs to scale across many concurrent instances, that's a Phase 2B infrastructure decision (e.g., a shared store) — deliberately not introduced here to avoid adding paid infrastructure without a proven need.
 - **No CAPTCHA / bot-fingerprinting beyond IP-based rate limiting.** A sufficiently motivated actor with many IPs isn't fully stopped by this alone. Acceptable for a foundation; worth revisiting if abuse is observed in practice.
 
@@ -193,9 +193,9 @@ Reuses `lib/observability/workflowLogger.ts` (structured, sanitized logging alre
 
 ---
 
-## Conversion handoff (foundation only)
+## Conversion handoff
 
-Implemented in this task: the `snapshotReference` token, issued and resolvable via `cache.ts`, embedded in every public result. **Not implemented in this task** (explicitly out of scope): the actual signup-time endpoint that resolves a reference and offers "continue from your snapshot," and the UI that presents that offer. See Recommended Phase 2B.
+**Shipped since this document was written:** the `snapshotReference` token described below is now resolvable and claimable by an authenticated user, and prefills Guided Onboarding — see [`BUSINESS_DISCOVERY_CONTINUATION.md`](./BUSINESS_DISCOVERY_CONTINUATION.md). Implemented in *this* document's original scope: the `snapshotReference` token, issued and resolvable via `cache.ts`, embedded in every public result. What remained out of scope here (the authenticated resolve/claim/confirm endpoints and the onboarding integration) is now built — the explicit per-insight review *UI* remains future work.
 
 Assumed-to-Known conversion is explicitly **not automatic**. Nothing in this path silently upgrades an Assumed insight to Known — that only ever happens later, through an authenticated user's explicit confirmation (a future correction/edit flow), per this milestone's requirement.
 

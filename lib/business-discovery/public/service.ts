@@ -23,7 +23,7 @@ import type { AiMarketingProfileGenerated } from "@/lib/ai-marketing-profile/typ
 import type { WebsiteExtractionResult } from "@/lib/website-analysis/types";
 
 import { validatePublicSnapshotUrl, type DnsResolver } from "@/lib/business-discovery/public/urlSafety";
-import { fetchPublicSnapshotWebsite, PublicSnapshotFetchError, type FetchImpl } from "@/lib/business-discovery/public/fetchWebsite";
+import { fetchPublicSnapshotWebsite, PublicSnapshotFetchError, type PerformPinnedRequestFn } from "@/lib/business-discovery/public/fetchWebsite";
 import {
   buildEphemeralPublicAiMarketingProfile,
   buildEphemeralPublicBusinessProfile,
@@ -123,7 +123,7 @@ async function generateAiProfileWithGracefulFallback(
 
 export type RunPublicBusinessDiscoveryOptions = {
   resolver?: DnsResolver;
-  fetchImpl?: FetchImpl;
+  requestImpl?: PerformPinnedRequestFn;
 };
 
 export async function runPublicBusinessDiscovery(
@@ -149,7 +149,7 @@ export async function runPublicBusinessDiscovery(
 
   let website;
   try {
-    website = await fetchPublicSnapshotWebsite(validated.url, { resolver: options.resolver, fetchImpl: options.fetchImpl });
+    website = await fetchPublicSnapshotWebsite(validated, { resolver: options.resolver, requestImpl: options.requestImpl });
   } catch (error) {
     if (error instanceof PublicSnapshotFetchError && error.code === "timeout") {
       trackPublicSnapshotEvent("timeout", { durationMs: Date.now() - started });
@@ -204,7 +204,12 @@ export async function runPublicBusinessDiscovery(
   const internalResult = buildBusinessDiscoveryResult(unified);
 
   const reference = issuePublicSnapshotReference(validated.url);
-  const publicResult = mapToPublicBusinessDiscoveryResult(internalResult, reference);
+  const publicResult = mapToPublicBusinessDiscoveryResult(internalResult, reference, {
+    websiteUrl: validated.url,
+    businessName: request.businessName ?? null,
+    city: request.city ?? null,
+    stateOrRegion: request.stateOrRegion ?? null,
+  });
 
   setCachedPublicSnapshot(validated.url, publicResult);
 

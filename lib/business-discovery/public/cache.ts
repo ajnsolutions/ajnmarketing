@@ -96,6 +96,39 @@ export function resolvePublicSnapshotReference(reference: string): string | null
   return entry.cacheKey;
 }
 
+export type ReferenceResolution =
+  | { status: "valid"; cacheKey: string }
+  | { status: "expired" }
+  | { status: "unknown" };
+
+/**
+ * Same lookup as resolvePublicSnapshotReference, but distinguishes "this
+ * reference was never issued" from "this reference existed and expired" —
+ * the continuation service (lib/business-discovery/continuation/) needs that
+ * distinction to return an honest, specific status to the caller rather than
+ * collapsing both into one generic "not found."
+ */
+export function resolvePublicSnapshotReferenceDetailed(reference: string): ReferenceResolution {
+  const entry = referenceStore.get(reference);
+  if (!entry) return { status: "unknown" };
+  if (entry.expiresAt < Date.now()) {
+    referenceStore.delete(reference);
+    return { status: "expired" };
+  }
+  return { status: "valid", cacheKey: entry.cacheKey };
+}
+
+/** Direct cache-key lookup — used once a reference has already been resolved to its key, so the continuation service never needs to know or pass around the original URL. */
+export function getCachedPublicSnapshotByKey(cacheKey: string): PublicBusinessDiscoveryResultV1 | null {
+  const entry = resultCache.get(cacheKey);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    resultCache.delete(cacheKey);
+    return null;
+  }
+  return entry.value;
+}
+
 /** Test/ops helper — clears both stores. */
 export function resetPublicSnapshotCache(): void {
   resultCache.clear();

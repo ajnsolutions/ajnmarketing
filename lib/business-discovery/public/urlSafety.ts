@@ -8,10 +8,12 @@
  *   covers loopback, RFC1918 private ranges, link-local (incl. the
  *   169.254.169.254 cloud metadata address), carrier-grade NAT, and
  *   IPv4-mapped IPv6 (::ffff:a.b.c.d, a classic blocklist-bypass vector)
- * - DNS-resolution validation for hostnames, so a public-looking domain that
- *   resolves to a private address is still rejected (see Known limitations
- *   in docs/BUSINESS_DISCOVERY_PUBLIC_SNAPSHOT.md for what this does not
- *   cover: true IP-pinning against a rebind that happens *during* the fetch).
+ * - DNS-resolution validation for hostnames, returning the specific validated
+ *   address (`pinnedAddress`) the caller must connect to — see
+ *   lib/business-discovery/public/pinnedRequest.ts and fetchWebsite.ts, which
+ *   dial that literal address directly instead of re-resolving the hostname,
+ *   closing the DNS-rebinding gap between validation and connection (see
+ *   docs/BUSINESS_DISCOVERY_PUBLIC_SNAPSHOT.md's DNS pinning model).
  *
  * Node's WHATWG URL parser already canonicalizes obfuscated IPv4 literals
  * (decimal, octal, hex, shorthand) into standard dotted-decimal form during
@@ -152,7 +154,18 @@ async function defaultResolver(hostname: string): Promise<string[]> {
 export type ValidatedPublicUrl = {
   /** The canonical, re-serialized URL (never the raw visitor input) — this is what gets fetched. */
   url: string;
+  /** The original hostname — preserved for the Host header and TLS SNI/certificate verification. Never used for the actual socket connection. */
   hostname: string;
+  /**
+   * The specific, already-validated literal IP address the caller must
+   * connect to (bracket-free for IPv6). This is the fix for DNS rebinding:
+   * the fetch layer dials this literal address directly, so nothing between
+   * validation and connection can re-resolve the hostname to a different,
+   * unvalidated address.
+   */
+  pinnedAddress: string;
+  port: number;
+  protocol: "http:" | "https:";
 };
 
 /**
@@ -195,20 +208,39 @@ export async function validatePublicSnapshotUrl(
     throw new PublicSnapshotUrlError("That website address can't be scanned.");
   }
 
-  const isIpLiteral = parseIPv4(parsed.hostname) !== null || expandIPv6(parsed.hostname) !== null;
-  if (!isIpLiteral) {
-    const resolve = options.resolver ?? defaultResolver;
-    let resolvedAddresses: string[];
-    try {
-      resolvedAddresses = await resolve(parsed.hostname);
-    } catch {
-      throw new PublicSnapshotUrlError("We couldn't reach that website address.");
-    }
+  const protocol = parsed.protocol as "http:" | "https:";
+  const port = parsed.port ? Number(parsed.port) : protocol === "https:" ? 443 : 80;
 
-    if (resolvedAddresses.length === 0 || resolvedAddresses.some((address) => isBlockedHostLiteral(address))) {
-      throw new PublicSnapshotUrlError("That website address can't be scanned.");
-    }
+  const isIpLiteral = parseIPv4(parsed.hostname) !== null || expandIPv6(parsed.hostname) !== null;
+  if (isIpLiteral) {
+    // Already a literal address — nothing to resolve, and nothing for a later
+    // DNS lookup to disagree with. Strip IPv6 brackets for use as a raw
+    // connect target.
+    const pinnedAddress =
+      parsed.hostname.startsWith("[") && parsed.hostname.endsWith("]")
+        ? parsed.hostname.slice(1, -1)
+        : parsed.hostname;
+    return { url: parsed.toString(), hostname: parsed.hostname, pinnedAddress, port, protocol };
   }
 
-  return { url: parsed.toString(), hostname: parsed.hostname };
+  const resolve = options.resolver ?? defaultResolver;
+  let resolvedAddresses: string[];
+  try {
+    resolvedAddresses = await resolve(parsed.hostname);
+  } catch {
+    throw new PublicSnapshotUrlError("We couldn't reach that website address.");
+  }
+
+  if (resolvedAddresses.length === 0 || resolvedAddresses.some((address) => isBlockedHostLiteral(address))) {
+    throw new PublicSnapshotUrlError("That website address can't be scanned.");
+  }
+
+  // Every returned address was just checked as non-blocked above (a
+  // conservative all-or-nothing check), so pinning to the first one
+  // deterministically is safe — this is the exact address the outbound
+  // connection will use, closing the gap where a second, later DNS lookup
+  // (e.g. inside a generic fetch/HTTP client) could return something else.
+  const pinnedAddress = resolvedAddresses[0];
+
+  return { url: parsed.toString(), hostname: parsed.hostname, pinnedAddress, port, protocol };
 }
