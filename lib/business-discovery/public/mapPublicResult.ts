@@ -39,7 +39,8 @@ function renamePublicField(field: string): string {
 export function mapToPublicBusinessDiscoveryResult(
   internal: BusinessDiscoveryResult,
   snapshotReference: string,
-  visitorInput: { websiteUrl: string; businessName: string | null; city: string | null; stateOrRegion: string | null }
+  visitorInput: { websiteUrl: string; businessName: string | null; city: string | null; stateOrRegion: string | null },
+  degraded = false
 ): PublicBusinessDiscoveryResultV1 {
   const publicRelevantTiers: DiscoveryConfidenceTier[] = [
     internal.businessSummary.confidenceTier,
@@ -88,6 +89,7 @@ export function mapToPublicBusinessDiscoveryResult(
     businessName: visitorInput.businessName,
     city: visitorInput.city,
     stateOrRegion: visitorInput.stateOrRegion,
+    degraded,
     businessSummary: internal.businessSummary,
     primaryServices: internal.primaryServices,
     likelyTargetCustomers: internal.targetCustomers,

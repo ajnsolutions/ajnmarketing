@@ -109,6 +109,15 @@ export type PublicBusinessDiscoveryResultV1 = {
   /** Visitor-supplied location hints, if given — same reasoning as businessName. */
   city: string | null;
   stateOrRegion: string | null;
+  /**
+   * True when this Snapshot fell back to a deterministic, non-AI extraction
+   * or synthesis step (see lib/business-discovery/public/service.ts's
+   * extractWithGracefulFallback / generateAiProfileWithGracefulFallback) —
+   * the honest signal a results UI needs to show "we learned part of your
+   * business" partial-result messaging instead of silently presenting a
+   * lower-fidelity read as if it were complete.
+   */
+  degraded: boolean;
   businessSummary: DiscoveryInsight<string>;
   primaryServices: DiscoveryInsight<string[]>;
   likelyTargetCustomers: DiscoveryInsight<string>;

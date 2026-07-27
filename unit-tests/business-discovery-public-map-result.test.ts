@@ -125,3 +125,23 @@ test("a real mix of Known and Missing fields never gets stuck permanently low du
   const publicResult = mapToPublicBusinessDiscoveryResult(strongPublicSignal, "ref-123", { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null });
   assert.notEqual(publicResult.overallConfidence.tier, DiscoveryConfidenceTiers.MISSING);
 });
+
+test("defaults to degraded: false when the caller doesn't specify it", () => {
+  const publicResult = mapToPublicBusinessDiscoveryResult(buildInternalResult(), "ref-123", {
+    websiteUrl: "https://example.com/",
+    businessName: null,
+    city: null,
+    stateOrRegion: null,
+  });
+  assert.equal(publicResult.degraded, false);
+});
+
+test("honestly threads through a true degraded flag — never silently hidden from the client", () => {
+  const publicResult = mapToPublicBusinessDiscoveryResult(
+    buildInternalResult(),
+    "ref-123",
+    { websiteUrl: "https://example.com/", businessName: null, city: null, stateOrRegion: null },
+    true
+  );
+  assert.equal(publicResult.degraded, true);
+});

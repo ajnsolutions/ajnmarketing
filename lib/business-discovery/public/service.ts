@@ -204,12 +204,17 @@ export async function runPublicBusinessDiscovery(
   const internalResult = buildBusinessDiscoveryResult(unified);
 
   const reference = issuePublicSnapshotReference(validated.url);
-  const publicResult = mapToPublicBusinessDiscoveryResult(internalResult, reference, {
-    websiteUrl: validated.url,
-    businessName: request.businessName ?? null,
-    city: request.city ?? null,
-    stateOrRegion: request.stateOrRegion ?? null,
-  });
+  const publicResult = mapToPublicBusinessDiscoveryResult(
+    internalResult,
+    reference,
+    {
+      websiteUrl: validated.url,
+      businessName: request.businessName ?? null,
+      city: request.city ?? null,
+      stateOrRegion: request.stateOrRegion ?? null,
+    },
+    extractionDegraded || aiProfileDegraded
+  );
 
   setCachedPublicSnapshot(validated.url, publicResult);
 

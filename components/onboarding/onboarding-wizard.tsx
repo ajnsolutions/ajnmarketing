@@ -16,8 +16,11 @@ import { profileRowToOnboardingData } from "@/lib/business-profile";
 import { fetchBusinessProfile, saveOnboardingProgress } from "@/lib/business-profile-client";
 import { mergeOnboardingPrefill } from "@/lib/business-discovery/continuation/onboardingPrefill";
 import type { OnboardingSnapshotPrefill } from "@/lib/business-discovery/continuation/types";
+import type { PublicBusinessDiscoveryResultV1 } from "@/lib/business-discovery/public/types";
+import { SnapshotReviewStep } from "@/components/onboarding/snapshot-review-step";
 
 type MagicStep =
+  | "snapshotReview"
   | "welcome"
   | "website"
   | "businessName"
@@ -109,12 +112,21 @@ function SocialConnectStep({
 
 export function OnboardingWizard({
   snapshotPrefill = null,
+  snapshotReference = null,
+  snapshot = null,
+  snapshotNotice = null,
 }: {
   /** Resolved server-side from an optional Free Marketing Snapshot reference — see app/onboarding/page.tsx. Absent/null is the normal case and behaves exactly as before this prop existed. */
   snapshotPrefill?: OnboardingSnapshotPrefill | null;
+  /** The same reference, needed client-side only to call the confirm endpoint from SnapshotReviewStep. */
+  snapshotReference?: string | null;
+  /** The full resolved Snapshot content, for the per-insight review step. Null whenever snapshotPrefill is null (both resolve together, or not at all). */
+  snapshot?: PublicBusinessDiscoveryResultV1 | null;
+  /** A friendly, honest notice when a snapshotRef was present but expired — e.g. "Your Snapshot expired while you were signing in." Null in every other case (absent/invalid references stay silent). */
+  snapshotNotice?: string | null;
 } = {}) {
   const router = useRouter();
-  const [step, setStep] = useState<MagicStep>("welcome");
+  const [step, setStep] = useState<MagicStep>(snapshot && snapshotReference ? "snapshotReview" : "welcome");
   const [data, setData] = useState<OnboardingData>(
     snapshotPrefill ? mergeOnboardingPrefill(initialOnboardingData, snapshotPrefill) : initialOnboardingData,
   );
@@ -334,6 +346,20 @@ export function OnboardingWizard({
     );
   }
 
+  if (step === "snapshotReview" && snapshot && snapshotReference) {
+    return (
+      <div className="flex min-h-full flex-col bg-[#F8FAFC] px-6 py-12 sm:py-16">
+        <div className="mx-auto w-full max-w-2xl">
+          <SnapshotReviewStep
+            snapshot={snapshot}
+            snapshotReference={snapshotReference}
+            onComplete={() => setStep("welcome")}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (step === "progress") {
     return (
       <div className="flex min-h-full flex-col items-center justify-center bg-[#F8FAFC] px-6 py-16">
@@ -429,6 +455,11 @@ export function OnboardingWizard({
 
       <div className="mx-auto max-w-xl px-6 py-10 sm:py-14">
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/[0.03] sm:p-8">
+          {snapshotNotice && (
+            <p role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+              {snapshotNotice}
+            </p>
+          )}
           {savedNotice && (
             <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
               {savedNotice}

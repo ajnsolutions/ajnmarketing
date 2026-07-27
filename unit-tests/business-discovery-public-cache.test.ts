@@ -19,6 +19,7 @@ function fakeResult(overrides: Partial<PublicBusinessDiscoveryResultV1> = {}): P
     businessName: null,
     city: null,
     stateOrRegion: null,
+    degraded: false,
     businessSummary: { value: "x", confidenceTier: "known", confidenceScore: 90, sources: [], reason: "x", evidenceRefs: [] },
     primaryServices: { value: [], confidenceTier: "missing", confidenceScore: 0, sources: [], reason: "x", evidenceRefs: [] },
     likelyTargetCustomers: { value: null, confidenceTier: "missing", confidenceScore: 0, sources: [], reason: "x", evidenceRefs: [] },
