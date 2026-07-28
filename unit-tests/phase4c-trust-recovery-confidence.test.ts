@@ -74,7 +74,7 @@ test("page-chrome ships Phase 4C trust primitives", () => {
 });
 
 test("HoM includes customer confidence panel", () => {
-  const hom = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+  const hom = readFileSync(join(root, "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   assert.match(hom, /CustomerConfidencePanel/);
   assert.match(hom, /briefing\.confidence/);
 });

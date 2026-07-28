@@ -7,13 +7,13 @@ test("unauthenticated /onboarding redirects to login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("Magic first-five-minutes source ships calm Head of Marketing onboarding", async () => {
+test("Magic first-five-minutes source ships calm Growth Advisor onboarding", async () => {
   const wizard = readFileSync(
     join(process.cwd(), "components/onboarding/onboarding-wizard.tsx"),
     "utf8",
   );
-  expect(wizard).toContain("Head of Marketing");
-  expect(wizard).toContain("Meet Your Head of Marketing");
+  expect(wizard).toContain("Growth Advisor");
+  expect(wizard).toContain("Meet Your Growth Advisor");
   expect(wizard).toContain("already started learning about your business");
 
   const home = readFileSync(

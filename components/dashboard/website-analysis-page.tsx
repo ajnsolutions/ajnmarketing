@@ -336,7 +336,7 @@ export function WebsiteAnalysisPage({
         <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03]">
           <h2 className="text-base font-bold text-navy-900">No website?</h2>
           <p className="mt-2 text-sm leading-6 text-text-muted">
-            That is fine. Website analysis is optional and does not block Head of Marketing.
+            That is fine. Website analysis is optional and does not block Growth Advisor.
           </p>
           <div className="mt-4">
             <WebsiteNoWebsiteAction
@@ -361,7 +361,7 @@ export function WebsiteAnalysisPage({
         <DashboardEmptyState
           kind="no_data_yet"
           title="No website analysis yet"
-          description="A scan hasn’t run for this site. Use Refresh Analysis above when you’re ready — Head of Marketing still works without it."
+          description="A scan hasn’t run for this site. Use Refresh Analysis above when you’re ready — Growth Advisor still works without it."
         />
       )}
 

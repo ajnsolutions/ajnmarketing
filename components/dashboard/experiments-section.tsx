@@ -230,7 +230,7 @@ export function ExperimentsSection({
         Marketing experiments
       </h2>
       <p className="mt-3 text-sm leading-7 text-text-muted">
-        Controlled tests proposed by your Head of Marketing — measurement only, not new strategy.
+        Controlled tests proposed by your Growth Advisor — measurement only, not new strategy.
         You can approve a proposal here, but you cannot edit or invent one yourself.
       </p>
       <ReadOnlyNotice>
@@ -261,7 +261,7 @@ export function ExperimentsSection({
           <DashboardEmptyState
             kind="no_activity"
             title="No active experiments"
-            description="When your Head of Marketing proposes a test and you approve it, it will appear here while it runs."
+            description="When your Growth Advisor proposes a test and you approve it, it will appear here while it runs."
           />
         </div>
       ) : active.length === 0 ? (

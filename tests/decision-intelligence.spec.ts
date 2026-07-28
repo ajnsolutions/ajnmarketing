@@ -30,8 +30,8 @@ test("unauthenticated /dashboard/decision-intelligence redirects toward login", 
   expect(page.url()).toContain("/login");
 });
 
-test("Decision Intelligence ships on Head of Marketing, has no mutation controls, and the cron gate stays false", async () => {
-  const pageSource = readFileSync(join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+test("Decision Intelligence ships on Your Growth Advisor, has no mutation controls, and the cron gate stays false", async () => {
+  const pageSource = readFileSync(join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   expect(pageSource).toContain("WhyPlanChangedSection");
   expect(pageSource).toContain("whyPlanChanged");
 

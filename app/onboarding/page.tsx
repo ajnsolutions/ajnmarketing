@@ -8,8 +8,8 @@ import type { OnboardingSnapshotPrefill } from "@/lib/business-discovery/continu
 import type { PublicBusinessDiscoveryResultV1 } from "@/lib/business-discovery/public/types";
 
 export const metadata = {
-  title: "Meet Your Head of Marketing",
-  description: "Introduce your business to your AJN Marketing Head of Marketing.",
+  title: "Meet Your Growth Advisor",
+  description: "Introduce your business to your AJN Marketing Growth Advisor.",
 };
 
 const EXPIRED_SNAPSHOT_NOTICE =

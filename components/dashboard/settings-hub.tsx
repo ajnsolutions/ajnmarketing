@@ -94,12 +94,12 @@ export function SettingsHub() {
       <PageHeader
         eyebrow="Settings"
         title="How I work with your business"
-        description="Adjust foundation and account preferences here. Your weekly check-in stays on Head of Marketing."
+        description="Adjust foundation and account preferences here. Your weekly check-in stays on Growth Advisor."
         showBack
       />
       <OrientationNote
         whyItMatters="Clear setup and preferences keep drafts and plans accurate."
-        whatHappensNext="Finish foundation items first, then return to Head of Marketing for priorities."
+        whatHappensNext="Finish foundation items first, then return to Growth Advisor for priorities."
       />
 
       <section className="space-y-3" aria-labelledby="settings-foundation-heading">
@@ -126,7 +126,7 @@ export function SettingsHub() {
           href="/dashboard"
           className="hom-focusable font-medium text-brand-600 hover:text-brand-700"
         >
-          Your Head of Marketing
+          Your Growth Advisor
         </Link>
         .
       </p>

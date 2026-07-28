@@ -12,7 +12,7 @@ test("Great Simplification ships four primary destinations without new engines",
     join(process.cwd(), "components/dashboard/dashboard-nav.tsx"),
     "utf8",
   );
-  expect(nav).toContain('label: "Your Head of Marketing"');
+  expect(nav).toContain('label: "Your Growth Advisor"');
   expect(nav).toContain('label: "Results"');
   expect(nav).toContain('label: "Library"');
   expect(nav).toContain('label: "Settings"');

@@ -19,7 +19,7 @@ test("trust presentation helpers avoid fabrication and internals", () => {
 
 test("HoM confidence and recovery surfaces are wired", () => {
   expect(read("components/dashboard/customer-confidence.tsx")).toContain("Since your last visit");
-  expect(read("components/dashboard/head-of-marketing-page.tsx")).toContain("CustomerConfidencePanel");
+  expect(read("components/dashboard/growth-advisor/supporting-context.tsx")).toContain("CustomerConfidencePanel");
   expect(read("components/dashboard/website-analysis-page.tsx")).toContain("RecoveryNotice");
   expect(read("components/dashboard/publishing-page.tsx")).toContain("recoveryPublishingFailed");
   expect(read("components/dashboard/content-generator-page.tsx")).toContain(

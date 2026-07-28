@@ -328,7 +328,7 @@ export function BrandVoicePage() {
           </p>
           <OrientationNote
             whyItMatters="Clear voice guidance keeps drafts on-brand before they reach This Week."
-            whatHappensNext="Save your tone, then continue setup or return to Head of Marketing."
+            whatHappensNext="Save your tone, then continue setup or return to Growth Advisor."
           />
           <p className="mt-3 text-sm">
             <Link

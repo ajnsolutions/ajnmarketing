@@ -194,7 +194,7 @@ export type MarketingDirectorDecision = {
 /**
  * Client-safe presentation subset — the only shape a future client component should
  * ever receive if this briefing is ever rendered from a Client Component. Today,
- * HeadOfMarketingPage is a Server Component and renders the full briefing server-side,
+ * GrowthAdvisorPage is a Server Component and renders the full briefing server-side,
  * so this type is not yet wired anywhere; it exists so that boundary is easy to enforce
  * later without redesigning the decision contract. See docs/MARKETING_DIRECTOR_FOUNDATION.md.
  */

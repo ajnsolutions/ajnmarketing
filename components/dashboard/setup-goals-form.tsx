@@ -101,7 +101,7 @@ export function SetupGoalsForm() {
       <PageHeader
         eyebrow="Setup"
         title="Marketing goals"
-        description="Tell me what success looks like. This keeps Head of Marketing focused — it does not automatically regenerate strategy."
+        description="Tell me what success looks like. This keeps Growth Advisor focused — it does not automatically regenerate strategy."
         backHref="/dashboard/setup"
         backLabel="Back to setup"
       />
@@ -138,7 +138,7 @@ export function SetupGoalsForm() {
         <h2 className="text-base font-bold text-navy-900">Business direction</h2>
         <p className="text-sm text-text-muted">
           From onboarding — edit anytime. Either a goal above or this direction is enough for
-          Head of Marketing readiness.
+          Growth Advisor readiness.
         </p>
         <div>
           <p className="text-sm font-medium text-navy-900" id={`${formId}-audience-label`}>

@@ -54,7 +54,7 @@ export function MarketingPlanPage({
             actions={<MarketingPlanRefreshButton />}
           />
           <OrientationNote
-            whyItMatters="The plan gives Head of Marketing a concrete month to work from."
+            whyItMatters="The plan gives Growth Advisor a concrete month to work from."
             whatHappensNext="Use recommendations and This Week to turn plan themes into drafts you approve."
           />
         </div>
@@ -90,7 +90,7 @@ export function MarketingPlanPage({
           whatHappened="I couldn’t complete the latest marketing plan."
           workSafe="Any earlier plan you already had remains available."
           whatYouCanDo="Click Refresh Plan to try again when you’re ready."
-          whatYouCanIgnore="Approvals, publishing, and Head of Marketing still work."
+          whatYouCanIgnore="Approvals, publishing, and Growth Advisor still work."
         />
       )}
 

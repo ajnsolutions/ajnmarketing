@@ -124,12 +124,16 @@ test("Weekly Briefing docs and orchestration stay presentation-only", () => {
   assert.equal(weekly.includes("analyzePerformanceForUser"), false);
 
   const page = readFileSync(
-    join(root, "components/dashboard/head-of-marketing-page.tsx"),
+    join(root, "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  assert.match(page, /experienceTitle|Weekly Briefing|Head of Marketing/);
-  assert.match(page, /What I handled|This Week/);
-  assert.match(page, /Next Week/);
-  assert.match(page, /timeRespectLabel/);
-  assert.match(page, /hom-primary-action/);
+  assert.match(page, /Your Growth Advisor/);
+  assert.match(page, /What changed/);
+  assert.match(page, /growth-advisor-primary-action/);
+
+  const transform = readFileSync(
+    join(root, "lib/growth-advisor/buildGrowthAdvisorBriefing.ts"),
+    "utf8",
+  );
+  assert.match(transform, /timeRespectLabel/);
 });

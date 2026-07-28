@@ -9,11 +9,11 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
 
 test("Proactive HoM ships on dashboard without becoming a notification center", async () => {
   const pageSource = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(pageSource).toContain("ProactivePresenceSection");
-  expect(pageSource).toContain("Your Head of Marketing is the main place to decide.");
+  expect(pageSource).toContain("Your Growth Advisor is the main place to decide.");
 
   const presence = readFileSync(
     join(process.cwd(), "components/dashboard/proactive-presence.tsx"),
@@ -35,7 +35,7 @@ test("Proactive HoM ships on dashboard without becoming a notification center", 
     join(process.cwd(), "components/dashboard/dashboard-nav.tsx"),
     "utf8",
   );
-  expect(nav).toContain("Your Head of Marketing");
+  expect(nav).toContain("Your Growth Advisor");
   expect(nav).not.toContain('label: "Proactive"');
 
   const gate = readFileSync(
