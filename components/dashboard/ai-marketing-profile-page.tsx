@@ -151,7 +151,7 @@ export function AiMarketingProfilePage({ profile }: { profile: AiMarketingProfil
           />
           <OrientationNote
             whyItMatters="Content and planning work better when this profile is current."
-            whatHappensNext="When ready, review your Marketing Plan, then return to Head of Marketing for priorities."
+            whatHappensNext="When ready, review your Marketing Plan, then return to Growth Advisor for priorities."
           />
         </div>
       </div>

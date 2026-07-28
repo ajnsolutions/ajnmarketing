@@ -11,7 +11,7 @@ test("unauthenticated /dashboard/strategic-marketing-calendar redirects toward l
 
 test("Strategic Marketing Calendar ships preview, full page, filters, and read-only guardrails", async () => {
   const hom = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(hom).toContain("StrategicCalendarPreviewSection");
@@ -58,5 +58,5 @@ test("Strategic Marketing Calendar ships preview, full page, filters, and read-o
     join(process.cwd(), "components/dashboard/ask-head-of-marketing.tsx"),
     "utf8",
   );
-  expect(interactive).toContain("Ask your Head of Marketing");
+  expect(interactive).toContain("Ask your Growth Advisor");
 });

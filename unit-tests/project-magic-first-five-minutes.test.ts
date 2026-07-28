@@ -123,13 +123,13 @@ test("first-days home can report nothing needed", () => {
   assert.equal(model.isEarlyCustomer, false);
 });
 
-test("onboarding wizard uses Magic Head of Marketing copy and GBP connect path", () => {
+test("onboarding wizard uses Magic Growth Advisor copy and GBP connect path", () => {
   const source = readFileSync(
     join(root, "components/onboarding/onboarding-wizard.tsx"),
     "utf8",
   );
-  assert.match(source, /Head of Marketing/);
-  assert.match(source, /Meet Your Head of Marketing/);
+  assert.match(source, /Growth Advisor/);
+  assert.match(source, /Meet Your Growth Advisor/);
   assert.match(source, /let you know when I need you/);
   assert.match(source, /\/dashboard\/google-business-profile\/connect/);
   assert.equal(source.includes("Google connection coming soon"), false);

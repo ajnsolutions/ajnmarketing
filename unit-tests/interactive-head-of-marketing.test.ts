@@ -290,7 +290,7 @@ test("suggested prompts and UI/docs ship with accessibility + mobile layout", ()
   assert.match(panel, /Looking through what we already know|Asking…/);
   assert.doesNotMatch(panel, /approveRecommendation|publishContent|openai/i);
 
-  const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+  const page = readFileSync(join(root, "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   assert.match(page, /AskHeadOfMarketingPanel/);
   const campaignsJsx = page.indexOf("<CampaignsSection");
   const askJsx = page.indexOf("<AskHeadOfMarketingPanel");

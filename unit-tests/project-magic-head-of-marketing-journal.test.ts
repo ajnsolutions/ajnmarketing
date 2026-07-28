@@ -148,7 +148,7 @@ test("journal docs and UI stay presentation-only with no new nav item", () => {
   assert.equal(nav.includes('label: "Journal"'), false);
 
   const page = readFileSync(
-    join(root, "components/dashboard/head-of-marketing-page.tsx"),
+    join(root, "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   assert.match(page, /HeadOfMarketingJournalSection/);

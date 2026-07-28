@@ -25,7 +25,7 @@ test("unauthenticated admin trigger route rejects without admin session", async 
 
 test("Experimentation Engine ships on Head of Marketing with proposal-approval UI and cron gate", async () => {
   const pageSource = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(pageSource).toContain("ExperimentsSection");

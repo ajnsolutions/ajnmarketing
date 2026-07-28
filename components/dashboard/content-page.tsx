@@ -156,7 +156,7 @@ export function ContentPage({
             <ol className="flex flex-wrap items-center gap-2">
               <li>
                 <Link href="/dashboard" className="hom-focusable font-medium text-brand-600">
-                  Head of Marketing
+                  Growth Advisor
                 </Link>
               </li>
               <li aria-hidden="true">/</li>

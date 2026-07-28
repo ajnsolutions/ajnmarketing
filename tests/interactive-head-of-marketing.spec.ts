@@ -9,7 +9,7 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
 
 test("Interactive Head of Marketing ships as Ask panel without schedules or new engines", async () => {
   const pageSource = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(pageSource).toContain("AskHeadOfMarketingPanel");
@@ -20,7 +20,7 @@ test("Interactive Head of Marketing ships as Ask panel without schedules or new 
     join(process.cwd(), "components/dashboard/ask-head-of-marketing.tsx"),
     "utf8",
   );
-  expect(panel).toContain("Ask your Head of Marketing");
+  expect(panel).toContain("Ask your Growth Advisor");
   expect(panel).toContain("Suggested questions");
   expect(panel).toContain("aria-live");
   expect(panel).toContain("hom-focusable");

@@ -415,7 +415,7 @@ export function OnboardingWizard({
             }}
             className="mt-8 inline-flex rounded-full bg-[#081426] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#081426]/20 transition-colors hover:bg-[#0B1426]"
           >
-            Meet Your Head of Marketing
+            Meet Your Growth Advisor
           </button>
         </div>
       </div>
@@ -472,7 +472,7 @@ export function OnboardingWizard({
                 Welcome
               </p>
               <h1 className="mt-4 text-3xl font-bold tracking-tight text-navy-900 sm:text-[2.1rem]">
-                I&apos;m excited to become your Head of Marketing.
+                I&apos;m excited to become your Growth Advisor.
               </h1>
               <p className="mx-auto mt-5 max-w-md text-base leading-7 text-text-muted">
                 Before I can help grow your business, I&apos;d like to learn a little about it.

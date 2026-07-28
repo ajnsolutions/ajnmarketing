@@ -500,7 +500,7 @@ test("UI ships read-only calendar page + HoM preview without edit/drag controls"
   assert.match(preview, /Open full calendar/);
   assert.match(preview, /Pending approvals/);
 
-  const hom = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+  const hom = readFileSync(join(root, "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   assert.match(hom, /StrategicCalendarPreviewSection/);
   // Phase 3A hierarchy: Why Plan Changed → Calendar → Campaigns → Ask
   assert.ok(

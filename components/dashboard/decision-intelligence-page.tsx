@@ -126,7 +126,7 @@ function LearningImpactCard({ item }: { item: LearningImpactSummary }) {
       <p className="mt-1 text-xs text-text-muted">Came from: {item.origin}</p>
       <p className="mt-1 text-xs text-text-muted">
         {item.influencedLaterDecision
-          ? "Influenced a later Head of Marketing decision."
+          ? "Influenced a later Growth Advisor decision."
           : item.influenceUnavailableReason}
       </p>
       {item.ignoredDueToPrecedence && (
@@ -153,7 +153,7 @@ export function DecisionIntelligencePage({ summary }: { summary: DecisionIntelli
       <PageHeader
         eyebrow="Decision Intelligence"
         title="Why the plan changed"
-        description="A read-only explanation of what your Head of Marketing decided, what evidence supports it, and what remains uncertain. This page never creates or changes recommendations, campaigns, or experiments."
+        description="A read-only explanation of what your Growth Advisor decided, what evidence supports it, and what remains uncertain. This page never creates or changes recommendations, campaigns, or experiments."
       />
 
       <ReadOnlyNotice>
@@ -197,8 +197,8 @@ export function DecisionIntelligencePage({ summary }: { summary: DecisionIntelli
             <DashboardEmptyState
               kind="no_data_yet"
               title="No decision history yet"
-              description="After your next Head of Marketing visit, you’ll see what changed and why — with clear evidence and honest limits."
-              actionLabel="Open Head of Marketing"
+              description="After your next Growth Advisor visit, you’ll see what changed and why — with clear evidence and honest limits."
+              actionLabel="Open Growth Advisor"
               actionHref="/dashboard"
             />
           </div>
@@ -284,7 +284,7 @@ export function DecisionIntelligencePage({ summary }: { summary: DecisionIntelli
             <DashboardEmptyState
               kind="no_data_yet"
               title="No timeline events yet"
-              description="Decision history will build a calm timeline as your Head of Marketing revisits priorities."
+              description="Decision history will build a calm timeline as your Growth Advisor revisits priorities."
             />
           </div>
         ) : (

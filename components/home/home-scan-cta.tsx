@@ -24,7 +24,7 @@ export function HomeScanCta() {
     <section className="border-b border-slate-200/80 bg-[#F8FAFC] py-12 sm:py-14">
       <div className="mx-auto max-w-3xl px-6 text-center">
         <h2 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
-          Meet the AI Head of Marketing that learns your business, watches your market, and helps you decide what to
+          Meet the AI Growth Advisor that learns your business, watches your market, and helps you decide what to
           do next.
         </h2>
         <p className="mt-3 text-base leading-7 text-text-muted">

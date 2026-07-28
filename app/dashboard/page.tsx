@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import { FirstDaysHome } from "@/components/dashboard/first-days-home";
-import { HeadOfMarketingPage } from "@/components/dashboard/head-of-marketing-page";
+import { GrowthAdvisorPage } from "@/components/dashboard/growth-advisor/growth-advisor-page";
 import { SetupHomReadinessPanel } from "@/components/dashboard/setup-hom-readiness";
 import { getFirstDaysHomeForCurrentUser } from "@/lib/dashboard/first-days-home-server";
 import {
   getCustomerSetupSnapshotForCurrentUser,
 } from "@/lib/customer-setup/service";
 import { getHeadOfMarketingBriefingForCurrentUser } from "@/lib/head-of-marketing/service";
+import { runBusinessDiscoveryForCurrentUser } from "@/lib/business-discovery/service";
+import { buildGrowthAdvisorBriefing } from "@/lib/growth-advisor/buildGrowthAdvisorBriefing";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup] = await Promise.all([
@@ -21,7 +23,11 @@ export default async function DashboardPage() {
   }
 
   if (briefing) {
-    return <HeadOfMarketingPage briefing={briefing} />;
+    // Business Discovery personalizes "What I noticed" honestly when there's
+    // a real signal — never required, never blocks the page if unavailable.
+    const businessDiscovery = await runBusinessDiscoveryForCurrentUser().catch(() => null);
+    const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery);
+    return <GrowthAdvisorPage advisor={advisor} briefing={briefing} />;
   }
 
   // Honest readiness gate — never invent strategy when setup is insufficient.

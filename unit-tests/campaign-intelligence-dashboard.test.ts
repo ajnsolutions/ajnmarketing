@@ -85,7 +85,7 @@ test("Campaigns section: expand/collapse, accessibility, mobile-friendly layout"
   assert.match(section, /sm:p-6|sm:grid-cols-2|sm:p-5/);
   assert.match(section, /Active campaigns/);
 
-  const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+  const page = readFileSync(join(root, "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   assert.match(page, /CampaignsSection/);
   assert.match(page, /MonthlyFocusSection/);
   // Phase 3A: Campaigns sit in the execution block; Monthly Focus is supporting detail below.
