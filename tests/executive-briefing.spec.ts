@@ -7,7 +7,7 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("Executive Brief ships on Head of Marketing without new engines or schedules", async () => {
+test("Executive Brief ships on Your Growth Advisor without new engines or schedules", async () => {
   const pageSource = readFileSync(
     join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",

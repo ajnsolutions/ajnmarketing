@@ -282,7 +282,7 @@ test("suggested prompts and UI/docs ship with accessibility + mobile layout", ()
   assert.ok(INTERACTIVE_HOM_SUGGESTED_PROMPTS.length >= 6);
 
   const panel = readFileSync(join(root, "components/dashboard/ask-head-of-marketing.tsx"), "utf8");
-  assert.match(panel, /Ask your Head of Marketing/i);
+  assert.match(panel, /Ask your Growth Advisor/i);
   assert.match(panel, /aria-labelledby/);
   assert.match(panel, /aria-live/);
   assert.match(panel, /hom-focusable/);

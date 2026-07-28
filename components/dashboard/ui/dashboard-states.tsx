@@ -136,7 +136,7 @@ export function DashboardErrorState({
 }
 
 export function DashboardLoadingState({
-  label = "Preparing your Head of Marketing briefing…",
+  label = "Preparing your Growth Advisor briefing…",
 }: {
   label?: string;
 }) {

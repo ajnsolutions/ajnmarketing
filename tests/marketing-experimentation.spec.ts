@@ -23,7 +23,7 @@ test("unauthenticated admin trigger route rejects without admin session", async 
   expect([401, 403]).toContain(response.status());
 });
 
-test("Experimentation Engine ships on Head of Marketing with proposal-approval UI and cron gate", async () => {
+test("Experimentation Engine ships on Your Growth Advisor with proposal-approval UI and cron gate", async () => {
   const pageSource = readFileSync(
     join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
