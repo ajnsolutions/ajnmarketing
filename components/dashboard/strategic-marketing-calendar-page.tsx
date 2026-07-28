@@ -129,7 +129,7 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
             href="/dashboard"
             className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
-            ← Back to Head of Marketing
+            ← Back to Growth Advisor
           </Link>
         </p>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
@@ -318,7 +318,7 @@ export function StrategicMarketingCalendarPage({ initialCalendar, initialAnchor 
 
       <p className="mt-6 text-sm text-text-muted">
         <Link href="/dashboard" className="hom-focusable font-medium text-brand-600 hover:text-brand-700">
-          Back to Head of Marketing
+          Back to Growth Advisor
         </Link>
       </p>
 

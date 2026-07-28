@@ -4,7 +4,10 @@ import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
 import type { HeadOfMarketingJournal } from "@/lib/head-of-marketing/journalTypes";
 import type { MonthlyFocus } from "@/lib/head-of-marketing/monthlyFocusTypes";
 import type { ProactivePresence } from "@/lib/head-of-marketing/proactiveTypes";
-import type { MarketingDirectorDecision } from "@/lib/marketing-director/types";
+import type {
+  MarketingDirectorDecision,
+  MarketingDirectorTopRecommendationDetail,
+} from "@/lib/marketing-director/types";
 import type { ExperimentDashboardCard } from "@/lib/marketing-experimentation/experiment-types";
 import type { ExperimentProposalCard } from "@/lib/marketing-experimentation/proposal-types";
 import type { StrategicCalendarPreview } from "@/lib/strategic-marketing-calendar/calendar-types";
@@ -64,6 +67,15 @@ export type HeadOfMarketingBriefing = {
   /** What I noticed */
   noticed: string[];
   recommendation: WeeklyBriefingRecommendation | null;
+  /**
+   * Existing recommendation-presentation explainability (whyNow/expectedBenefit/
+   * confidenceLabel) for `recommendation`, when it was sourced from a real ranked
+   * marketing recommendation rather than a rule-based Marketing Director fallback
+   * (e.g. "Finish connecting Google"). Null in the fallback case — never fabricated.
+   * Client-safe: confidenceLabel is the same enum already rendered elsewhere via
+   * lib/recommendation-presentation/confidenceLabels.ts.
+   */
+  topRecommendationDetail: MarketingDirectorTopRecommendationDetail | null;
   /** Next Week — what I'll be working on */
   nextWeek: string[];
   /** Continuity line from real history only; null when nothing honest to say */

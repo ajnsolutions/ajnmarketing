@@ -1,4 +1,5 @@
 import type { WebsiteExtractor } from "@/lib/website-analysis/types";
+import { classifyIndustryFromText } from "@/lib/business-discovery/industryTaxonomy";
 
 export const LOW_CONFIDENCE_CUSTOMER_PERSONA =
   "Business decision-makers and customers described on the website";
@@ -45,7 +46,12 @@ const B2B_PERSONA_CANDIDATES = [
     persona: "Business owners evaluating organizational benefit and savings programs",
   },
   {
-    terms: ["healthcare", "health plan", "medical plan", "insurance agency"],
+    // Deliberately excludes the bare term "insurance agency" — found via the
+    // Internal Alpha eval dataset to misclassify any general auto/home/life
+    // insurance agency as a B2B employee-benefits consultant. "Health plan"
+    // and "medical plan" are specific enough to actually imply benefits
+    // consulting; a plain insurance agency alone does not.
+    terms: ["healthcare", "health plan", "medical plan"],
     persona: "Organizations and decision-makers seeking healthcare or benefits guidance",
   },
 ];
@@ -87,14 +93,52 @@ function personaUsesUnsupportedAudienceTerms(persona: string, source: string): b
   );
 }
 
+/**
+ * Scores every B2B candidate by how many of its terms actually appear in the
+ * source (not just "does the first pattern in array order appear at all") —
+ * fixes a real bug where a site mentioning both "employer" and "healthcare"
+ * always got the "employer" persona purely because that candidate happened
+ * to be earlier in the list, regardless of which term was more prominent.
+ */
 function inferB2BPersona(source: string): string | null {
+  let best: { persona: string; score: number } | null = null;
+
   for (const candidate of B2B_PERSONA_CANDIDATES) {
-    if (candidate.terms.some((term) => sourceContainsTerm(source, term))) {
-      return candidate.persona;
+    const score = candidate.terms.reduce((total, term) => total + (sourceContainsTerm(source, term) ? 1 : 0), 0);
+    if (score > 0 && (!best || score > best.score)) {
+      best = { persona: candidate.persona, score };
     }
   }
 
-  return null;
+  return best?.persona ?? null;
+}
+
+const INDUSTRY_PERSONA_TEXT: Partial<Record<string, string>> = {
+  hvac: "Homeowners and property managers who need heating or cooling repair, replacement, or seasonal maintenance",
+  roofing: "Homeowners dealing with roof damage, leaks, or planning a full roof replacement",
+  dental: "Patients looking for routine dental care, treatment, or a new dentist nearby",
+  restaurant: "Local diners and regulars looking for a place to eat, order from, or book for a group",
+  legal: "Individuals and businesses seeking legal guidance or representation for a specific matter",
+  insurance: "People and businesses comparing insurance coverage and looking for a policy that fits their situation",
+  consulting: "Business leaders evaluating outside expertise to solve a specific operational or strategic problem",
+  marketing_agency: "Business owners and marketing leaders looking for outside help growing visibility and leads",
+  saas: "Teams evaluating whether this software solves a specific workflow problem they currently have",
+  ecommerce: "Online shoppers comparing this product against other options before buying",
+  coaching: "People looking for hands-on coaching or training to reach a specific personal or athletic goal",
+};
+
+/**
+ * Industry-aware fallback — tried after the B2B/residential keyword checks
+ * and before the generic catch-all. A classified industry (e.g. "Dental
+ * Practice") gives a far more specific, useful persona than the previous
+ * behavior of jumping straight to the generic
+ * "Business decision-makers and customers described on the website" for
+ * every business the B2B/residential checks didn't recognize.
+ */
+function inferIndustryPersona(source: string): string | null {
+  const classification = classifyIndustryFromText(source);
+  if (!classification.category) return null;
+  return INDUSTRY_PERSONA_TEXT[classification.category.id] ?? null;
 }
 
 function inferResidentialPersona(source: string, input: PersonaInput): string | null {
@@ -130,6 +174,9 @@ export function inferCustomerPersonaFromSource(input: PersonaInput): string {
 
   const residentialPersona = inferResidentialPersona(source, input);
   if (residentialPersona) return residentialPersona;
+
+  const industryPersona = inferIndustryPersona(source);
+  if (industryPersona) return industryPersona;
 
   return LOW_CONFIDENCE_CUSTOMER_PERSONA;
 }

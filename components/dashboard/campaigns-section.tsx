@@ -118,7 +118,7 @@ export function CampaignsSection({ campaigns }: { campaigns: CampaignDashboardCa
         Active campaigns
       </h2>
       <p className="mt-3 text-sm leading-7 text-text-muted">
-        Execution plans organized from your Head of Marketing&apos;s strategy — not a second strategy
+        Execution plans organized from your Growth Advisor&apos;s strategy — not a second strategy
         engine.
       </p>
       <ReadOnlyNotice>
@@ -130,7 +130,7 @@ export function CampaignsSection({ campaigns }: { campaigns: CampaignDashboardCa
           <DashboardEmptyState
             kind="no_activity"
             title="No active campaigns"
-            description="When your Head of Marketing starts a campaign, it will show up here with a clear timeline and progress."
+            description="When your Growth Advisor starts a campaign, it will show up here with a clear timeline and progress."
             actionLabel="See why the plan changed"
             actionHref="/dashboard/decision-intelligence"
           />

@@ -24,8 +24,8 @@ export function WhyPlanChangedSection({ preview }: { preview: WhyPlanChangedPrev
           <DashboardEmptyState
             kind="source_unavailable"
             title="Couldn’t load decision history"
-            description="Try again shortly. Your Head of Marketing priorities above are still available."
-            actionLabel="Retry Head of Marketing"
+            description="Try again shortly. Your Growth Advisor priorities above are still available."
+            actionLabel="Retry Growth Advisor"
             actionHref="/dashboard"
           />
         </div>

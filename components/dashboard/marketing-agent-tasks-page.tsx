@@ -129,7 +129,7 @@ export function MarketingAgentTasksPage({ data }: { data: MarketingAgentTasksPag
           href="/dashboard"
           className="text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
         >
-          Your Head of Marketing →
+          Your Growth Advisor →
         </Link>
         <Link
           href="/dashboard/approvals"

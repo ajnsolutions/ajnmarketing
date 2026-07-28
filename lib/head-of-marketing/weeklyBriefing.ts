@@ -424,6 +424,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     thisWeek,
     noticed,
     recommendation: buildRecommendation(input),
+    topRecommendationDetail: input.topRecommendationDetail ?? null,
     nextWeek: buildNextWeek(input),
     relationshipMemory: buildRelationshipMemory(input.profileCreatedAt, input.now),
     primaryAction,

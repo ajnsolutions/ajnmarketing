@@ -82,7 +82,7 @@ export function AskHeadOfMarketingPanel() {
       aria-labelledby="ask-hom-heading"
     >
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-        Ask your Head of Marketing
+        Ask your Growth Advisor
       </p>
       <h2 id="ask-hom-heading" className="mt-2 text-xl font-bold text-navy-900">
         Got a question?
@@ -140,7 +140,7 @@ export function AskHeadOfMarketingPanel() {
                   }
                 >
                   <span className="sr-only">
-                    {turn.role === "user" ? "You asked: " : "Head of Marketing answered: "}
+                    {turn.role === "user" ? "You asked: " : "Growth Advisor answered: "}
                   </span>
                   {turn.content}
                 </p>
@@ -183,7 +183,7 @@ export function AskHeadOfMarketingPanel() {
       >
         <div className="min-w-0 flex-1">
           <label htmlFor={`${formId}-question`} className="sr-only">
-            Ask your Head of Marketing
+            Ask your Growth Advisor
           </label>
           <input
             ref={inputRef}

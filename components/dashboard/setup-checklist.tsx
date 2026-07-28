@@ -218,7 +218,7 @@ export function SetupChecklist({ initialSnapshot }: { initialSnapshot: CustomerS
         title="Get AJN Marketing ready for your business"
         description="See what is required, what is optional, and what to do next. You can leave anytime and pick up where you left off."
         backHref="/dashboard"
-        backLabel="Back to Head of Marketing"
+        backLabel="Back to Growth Advisor"
       />
 
       <section
@@ -272,7 +272,7 @@ export function SetupChecklist({ initialSnapshot }: { initialSnapshot: CustomerS
           <div className="mt-5 space-y-3 rounded-xl bg-growth-50/80 px-4 py-4 ring-1 ring-emerald-100">
             <p className="text-sm font-semibold text-growth-700">Required setup is complete</p>
             <p className="text-sm leading-6 text-text-muted">
-              Head of Marketing is ready. Optional connections can wait — they unlock more local
+              Growth Advisor is ready. Optional connections can wait — they unlock more local
               features when you want them.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -280,7 +280,7 @@ export function SetupChecklist({ initialSnapshot }: { initialSnapshot: CustomerS
                 href="/dashboard"
                 className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
               >
-                Open Head of Marketing
+                Open Growth Advisor
               </Link>
               <Link
                 href="/dashboard/command-center"
@@ -327,7 +327,7 @@ export function SetupChecklist({ initialSnapshot }: { initialSnapshot: CustomerS
         <SectionHeader
           headingId="required-setup-heading"
           title="Required setup"
-          description="The minimum foundation for a useful Head of Marketing experience."
+          description="The minimum foundation for a useful Growth Advisor experience."
         />
         <ol className="space-y-3">
           {requiredSteps.map((step) => (
@@ -405,8 +405,8 @@ export function SetupChecklist({ initialSnapshot }: { initialSnapshot: CustomerS
           <li>
             After required setup:{" "}
             {snapshot.headOfMarketingReady
-              ? "Head of Marketing is ready."
-              : "Head of Marketing unlocks once business basics and goals are in place."}
+              ? "Growth Advisor is ready."
+              : "Growth Advisor unlocks once business basics and goals are in place."}
           </li>
           <li>
             Google Business:{" "}

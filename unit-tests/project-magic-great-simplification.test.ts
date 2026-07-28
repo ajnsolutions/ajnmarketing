@@ -26,7 +26,7 @@ test("primary nav is HoM + Results + Library + Settings only", () => {
   assert.deepEqual([...FOCUSED_NAV_HREFS], [...HOM_PRIMARY_NAV_HREFS]);
 
   const nav = readFileSync(join(root, "components/dashboard/dashboard-nav.tsx"), "utf8");
-  assert.match(nav, /label: "Your Head of Marketing"/);
+  assert.match(nav, /label: "Your Growth Advisor"/);
   assert.match(nav, /label: "Results"/);
   assert.match(nav, /label: "Library"/);
   assert.match(nav, /label: "Settings"/);

@@ -20,11 +20,11 @@ test("Product Readiness polish ships without backend or schedule changes", async
   expect(states).not.toContain("Loading dashboard...");
 
   const hom = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  expect(hom).toContain("What I handled");
-  expect(hom).toContain("hom-focusable");
+  expect(hom).toContain("What changed");
+  expect(hom).toContain("hom-skip-link");
 
   const gate = readFileSync(
     join(process.cwd(), "lib/trigger/scheduleActivation.ts"),

@@ -12,6 +12,7 @@ import {
   HomeTrust,
   HomeWeeklyApproval,
 } from "@/components/home/homepage-sections";
+import { HomeScanCta } from "@/components/home/home-scan-cta";
 import { organizationJsonLd } from "@/lib/site-metadata";
 import { siteDescription, siteName } from "@/lib/site-content";
 
@@ -32,6 +33,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <HomeHero />
+      <HomeScanCta />
       <HomeProblem />
       <HomeSolution />
       <HomeHowItWorks />

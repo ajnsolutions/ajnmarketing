@@ -49,7 +49,7 @@ test("guided onboarding ships setup model, page, card, and cron gate", async () 
   expect(checklist).toContain("Optional enhancements");
   expect(checklist).toContain("role=\"progressbar\"");
   expect(checklist).toContain("Skip for now");
-  expect(checklist).toContain("Open Head of Marketing");
+  expect(checklist).toContain("Open Growth Advisor");
 
   const card = readFileSync(
     join(process.cwd(), "components/dashboard/dashboard-setup-card.tsx"),

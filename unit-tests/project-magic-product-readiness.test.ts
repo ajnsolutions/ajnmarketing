@@ -11,12 +11,12 @@ test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false for Product Readiness", 
   assert.equal(ATTACH_DECLARATIVE_PRODUCTION_CRONS, false);
 });
 
-test("shared loading and error states use Head of Marketing voice", () => {
+test("shared loading and error states use Growth Advisor voice", () => {
   const states = readFileSync(
     join(root, "components/dashboard/ui/dashboard-states.tsx"),
     "utf8",
   );
-  assert.match(states, /Preparing your Head of Marketing briefing|Preparing this week's briefing/);
+  assert.match(states, /Preparing your Growth Advisor briefing|Preparing this week's briefing/);
   assert.match(states, /I couldn't complete that just now/);
   assert.match(states, /Nothing is wrong on your side/);
   assert.equal(states.includes("Loading dashboard..."), false);

@@ -2,6 +2,8 @@ import type { WebsiteExtractor, WebsiteExtractionResult } from "@/lib/website-an
 import { inferCustomerPersonaFromSource } from "@/lib/website-analysis/customer-persona";
 import { inferContentOpportunitiesFromSource } from "@/lib/website-analysis/content-opportunities";
 import { isOpenAiConfigured, OpenAIWebsiteExtractor } from "@/lib/website-analysis/openai-extractor";
+import { classifyIndustryFromText, GENERIC_INDUSTRY_FALLBACK } from "@/lib/business-discovery/industryTaxonomy";
+import { buildGrowthOpportunities } from "@/lib/business-discovery/growthOpportunityEngine";
 
 function matchAll(text: string, pattern: RegExp): string[] {
   return [...text.matchAll(pattern)].map((match) => match[0].trim()).filter(Boolean);
@@ -42,9 +44,20 @@ function extractTitle(html: string): string | null {
   return match?.[1]?.trim() ?? null;
 }
 
+/**
+ * Extracts heading *text* only. Found via the Internal Alpha eval dataset:
+ * this previously reused the generic `matchAll` helper, which returns each
+ * match's full matched string (match[0]) — for this pattern that's the
+ * literal `<h2>Furnace Repair</h2>`, tags included, not just "Furnace
+ * Repair" (match[1]). That markup was silently leaking into primaryServices,
+ * executiveSummary, and generated content-opportunity titles for every
+ * business using the placeholder (no-API-key) extraction path — a real bug,
+ * not just a naive heuristic.
+ */
 function extractHeadings(html: string, tag: "h1" | "h2"): string[] {
   const pattern = new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, "gi");
-  return unique(matchAll(html, pattern)).slice(0, 8);
+  const headings = [...html.matchAll(pattern)].map((match) => match[1]?.trim() ?? "").filter(Boolean);
+  return unique(headings).slice(0, 8);
 }
 
 function countInternalLinks(html: string, host: string): number {
@@ -146,7 +159,8 @@ export class PlaceholderWebsiteExtractor implements WebsiteExtractor {
     const keywords = buildKeywords(text, preferredWords);
 
     const businessName = profile.business_name ?? metaTitle ?? "Your Business";
-    const industry = profile.industry ?? "Local Service Business";
+    const industryClassification = classifyIndustryFromText([text, profile.industry ?? ""].join(" "));
+    const industry = profile.industry ?? industryClassification.label ?? GENERIC_INDUSTRY_FALLBACK;
     const tone =
       profile.brand_voice_tone ??
       (text.toLowerCase().includes("family") ? "Friendly, trustworthy, and local" : "Professional and helpful");
@@ -162,19 +176,24 @@ export class PlaceholderWebsiteExtractor implements WebsiteExtractor {
     if (citiesMentioned.length < 2) seoIssues.push("Few local city references detected");
 
     const strengths = [
-      primaryServices.length > 0 ? "Clear service offerings detected on the website" : "Website content available for optimization",
+      primaryServices.length >= 3
+        ? `A clear, specific list of ${primaryServices.length} services detected on the website`
+        : primaryServices.length > 0
+          ? "Service offerings are present but only lightly detailed on the website"
+          : "Website content available for optimization",
       phoneNumbers.length > 0 ? "Phone number prominently available for local leads" : "Business contact details present",
-      tone ? "Consistent customer-focused tone" : "Professional presentation",
+      citiesMentioned.length >= 2 ? `Local relevance signaled across ${citiesMentioned.length} distinct city mentions` : "Professional presentation",
     ];
 
     const weaknesses = seoIssues.slice(0, 3);
-    const highestRoiImprovements = [
-      "Add FAQ sections to top service pages",
-      citiesMentioned.length > 1
-        ? `Create landing pages for ${citiesMentioned.slice(1, 3).join(" and ")}`
-        : "Create geo-targeted landing pages for nearby cities",
-      "Implement LocalBusiness schema markup",
-    ];
+    const highestRoiImprovements = buildGrowthOpportunities({
+      industry: industryClassification.category?.id ?? null,
+      services: primaryServices,
+      citiesMentioned,
+      seoIssues,
+      hasGoogleBusinessProfile: false,
+      hasReviews: false,
+    });
 
     const cityLabel = profile.city ?? citiesMentioned[0] ?? "your area";
     const input = { website, profile };
@@ -212,9 +231,13 @@ export class PlaceholderWebsiteExtractor implements WebsiteExtractor {
       strengths,
       weaknesses,
       highestRoiImprovements,
-      nextRecommendedActions:
-        "Approve AI-generated FAQ content, publish local landing pages, and schedule Google Business Profile posts aligned with your highest-opportunity services.",
-      executiveSummary: `${businessName} presents as a trusted, locally focused ${industry.toLowerCase()} serving ${cityLabel}. The website provides a foundation for local SEO, Google Business Profile content, and AI-generated marketing assets.`,
+      nextRecommendedActions: highestRoiImprovements[0]
+        ? `Start with the highest-priority item we found: ${highestRoiImprovements[0]}`
+        : "Approve AI-generated FAQ content, publish local landing pages, and schedule Google Business Profile posts aligned with your highest-opportunity services.",
+      executiveSummary:
+        primaryServices.length > 0
+          ? `${businessName} is a ${industry.toLowerCase()} serving ${cityLabel}, primarily offering ${primaryServices.slice(0, 3).join(", ")}.`
+          : `${businessName} is a ${industry.toLowerCase()} serving ${cityLabel}. The website doesn't clearly list specific services yet, which limits how precisely we can describe what the business offers.`,
     };
 
     return {

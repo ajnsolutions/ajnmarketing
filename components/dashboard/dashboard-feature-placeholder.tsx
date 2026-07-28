@@ -15,14 +15,14 @@ const FEATURE_COPY: Record<
     title: "I'm still gathering local context",
     description:
       "When local and seasonal signals are ready, I'll fold the useful parts into your Weekly Briefing.",
-    actionLabel: "Your Head of Marketing",
+    actionLabel: "Your Growth Advisor",
     actionHref: "/dashboard",
   },
   Notifications: {
     title: "Notifications are coming soon",
     description:
       "For now, your Weekly Briefing is the calm place I'll ask for your opinion — no noisy alerts.",
-    actionLabel: "Your Head of Marketing",
+    actionLabel: "Your Growth Advisor",
     actionHref: "/dashboard",
   },
   Settings: {
@@ -51,7 +51,7 @@ export function DashboardFeaturePlaceholder({ title }: { title: string }) {
     <div className="space-y-6">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-          Your Head of Marketing
+          Your Growth Advisor
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">{title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-text-muted sm:text-base">

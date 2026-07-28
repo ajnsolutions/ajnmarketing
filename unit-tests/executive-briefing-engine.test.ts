@@ -345,7 +345,7 @@ test("dashboard card uses details disclosure and refresh control", () => {
   assert.match(source, /hom-focusable/);
 
   const page = readFileSync(
-    join(root, "components/dashboard/head-of-marketing-page.tsx"),
+    join(root, "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   assert.match(page, /ExecutiveBriefSection/);

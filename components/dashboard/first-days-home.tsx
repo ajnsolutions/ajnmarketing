@@ -8,7 +8,7 @@ export function FirstDaysHome({ model }: { model: FirstDaysHomeModel }) {
     <div className="mx-auto max-w-3xl">
       <header className="max-w-2xl">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-          Your Head of Marketing
+          Your Growth Advisor
         </p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy-900 sm:text-4xl">
           {model.greeting}

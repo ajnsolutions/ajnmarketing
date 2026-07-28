@@ -12,7 +12,7 @@ export function SetupHomReadinessPanel({ snapshot }: { snapshot: CustomerSetupSn
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-          Your Head of Marketing
+          Your Growth Advisor
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">
           A little more setup first

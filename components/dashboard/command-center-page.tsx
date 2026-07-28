@@ -130,7 +130,7 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
             href="/dashboard"
             className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
-            ← Back to Head of Marketing
+            ← Back to Growth Advisor
           </Link>
         </p>
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
@@ -145,7 +145,7 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
             href="/dashboard"
             className="hom-focusable font-medium text-brand-600 hover:text-brand-700"
           >
-            Your Head of Marketing
+            Your Growth Advisor
           </Link>{" "}
           is the calmer place to start.
         </p>
@@ -263,7 +263,7 @@ export function CommandCenterPage({ data }: { data: CommandCenterPageData }) {
 
       <SectionCard
         title="Suggested next actions"
-        subtitle="Informational suggestions — Head of Marketing remains the primary guide"
+        subtitle="Informational suggestions — Growth Advisor remains the primary guide"
       >
         {data.aiInsights.recommendations.length === 0 ? (
           <p className="text-sm text-text-muted">

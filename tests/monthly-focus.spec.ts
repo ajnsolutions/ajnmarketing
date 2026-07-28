@@ -7,13 +7,13 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("Monthly Focus ships on Head of Marketing surface without new nav destination", async () => {
+test("Monthly Focus ships on Your Growth Advisor surface without new nav destination", async () => {
   const pageSource = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(pageSource).toContain("MonthlyFocusSection");
-  expect(pageSource).toContain("Your Head of Marketing is the main place to decide.");
+  expect(pageSource).toContain("Your Growth Advisor is the main place to decide.");
 
   const section = readFileSync(
     join(process.cwd(), "components/dashboard/monthly-focus-section.tsx"),
@@ -36,7 +36,7 @@ test("Monthly Focus ships on Head of Marketing surface without new nav destinati
     join(process.cwd(), "components/dashboard/dashboard-nav.tsx"),
     "utf8",
   );
-  expect(nav).toContain("Your Head of Marketing");
+  expect(nav).toContain("Your Growth Advisor");
   expect(nav).not.toContain('label: "Monthly Focus"');
   expect(nav).not.toContain('label: "This Month\'s Focus"');
 

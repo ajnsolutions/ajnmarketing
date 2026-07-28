@@ -178,14 +178,18 @@ test("One Head of Marketing docs and UI ship expected copy", () => {
   assert.match(doc, /ATTACH_DECLARATIVE_PRODUCTION_CRONS/);
 
   const page = readFileSync(
-    join(root, "components/dashboard/head-of-marketing-page.tsx"),
+    join(root, "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  assert.match(page, /Your Head of Marketing/);
-  assert.match(page, /experienceTitle|Weekly Briefing/);
+  assert.match(page, /Your Growth Advisor/);
   assert.match(page, /primaryAction\.label/);
-  assert.match(page, /More tools/);
-  assert.match(page, /hom-primary-action/);
+  assert.match(page, /growth-advisor-primary-action/);
+
+  const supporting = readFileSync(
+    join(root, "components/dashboard/growth-advisor/supporting-context.tsx"),
+    "utf8",
+  );
+  assert.match(supporting, /More tools/);
 
   const service = readFileSync(join(root, "lib/head-of-marketing/service.ts"), "utf8");
   assert.match(service, /loadCommandCenterContextForCurrentUser/);

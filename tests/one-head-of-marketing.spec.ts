@@ -7,21 +7,25 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("One Head of Marketing source ships unified briefing and demoted nav peers", async () => {
+test("One Growth Advisor source ships unified briefing and demoted nav peers", async () => {
   const page = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  expect(page).toContain("Your Head of Marketing");
-  expect(page).toContain("Your Head of Marketing is the main place to decide.");
-  expect(page).toContain("What I handled");
-  expect(page).toContain("More tools");
+  expect(page).toContain("Your Growth Advisor");
+
+  const supporting = readFileSync(
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
+    "utf8",
+  );
+  expect(supporting).toContain("Your Growth Advisor is the main place to decide.");
+  expect(supporting).toContain("More tools");
 
   const nav = readFileSync(
     join(process.cwd(), "components/dashboard/dashboard-nav.tsx"),
     "utf8",
   );
-  expect(nav).toContain("Your Head of Marketing");
+  expect(nav).toContain("Your Growth Advisor");
   expect(nav).toContain("Results");
   expect(nav).toContain("Library");
   expect(nav).toContain("primaryDashboardNavItems");

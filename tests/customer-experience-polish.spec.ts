@@ -35,18 +35,26 @@ test("cross-tenant APIs remain unauthorized without a session", async ({ request
 });
 
 test("Customer Experience Polish ships hierarchy, honest experiments, and cron gate", async () => {
+  // The primary action now lives in the conversational hero (growth-advisor-page.tsx);
+  // the deeper supporting widgets it used to sit directly above now live in
+  // supporting-context.tsx, positioned below the hero — see
+  // docs/project-magic/GROWTH_ADVISOR.md's conversation-hierarchy section.
+  const hero = readFileSync(
+    join(process.cwd(), "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
+    "utf8",
+  );
+  expect(hero).toContain("growth-advisor-primary-action");
+
   const hom = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(hom).toContain("ExecutiveBriefSection");
-  expect(hom).toContain("hom-primary-action");
   expect(hom).toContain("WhyPlanChangedSection");
   expect(hom).toContain("StrategicCalendarPreviewSection");
   expect(hom).toContain("CampaignsSection");
   expect(hom).toContain("ExperimentsSection");
   expect(hom).toContain("AskHeadOfMarketingPanel");
-  expect(hom.indexOf("hom-primary-action")).toBeLessThan(hom.indexOf("<WhyPlanChangedSection"));
   expect(hom.indexOf("<WhyPlanChangedSection")).toBeLessThan(
     hom.indexOf("<StrategicCalendarPreviewSection"),
   );
@@ -104,7 +112,8 @@ test("Customer Experience Polish ships hierarchy, honest experiments, and cron g
 
 test("mobile-oriented classes exist on primary polish surfaces", async () => {
   const files = [
-    "components/dashboard/head-of-marketing-page.tsx",
+    "components/dashboard/growth-advisor/growth-advisor-page.tsx",
+    "components/dashboard/growth-advisor/supporting-context.tsx",
     "components/dashboard/experiments-section.tsx",
     "components/dashboard/campaigns-section.tsx",
     "components/dashboard/decision-intelligence-page.tsx",

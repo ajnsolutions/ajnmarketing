@@ -7,8 +7,8 @@ import { isOnboardingCompleteForUser } from "@/lib/business-profile-server";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
-  title: "Your Head of Marketing",
-  description: "Check in with your AJN Marketing Head of Marketing",
+  title: "Your Growth Advisor",
+  description: "Check in with your AJN Marketing Growth Advisor",
 };
 
 export default async function DashboardLayout({
