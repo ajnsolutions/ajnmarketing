@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildBusinessDiscoveryResult } from "../lib/business-discovery/buildResult.ts";
+import { LOW_CONFIDENCE_CUSTOMER_PERSONA } from "../lib/website-analysis/customer-persona.ts";
 import {
   DiscoveryConfidenceTiers,
   DiscoverySourceTypes,
@@ -170,4 +171,63 @@ test("generatedAt is a valid ISO timestamp and businessProfileId passes through"
   const result = buildBusinessDiscoveryResult(emptyUnifiedProfile());
   assert.equal(result.businessProfileId, "profile-1");
   assert.ok(!Number.isNaN(new Date(result.generatedAt).getTime()));
+});
+
+test("a target-audience value that is only the low-confidence placeholder persona reads as Missing, not Assumed", () => {
+  const unified = emptyUnifiedProfile();
+  unified.targetAudience = {
+    value: LOW_CONFIDENCE_CUSTOMER_PERSONA,
+    contributingSources: [DiscoverySourceTypes.AI_WEBSITE_ANALYSIS],
+    hasVerifiedFactSource: false,
+    evidenceRefs: [{ source: DiscoverySourceTypes.AI_WEBSITE_ANALYSIS, detail: "who your website's language is written for" }],
+  };
+
+  const result = buildBusinessDiscoveryResult(unified);
+  assert.equal(result.targetCustomers.confidenceTier, DiscoveryConfidenceTiers.MISSING);
+  assert.equal(result.targetCustomers.value, null);
+  assert.match(result.targetCustomers.reason, /don't yet know/);
+});
+
+test("a real (non-placeholder) AI-inferred persona still resolves to Assumed as before", () => {
+  const unified = emptyUnifiedProfile();
+  unified.targetAudience = {
+    value: "Patients looking for routine dental care nearby",
+    contributingSources: [DiscoverySourceTypes.AI_WEBSITE_ANALYSIS],
+    hasVerifiedFactSource: false,
+    evidenceRefs: [{ source: DiscoverySourceTypes.AI_WEBSITE_ANALYSIS, detail: "who your website's language is written for" }],
+  };
+
+  const result = buildBusinessDiscoveryResult(unified);
+  assert.equal(result.targetCustomers.confidenceTier, DiscoveryConfidenceTiers.ASSUMED);
+  assert.equal(result.targetCustomers.value, "Patients looking for routine dental care nearby");
+});
+
+test("when 2+ distinct sources corroborate a field, the reason names the agreement instead of reading like one generic guess", () => {
+  const unified = emptyUnifiedProfile();
+  unified.primaryServices = {
+    value: ["AC repair", "Furnace installation"],
+    contributingSources: [DiscoverySourceTypes.AI_WEBSITE_ANALYSIS, DiscoverySourceTypes.AI_MARKETING_PROFILE],
+    hasVerifiedFactSource: false,
+    evidenceRefs: [
+      { source: DiscoverySourceTypes.AI_WEBSITE_ANALYSIS, detail: "services mentioned on your website" },
+      { source: DiscoverySourceTypes.AI_MARKETING_PROFILE, detail: "services in your AI Marketing Profile" },
+    ],
+  };
+
+  const result = buildBusinessDiscoveryResult(unified);
+  assert.match(result.primaryServices.reason, /2 signals agreeing/);
+});
+
+test("a single-source Assumed field still reads as a plain, specific reason with no false 'signals agreeing' claim", () => {
+  const unified = emptyUnifiedProfile();
+  unified.primaryServices = {
+    value: ["AC repair"],
+    contributingSources: [DiscoverySourceTypes.AI_WEBSITE_ANALYSIS],
+    hasVerifiedFactSource: false,
+    evidenceRefs: [{ source: DiscoverySourceTypes.AI_WEBSITE_ANALYSIS, detail: "services mentioned on your website" }],
+  };
+
+  const result = buildBusinessDiscoveryResult(unified);
+  assert.ok(!/signals agreeing/.test(result.primaryServices.reason));
+  assert.match(result.primaryServices.reason, /services mentioned on your website/);
 });

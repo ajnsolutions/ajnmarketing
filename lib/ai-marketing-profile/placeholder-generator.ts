@@ -3,6 +3,8 @@ import type {
   AiMarketingProfileGenerator,
   AiMarketingProfileSourceData,
 } from "@/lib/ai-marketing-profile/types";
+import { classifyIndustryFromText, GENERIC_INDUSTRY_FALLBACK, type IndustryCategoryId } from "@/lib/business-discovery/industryTaxonomy";
+import { buildGrowthOpportunities } from "@/lib/business-discovery/growthOpportunityEngine";
 
 function splitList(raw: string | null | undefined): string[] {
   if (!raw?.trim()) return [];
@@ -65,12 +67,30 @@ function buildBusinessName(source: AiMarketingProfileSourceData): string {
   );
 }
 
+/** Runs the shared industry classifier over whatever textual signal exists at this layer (no raw website text here — only already-extracted services/keywords/summary). */
+function classifyIndustryFallback(source: AiMarketingProfileSourceData): ReturnType<typeof classifyIndustryFromText> {
+  const summary = source.websiteAnalysis?.raw_summary;
+  const textBlob = [
+    summary?.industry,
+    summary?.businessName,
+    summary?.customerPersona,
+    ...(summary?.primaryServices ?? []),
+    ...(summary?.secondaryServices ?? []),
+    ...(summary?.keywords ?? []),
+    ...(source.websiteAnalysis?.keywords ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return classifyIndustryFromText(textBlob);
+}
+
 function buildIndustry(source: AiMarketingProfileSourceData): string {
-  return (
-    source.websiteAnalysis?.raw_summary?.industry ??
-    source.businessProfile.industry ??
-    "Local Business"
-  );
+  const explicit = source.websiteAnalysis?.raw_summary?.industry ?? source.businessProfile.industry;
+  if (explicit) return explicit;
+
+  const classification = classifyIndustryFallback(source);
+  return classification.label ?? GENERIC_INDUSTRY_FALLBACK;
 }
 
 function buildBrandVoice(source: AiMarketingProfileSourceData): string {
@@ -126,12 +146,97 @@ function buildSeasonalOpportunities(source: AiMarketingProfileSourceData): strin
   const seasonal = splitList(source.businessProfile.seasonal_services);
   if (seasonal.length > 0) return seasonal;
 
+  const classification = classifyIndustryFallback(source);
+  const services = buildServices(source);
+  const generated = buildGrowthOpportunities({
+    industry: classification.category?.id ?? null,
+    services,
+    citiesMentioned: buildServiceAreas(source),
+    seoIssues: source.websiteAnalysis?.raw_summary?.seoIssues ?? [],
+    hasGoogleBusinessProfile: false,
+    hasReviews: false,
+  });
+
+  if (generated.length > 0) return generated;
+
   return [
     "Quarterly service spotlight campaign",
     "Seasonal educational content series",
     "End-of-quarter customer reminder campaign",
   ];
 }
+
+const INDUSTRY_BRAND_TRAITS: Partial<Record<IndustryCategoryId, string[]>> = {
+  hvac: ["Reliable", "Prompt", "Straightforward"],
+  roofing: ["Sturdy", "Trustworthy", "No-nonsense"],
+  dental: ["Reassuring", "Gentle", "Professional"],
+  restaurant: ["Warm", "Inviting", "Authentic"],
+  legal: ["Authoritative", "Precise", "Trustworthy"],
+  insurance: ["Reassuring", "Straightforward", "Knowledgeable"],
+  consulting: ["Analytical", "Confident", "Results-driven"],
+  marketing_agency: ["Bold", "Data-driven", "Creative"],
+  saas: ["Efficient", "Modern", "Clear"],
+  ecommerce: ["Convenient", "Vibrant", "Customer-first"],
+  coaching: ["Motivating", "Personal", "Disciplined"],
+};
+
+const INDUSTRY_OBJECTIONS: Partial<Record<IndustryCategoryId, string[]>> = {
+  hvac: [
+    "Homeowners aren't sure if the issue is a real emergency or can wait",
+    "Customers worry a repair quote will turn into an expensive upsell",
+    "Buyers want to know if same-day service is actually available",
+  ],
+  roofing: [
+    "Homeowners are wary of high-pressure sales tactics common in this industry",
+    "Buyers want to understand insurance claim help before committing",
+    "Customers are unsure whether a repair or full replacement is really needed",
+  ],
+  dental: [
+    "Patients worry about cost and whether insurance is accepted",
+    "New patients are anxious about pain or discomfort during treatment",
+    "Prospects want to know if appointments are available quickly",
+  ],
+  restaurant: [
+    "Diners aren't sure if the menu fits their dietary needs",
+    "Prospective guests want to confirm hours and availability before visiting",
+    "Customers are deciding between dine-in, takeout, or delivery and want that made easy",
+  ],
+  legal: [
+    "Prospects are unsure what a consultation will cost",
+    "Clients worry about how long their case will take to resolve",
+    "Buyers want proof of relevant experience with cases like theirs",
+  ],
+  insurance: [
+    "Shoppers assume switching providers is complicated and time-consuming",
+    "Buyers aren't sure they're comparing coverage apples-to-apples",
+    "Prospects worry a lower quote means weaker coverage",
+  ],
+  consulting: [
+    "Buyers want to see proof of results before committing budget",
+    "Prospects are unsure how engagement scope and pricing actually work",
+    "Decision-makers want to know why this firm over a larger, known one",
+  ],
+  marketing_agency: [
+    "Buyers have been burned by agencies that overpromise on results",
+    "Prospects want clear reporting, not just vague monthly summaries",
+    "Decision-makers are comparing cost against clear, measurable ROI",
+  ],
+  saas: [
+    "Buyers aren't sure the switching cost from their current tool is worth it",
+    "Prospects want to try it before committing to a paid plan",
+    "Teams worry about how much setup/onboarding effort is required",
+  ],
+  ecommerce: [
+    "Shoppers are unsure about shipping cost and delivery time before checkout",
+    "Buyers want a clear return policy before they'll purchase",
+    "Prospects are comparison-shopping on price against competitors",
+  ],
+  coaching: [
+    "Prospects are unsure if this coach's approach fits their specific goal",
+    "Buyers want proof of real client results, not just credentials",
+    "People are unsure what a first session actually involves",
+  ],
+};
 
 function buildFaqs(source: AiMarketingProfileSourceData, services: string[]): Array<{ question: string; answer: string }> {
   const businessName = buildBusinessName(source);
@@ -194,6 +299,9 @@ export class PlaceholderAiMarketingProfileGenerator implements AiMarketingProfil
     const contentIdeas =
       source.websiteAnalysis?.raw_summary?.contentOpportunities?.map((item) => item.title) ?? [];
     const roiIdeas = source.websiteAnalysis?.raw_summary?.highestRoiImprovements ?? [];
+    const classification = classifyIndustryFallback(source);
+    const industryTraits = classification.category ? INDUSTRY_BRAND_TRAITS[classification.category.id] ?? [] : [];
+    const industryObjections = classification.category ? INDUSTRY_OBJECTIONS[classification.category.id] : undefined;
 
     return {
       business_summary: buildBusinessSummary(source),
@@ -210,17 +318,16 @@ export class PlaceholderAiMarketingProfileGenerator implements AiMarketingProfil
       faqs: buildFaqs(source, services),
       seasonal_opportunities: buildSeasonalOpportunities(source),
       recommended_ctas: buildRecommendedCtas(source),
-      common_objections: [
-        "Customers need more clarity before taking action",
-        "Prospects want proof of expertise and trust",
-        "Buyers compare options and need a stronger reason to choose this business",
-      ],
+      common_objections:
+        industryObjections ?? [
+          "Customers need more clarity before taking action",
+          "Prospects want proof of expertise and trust",
+          "Buyers compare options and need a stronger reason to choose this business",
+        ],
       brand_personality: uniqueStrings([
         tone,
         ...splitList(source.businessProfile.preferred_words?.replace(/,/g, "\n")),
-        "Trustworthy",
-        "Helpful",
-        "Clear",
+        ...(industryTraits.length > 0 ? industryTraits : ["Trustworthy", "Helpful", "Clear"]),
       ]).slice(0, 6),
       writing_examples: [brandVoice],
       marketing_strategy: `Focus ${businessName} messaging on ${targetAudience.toLowerCase()} using ${services.slice(0, 3).join(", ") || "core services"}. Prioritize goals such as ${goals.slice(0, 3).join(", ") || "lead generation, trust building, and consistent visibility"}.`,
