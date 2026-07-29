@@ -42,6 +42,7 @@ Implementation notes (post-blueprint):
 - PILOT_RUNBOOK.md — Phase 5: Assisted Pilot Readiness operator runbook (onboarding, daily/weekly loops, recovery, limitations, escalation, exit)
 - PILOT_VALIDATION_GUIDE.md — Phase 6: Pilot Validation & Production Go-Live Readiness (validation checklists, go-live criteria, schedule enablement criteria, rollback)
 - project-magic/GOALS_AND_STRATEGY.md — Wave III: Goals & Strategy (goal model, strategy layer, goal progress, goal-aware Growth Advisor)
+- project-magic/CUSTOMER_VOICE.md — Customer Voice Phase 1: provider-agnostic feedback intelligence foundation for the Business Brain
 - MARKETING_MEMORY_ARCHITECTURE.md — Marketing Memory review + design: observations/learnings/preferences/decisions/outcomes layers feeding the Marketing Director (Phases 1-4 consumption implemented; decision_links persistence still future)
 - MARKETING_MEMORY_DATA_MODEL.md — field-level schema for Marketing Memory entities (Phases 1-3 tables implemented; decision links remain a proposal)
 - MARKETING_MEMORY_FOUNDATION.md — Phase 1 implementation record: observation/context-snapshot/evidence-link tables, ingestion hooks, retention, RLS, testing (observation and evidence foundation only)

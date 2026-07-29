@@ -54,7 +54,9 @@ Prioritization rule: **highest customer impact first**, informed by the [`EXISTI
 
 **Shipped:** Goal model, strategy-layer goal relevance, Goal Progress, goal-aware Growth Advisor briefing, conversational success-goals onboarding. See [`GOALS_AND_STRATEGY.md`](./GOALS_AND_STRATEGY.md). Does not change recommendation ranking/scoring; cron gate remains closed.
 
-**Still in Wave III scope (next):** Customer Voice + Market Radar + Seasonal Intelligence
+**Shipped (Customer Voice Phase 1 — foundation):** Provider-agnostic Customer Voice intelligence engine (normalize → themes → confidence/impact → internal score → Business Brain service). Google Business Reviews is the first provider. No UI / Growth Advisor / Marketing Health wiring yet. See [`CUSTOMER_VOICE.md`](./CUSTOMER_VOICE.md).
+
+**Still in Wave III scope (next):** Customer Voice Phase 2 (consume intelligence in Growth Advisor / Health / Content), Market Radar, Seasonal Intelligence
 
 **Why these three together after Goals:** All three read from the richer input surface Wave II unlocks (connectors, uploads) and all three feed the same downstream consumer — Marketing Director's evidence base and, eventually, Business Pulse. Per the [`EXISTING_SYSTEM_AUDIT.md`](./EXISTING_SYSTEM_AUDIT.md), Market Radar and Seasonal Intelligence are **expansions of real existing foundations** (`lib/market-context/`, `lib/marketing-memory/seasonality.ts`), not new builds — this materially de-risks and likely shortens this wave relative to a naive estimate.
 
