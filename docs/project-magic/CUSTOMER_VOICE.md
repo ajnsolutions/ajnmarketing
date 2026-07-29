@@ -1,46 +1,214 @@
-# Project Magic 2.0 — Customer Voice
+# Customer Voice — Phase 1 Foundation
 
-**Companion to:** [`BUSINESS_BRAIN.md`](./BUSINESS_BRAIN.md) · [`CONNECTOR_FRAMEWORK.md`](./CONNECTOR_FRAMEWORK.md)
+**Status:** Shipped (intelligence foundation)  
+**Branch:** `project-magic/customer-voice-phase1-foundation`  
+**Cron gate:** `ATTACH_DECLARATIVE_PRODUCTION_CRONS` remains **false** — untouched
 
-Customer Voice is the discipline of **understanding**, not counting, what a business's actual customers say. It's one of the clearest expressions of the difference between a marketing tool and a Growth Engine: a tool shows you a star rating; a Growth Engine tells you *why* that rating is what it is and what to do about it.
+Customer Voice is **not a feature page**. It is a reusable intelligence source for the Business Brain.
+
+Phase 1 builds the architecture only. Phase 2 will wire Growth Advisor, Marketing Health, Content Generator, and any customer-facing surfaces.
+
+Companion design intent (pre-implementation): the sections below supersede the earlier aspirational draft for **as-built Phase 1**. Product principles in [`PRODUCT_PRINCIPLES.md`](../PRODUCT_PRINCIPLES.md) still apply: never simply `COUNT()`/`AVG()` reviews.
 
 ---
 
-## Sources
+## Architecture
 
-| Source | Status | Notes |
-|---|---|---|
-| Reviews | Exists (public read) | Currently read for reply-drafting; theme/sentiment extraction is new depth |
-| Call intelligence | New | Requires a Communication connector or call-transcript Smart Upload |
-| Messages | New | Platform messages (for platform businesses), SMS, or connected messaging channels |
-| Emails | New | Customer-facing email threads, where connected |
-| Support conversations | New | Any support/help channel the business uses |
+```
+Provider (Google Business Reviews today; more later)
+        ↓
+Evidence Normalization
+        ↓
+Theme Extraction + Clustering
+        ↓
+Confidence + Business Impact
+        ↓
+Customer Voice Intelligence package
+        ↓
+Business Brain service (getCustomerVoiceIntelligence)
+        ↓
+(future) Growth Advisor / Content / Health / Market Radar / agents
+```
 
-## What "understanding" means, concretely
+**Generate once. Reuse everywhere.** No consumer should re-analyze raw reviews.
 
-Never simply count. Every Customer Voice source is analyzed for:
+Business Brain consumers must never branch on provider-specific payloads — only on `CustomerVoiceIntelligence` / `NormalizedCustomerEvidence`.
 
-- **Themes** — recurring topics customers bring up, unprompted
-- **Sentiment** — not a single aggregate score, but sentiment *attached to a theme* ("customers are happy with response time, frustrated with pricing clarity")
-- **Questions** — what customers keep asking that the business's public presence doesn't already answer clearly (a direct signal for what the website/GBP/FAQ should say)
-- **Praise** — specific, quotable things customers love, useful for both marketing copy and morale
-- **Objections** — what makes a customer hesitate, sourced from real language, not guessed
-- **Competitor comparisons** — when customers mention alternatives, what they say about them
+---
 
-## The "never simply count reviews" rule
+## Provider interface
 
-A star average and a review count are the lowest-value read of customer language available, and yet they're what most marketing tools stop at. Customer Voice's entire reason for existing is to go past that: two businesses with an identical 4.3-star average can have completely different underlying stories (one is "consistently good, slow to respond," the other is "excellent service, confusing pricing") — and only one of those stories tells the owner what to actually fix.
+`lib/customer-voice/provider.ts`
 
-**Test (from [`../PRODUCT_PRINCIPLES.md`](./PRODUCT_PRINCIPLES.md)):** Could the insight have been produced by a `COUNT()` and an `AVG()`? If yes, it isn't Customer Voice yet — it's just review data.
+```ts
+interface CustomerVoiceProvider {
+  readonly id: CustomerVoiceProviderId;
+  readonly label: string;
+  fetchEvidence(context): Promise<CustomerVoiceProviderResult>;
+}
+```
 
-## Where it feeds
+**Implemented (Phase 1):** `google_business_reviews` → `createGoogleBusinessReviewsProvider`
 
-- **Marketing Director** — theme/objection data becomes recommendation-relevant evidence (e.g., "customers keep asking about financing options" → a recommendation to add financing messaging)
-- **Business Pulse** — Customer Voice health (are themes trending positive or negative?) becomes a Business Pulse input, distinct from raw review-reply-latency (which Marketing Health already tracks)
-- **Free Marketing Snapshot** — public review theme/sentiment reading is part of "What Customers See" from day one, before signup
+**Designed, not implemented:**
 
-## Design rules
+| Provider id | Intent |
+|---|---|
+| `facebook_reviews` | Facebook recommendations / ratings |
+| `yelp_reviews` | Yelp public reviews |
+| `bbb` | Better Business Bureau feedback |
+| `website_testimonials` | On-site testimonials |
+| `customer_surveys` | Structured survey responses |
+| `nps` | NPS comments |
+| `support_tickets` | Support ticket bodies |
+| `live_chat` | Chat transcripts |
+| `email_feedback` | Customer email feedback |
 
-- **Attribution stays honest.** A theme extracted from three reviews is presented as "a few customers mentioned..." not "customers say..." — magnitude language must match actual signal volume.
-- **No customer is ever identifiable in aggregate output.** Themes and sentiment are presented in aggregate; individual customer identities from calls/messages/support conversations never surface in a recommendation or report without being genuinely necessary and consented to (e.g., a specific named review the owner is being shown to reply to).
-- **Negative signal is delivered calmly, per [`UX_RULES.md`](./UX_RULES.md) and [`../MARKETING_HEALTH.md`](../MARKETING_HEALTH.md)'s messaging rules** — "here's what customers are frustrated about, and here's what I'd recommend" — never alarmist framing.
+Adding a provider = implement `CustomerVoiceProvider` + register it. No Business Brain consumer changes required.
+
+---
+
+## Evidence normalization
+
+`lib/customer-voice/normalize.ts`
+
+Every provider maps to `NormalizedCustomerEvidence`:
+
+- Source (opaque provider id + human source label)
+- Date
+- Sentiment
+- Confidence
+- Original text (bounded)
+- Extracted themes (canonical keys)
+- Referenced services / employees
+- Language
+- Evidence weight (recency + text richness)
+
+Duplicate themes across providers land in the **same canonical theme key**, increasing evidence count, provider count, and confidence.
+
+Example:
+
+- Google: “Fast service”
+- Facebook (future): “Quick turnaround”
+- Survey (future): “Same-day response”  
+→ theme `fast_service` / **Fast Service** with higher confidence
+
+---
+
+## Theme extraction
+
+`lib/customer-voice/themes.ts` + `themeLexicon.ts`
+
+Deterministic Phase 1 extraction (no new AI engine):
+
+- Recurring praise / complaints / requests / differentiators
+- Emotional tone from text + rating
+- Customer language snippets (short phrases, not summaries)
+- Service and employee mentions
+- Synonym clustering (`fast` / `quick` / `same-day` → Fast Service)
+
+Isolated single reviews stay low-confidence and are de-emphasized in top lists.
+
+---
+
+## Confidence model
+
+`lib/customer-voice/confidence.ts`
+
+Levels: **Low / Medium / High**
+
+Inputs:
+
+- Supporting evidence count
+- Percentage of reviews
+- Multi-provider support
+- Recency share
+- Sentiment consistency
+
+Never exaggerates: `<2` supporting evidence or `<5%` coverage → Low.
+
+Stored on each theme: `confidence`, `evidenceCount`, `percentageOfReviews`, `evidenceIds`.
+
+---
+
+## Business Impact model
+
+`lib/customer-voice/impact.ts`
+
+Levels: **Low / Medium / High**
+
+Considers acquisition, conversion, repeat, referrals, and reputation hints — **not frequency alone**. A rare conversion-critical concern can outrank a very common soft-praise theme.
+
+---
+
+## Customer Voice Score (internal)
+
+`lib/customer-voice/score.ts`
+
+- Numeric **0–100** for internal reliance only — **never shown to customers**
+- Breakdown: volume, freshness, coverage, confidence, theme consistency, sentiment stability
+- Natural language only:
+  - “Customer feedback is well established.”
+  - “Customer feedback is still limited.”
+  - “The advisor is continuing to learn.”
+
+Intended future consumers of the *internal* score: Growth Advisor confidence, Content Generator confidence, recommendation confidence, autonomous action gating — **not wired in Phase 1**.
+
+---
+
+## Business Brain service
+
+`lib/customer-voice/service.ts`
+
+```ts
+getCustomerVoiceIntelligence({ userId, businessProfileId, ... })
+getCustomerVoiceIntelligenceForCurrentUser(businessProfileId)
+```
+
+Loads provider evidence (Google reviews today), normalizes, composes `CustomerVoiceIntelligence`.
+
+Future consumers (Phase 2+): Growth Advisor, Content Generator, Marketing Health, Market Radar, Smart Uploads, agents.
+
+---
+
+## Domain package shape
+
+`CustomerVoiceIntelligence` includes:
+
+Strengths · Concerns · Opportunities · Frequently Mentioned Services · Frequently Mentioned Employees · Common Customer Language · Requests · Sentiment Trends · Confidence · Business Impact · Evidence Count · Percentage Covered · Trend Direction · Last Updated · Internal Score · Empty state
+
+---
+
+## Extension guide
+
+1. Add a `CustomerVoiceProviderIds` value if needed.
+2. Implement `CustomerVoiceProvider.fetchEvidence` → `ProviderEvidenceInput[]`.
+3. Pass the provider into `getCustomerVoiceIntelligence({ providers: [...] })` or extend `defaultProviders`.
+4. Do **not** teach Growth Advisor about the new provider — it only reads `CustomerVoiceIntelligence`.
+
+---
+
+## Explicit Phase 1 non-goals
+
+- No Customer Voice UI / page
+- No Growth Advisor integration
+- No Marketing Health integration
+- No Content Generator integration
+- No new AI theme model
+- No schedule activation
+
+---
+
+## Module map
+
+| Module | Role |
+|---|---|
+| `types.ts` | Domain model |
+| `provider.ts` | Provider contract + registry |
+| `providers/googleBusinessReviews.ts` | Initial provider |
+| `normalize.ts` | Evidence normalization |
+| `themeLexicon.ts` / `themes.ts` | Extraction + clustering |
+| `confidence.ts` / `impact.ts` / `score.ts` | Models |
+| `compose.ts` | Intelligence composition |
+| `service.ts` | Business Brain entrypoint |
+| `index.ts` | Public pure exports |
