@@ -8,7 +8,7 @@ function read(rel: string) {
   return readFileSync(join(root, rel), "utf8");
 }
 
-test("Customer Voice Phase 1 ships foundation modules only", () => {
+test("Customer Voice Phase 1 foundation modules remain available", () => {
   expect(existsSync(join(root, "lib/customer-voice/types.ts"))).toBeTruthy();
   expect(existsSync(join(root, "lib/customer-voice/provider.ts"))).toBeTruthy();
   expect(existsSync(join(root, "lib/customer-voice/normalize.ts"))).toBeTruthy();
@@ -18,7 +18,6 @@ test("Customer Voice Phase 1 ships foundation modules only", () => {
   expect(existsSync(join(root, "lib/customer-voice/score.ts"))).toBeTruthy();
   expect(existsSync(join(root, "lib/customer-voice/compose.ts"))).toBeTruthy();
   expect(existsSync(join(root, "lib/customer-voice/service.ts"))).toBeTruthy();
-  expect(existsSync(join(root, "app/dashboard/customer-voice/page.tsx"))).toBeFalsy();
 });
 
 test("provider interface is designed for future sources", () => {
@@ -38,12 +37,7 @@ test("documentation covers architecture and extension", () => {
   expect(docs).toContain("Architecture");
   expect(docs).toContain("Provider interface");
   expect(docs).toContain("Evidence normalization");
-  expect(docs).toContain("Theme extraction");
-  expect(docs).toContain("Confidence model");
-  expect(docs).toContain("Business Impact");
-  expect(docs).toContain("Customer Voice Score");
-  expect(docs).toContain("Business Brain service");
-  expect(docs).toContain("Extension guide");
+  expect(docs).toContain("Growth Advisor integration");
   expect(docs).toContain("ATTACH_DECLARATIVE_PRODUCTION_CRONS");
 });
 

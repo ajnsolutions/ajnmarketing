@@ -1,6 +1,7 @@
 import type { HeadOfMarketingPrimaryAction, MarketingHealthState } from "@/lib/head-of-marketing/types";
 import type { ConfidenceLabel } from "@/lib/recommendation-presentation/types";
 import type { GoalProgress, GoalProgressState } from "@/lib/goals/types";
+import type { CustomerVoiceHealthState } from "@/lib/customer-voice/health";
 
 /**
  * Your Growth Advisor — the conversational shape of the authenticated home
@@ -36,6 +37,11 @@ export type GrowthAdvisorRecommendation = {
   /** Present only when this recommendation came from a real ranked marketing recommendation. */
   confidenceLabel: ConfidenceLabel | null;
   confidenceLabelText: string | null;
+  /**
+   * Natural Customer Voice context (e.g. "Customers consistently praise…").
+   * Presentation only — does not change ranking. Null when evidence is thin.
+   */
+  customerVoiceContext: string | null;
 };
 
 export type GrowthAdvisorGoalProgressSummary = {
@@ -63,6 +69,12 @@ export type GrowthAdvisorSupportingContext = {
     label: string;
     message: string;
   };
+  /** Customer Voice Health — separate from Marketing Health; never fabricated. */
+  customerVoiceHealth: {
+    state: CustomerVoiceHealthState;
+    label: string;
+    message: string;
+  } | null;
   journalIntro: string;
   hasRecentActivity: boolean;
 };

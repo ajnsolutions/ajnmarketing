@@ -1,5 +1,5 @@
 /**
- * Customer Voice — public pure exports for Phase 1 foundation.
+ * Customer Voice — public pure exports (foundation + experience presentation).
  * Server I/O lives in service.ts (server-only).
  */
 
@@ -47,3 +47,37 @@ export {
   mapGoogleReviewToEvidence,
 } from "@/lib/customer-voice/providers/googleBusinessReviews";
 export { THEME_CLUSTERS, clusterKeyForVariant } from "@/lib/customer-voice/themeLexicon";
+
+export type { PossibleAction } from "@/lib/customer-voice/possibleActions";
+export {
+  insightSentenceForTheme,
+  possibleActionsForTheme,
+} from "@/lib/customer-voice/possibleActions";
+
+export type {
+  MarketingCopySuggestion,
+  MarketingCopySurface,
+} from "@/lib/customer-voice/copySuggestions";
+export {
+  buildMarketingCopySuggestions,
+  formatCustomerVoiceForContentPrompt,
+} from "@/lib/customer-voice/copySuggestions";
+
+export type {
+  CustomerVoiceHealth,
+  CustomerVoiceHealthState,
+} from "@/lib/customer-voice/health";
+export {
+  CustomerVoiceHealthStates,
+  resolveCustomerVoiceHealth,
+} from "@/lib/customer-voice/health";
+
+export type {
+  CustomerVoiceInsightCard,
+  CustomerVoicePageModel,
+} from "@/lib/customer-voice/presentation";
+export {
+  buildCustomerVoicePageModel,
+  growthAdvisorCustomerVoiceLines,
+  toInsightCard,
+} from "@/lib/customer-voice/presentation";

@@ -180,6 +180,7 @@ export const HOM_ADVANCED_NAV_HREFS = [
   "/dashboard/publishing",
   "/dashboard/strategic-marketing-calendar",
   "/dashboard/reviews",
+  "/dashboard/customer-voice",
   "/dashboard/website-analysis",
   "/dashboard/brand-voice",
   "/dashboard/ai-profile",

@@ -30,6 +30,9 @@ import {
   type GoalProgressSignals,
 } from "@/lib/goals/progress";
 import { explainGoalRelevance } from "@/lib/strategy/goalRelevance";
+import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
+import { growthAdvisorCustomerVoiceLines } from "@/lib/customer-voice/presentation";
+
 
 /**
  * Plain-language "why it matters" per noticed-item category. `buildNoticed`
@@ -78,18 +81,31 @@ function businessDiscoveryObservation(
   };
 }
 
+function customerVoiceObservation(
+  noticedLine: string | null,
+): GrowthAdvisorObservation | null {
+  if (!noticedLine) return null;
+  return {
+    headline: noticedLine,
+    whyItMatters: "Customer language is one of the strongest cues for authentic marketing.",
+  };
+}
+
 function buildWhatINoticed(
   briefing: HeadOfMarketingBriefing,
   businessDiscovery: BusinessDiscoveryResult | null | undefined,
+  customerVoiceLine: string | null,
 ): GrowthAdvisorObservation[] {
   const fromSignals = briefing.noticed
     .filter((item) => !/^Nothing urgent/.test(item))
     .map(toObservation);
 
-  if (fromSignals.length >= 3) return fromSignals.slice(0, 3);
+  const voice = customerVoiceObservation(customerVoiceLine);
+  const withVoice = voice ? [voice, ...fromSignals] : fromSignals;
+  if (withVoice.length >= 3) return withVoice.slice(0, 3);
 
   const supplement = businessDiscoveryObservation(businessDiscovery);
-  const combined = supplement ? [...fromSignals, supplement] : fromSignals;
+  const combined = supplement ? [...withVoice, supplement] : withVoice;
   return combined.slice(0, 3);
 }
 
@@ -162,6 +178,7 @@ function buildGoalProgressSummary(
 function buildRecommendation(
   briefing: HeadOfMarketingBriefing,
   goals: BusinessGoal[],
+  customerVoiceContext: string | null,
 ): GrowthAdvisorRecommendation | null {
   const recommendation = briefing.recommendation;
   if (!recommendation) return null;
@@ -186,6 +203,7 @@ function buildRecommendation(
       : "This is the clearest next step based on where things stand today.",
     confidenceLabel,
     confidenceLabelText: confidenceLabel ? confidenceLabelText(confidenceLabel) : null,
+    customerVoiceContext,
   };
 }
 
@@ -203,6 +221,8 @@ export type BuildGrowthAdvisorBriefingOptions = {
   goals?: BusinessGoal[];
   /** Optional signal overrides (e.g. unanswered review count from a richer fetch). */
   progressSignals?: Partial<GoalProgressSignals>;
+  /** Existing Customer Voice intelligence — presentation only; never re-ranks. */
+  customerVoice?: CustomerVoiceIntelligence | null;
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -211,13 +231,18 @@ export function buildGrowthAdvisorBriefing(
   options?: BuildGrowthAdvisorBriefingOptions,
 ): GrowthAdvisorBriefing {
   const goals = options?.goals ?? [];
-  const recommendation = buildRecommendation(briefing, goals);
+  const voiceLines = growthAdvisorCustomerVoiceLines(options?.customerVoice);
+  const recommendation = buildRecommendation(
+    briefing,
+    goals,
+    voiceLines.recommendationContext,
+  );
 
   return {
     greeting: briefing.greeting,
     businessName: briefing.businessName,
     whatChanged: buildWhatChanged(briefing),
-    whatINoticed: buildWhatINoticed(briefing, businessDiscovery),
+    whatINoticed: buildWhatINoticed(briefing, businessDiscovery, voiceLines.noticedLine),
     goalProgress: buildGoalProgressSummary(goals, briefing, options?.progressSignals),
     recommendation,
     primaryAction: briefing.primaryAction,
@@ -228,6 +253,11 @@ export function buildGrowthAdvisorBriefing(
         state: briefing.health.state,
         label: briefing.health.label,
         message: briefing.health.message,
+      },
+      customerVoiceHealth: {
+        state: voiceLines.health.state,
+        label: voiceLines.health.label,
+        message: voiceLines.health.message,
       },
       journalIntro: briefing.journal.intro,
       hasRecentActivity: briefing.journal.entries.length > 0,

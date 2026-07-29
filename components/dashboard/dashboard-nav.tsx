@@ -141,6 +141,16 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Customer Voice",
+    href: "/dashboard/customer-voice",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 3V7a2 2 0 0 1 2-2Z" />
+      </svg>
+    ),
+  },
+  {
     label: "Brand voice",
     href: "/dashboard/brand-voice",
     icon: (

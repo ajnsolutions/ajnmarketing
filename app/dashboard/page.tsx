@@ -10,6 +10,8 @@ import { getHeadOfMarketingBriefingForCurrentUser } from "@/lib/head-of-marketin
 import { runBusinessDiscoveryForCurrentUser } from "@/lib/business-discovery/service";
 import { buildGrowthAdvisorBriefing } from "@/lib/growth-advisor/buildGrowthAdvisorBriefing";
 import { getBusinessGoalsForCurrentUser } from "@/lib/goals/service";
+import { getBusinessProfileForUser } from "@/lib/business-profile-server";
+import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals] = await Promise.all([
@@ -27,8 +29,23 @@ export default async function DashboardPage() {
   if (briefing) {
     // Business Discovery personalizes "What I noticed" honestly when there's
     // a real signal — never required, never blocks the page if unavailable.
-    const businessDiscovery = await runBusinessDiscoveryForCurrentUser().catch(() => null);
-    const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, { goals });
+    // Customer Voice is presentation-only enrichment of the same pipeline.
+    const [businessDiscovery, profile] = await Promise.all([
+      runBusinessDiscoveryForCurrentUser().catch(() => null),
+      getBusinessProfileForUser().catch(() => null),
+    ]);
+
+    const customerVoice = profile
+      ? await getCustomerVoiceIntelligence({
+          userId: profile.user_id,
+          businessProfileId: profile.id,
+        }).catch(() => null)
+      : null;
+
+    const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, {
+      goals,
+      customerVoice,
+    });
     return <GrowthAdvisorPage advisor={advisor} briefing={briefing} />;
   }
 

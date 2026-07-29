@@ -158,7 +158,10 @@ export function GrowthAdvisorPage({
         </PrimaryActionBar>
       </div>
 
-      <GrowthAdvisorSupportingContext briefing={briefing} />
+      <GrowthAdvisorSupportingContext
+        briefing={briefing}
+        customerVoiceHealth={advisor.supporting.customerVoiceHealth}
+      />
     </div>
   );
 }
