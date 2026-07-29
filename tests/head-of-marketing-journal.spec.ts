@@ -19,7 +19,7 @@ test("HoM Journal ships as progressive disclosure without new top-level nav", as
     join(process.cwd(), "components/dashboard/dashboard-nav.tsx"),
     "utf8",
   );
-  expect(nav).toContain("Your Head of Marketing");
+  expect(nav).toContain("Your Growth Advisor");
   expect(nav).not.toContain('label: "Journal"');
 
   const gate = readFileSync(

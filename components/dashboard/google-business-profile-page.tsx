@@ -165,7 +165,7 @@ export function GoogleBusinessProfilePage({ data }: { data: GoogleBusinessDashbo
         <DashboardEmptyState
           kind="source_unavailable"
           title="Google connection is temporarily unavailable"
-          description="You can keep using Head of Marketing and finish other setup. Contact support if you need Google features enabled for your workspace."
+          description="You can keep using Growth Advisor and finish other setup. Contact support if you need Google features enabled for your workspace."
           actionLabel="Open connection help"
           actionHref="/dashboard/google-business-profile/connect"
         />

@@ -9,6 +9,7 @@ import {
   normalizeContentOpportunities,
   readContentOpportunities,
 } from "@/lib/website-analysis/content-opportunities";
+import { classifyIndustryFromText, GENERIC_INDUSTRY_FALLBACK } from "@/lib/business-discovery/industryTaxonomy";
 
 /** Update this constant to change the OpenAI model used for website analysis. */
 export const OPENAI_WEBSITE_ANALYSIS_MODEL = "gpt-4.1-mini";
@@ -173,9 +174,18 @@ function normalizeExtraction(
   raw: Record<string, unknown>,
   input: Parameters<WebsiteExtractor["extract"]>[0]
 ): WebsiteExtractionResult {
+  // The LLM is explicitly instructed to return an industry; if it doesn't
+  // (rare, but observed), classify from the raw website text rather than
+  // dropping straight to a generic label — a keyword-detectable industry is
+  // still better than "Local Service Business" for a dental practice or a
+  // SaaS product.
+  const industryFallback = raw.industry
+    ? GENERIC_INDUSTRY_FALLBACK
+    : classifyIndustryFromText(input.website.textContent).label;
+
   const extraction: WebsiteExtractionResult = {
     businessName: readString(raw.businessName, "Unknown Business"),
-    industry: readString(raw.industry, "Local Service Business"),
+    industry: readString(raw.industry, industryFallback),
     primaryServices: uniqueStrings(raw.primaryServices),
     secondaryServices: uniqueStrings(raw.secondaryServices),
     serviceAreas: uniqueStrings(raw.serviceAreas),

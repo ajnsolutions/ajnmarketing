@@ -110,7 +110,7 @@ test("Meet Your HoM wizard and docs ship conversation philosophy", () => {
   );
   assert.match(wizard, /Before I can help grow your business/);
   assert.match(wizard, /Where do your customers come from/);
-  assert.match(wizard, /Meet Your Head of Marketing/);
+  assert.match(wizard, /Meet Your Growth Advisor/);
   assert.match(wizard, /give me more responsibility/);
   assert.match(wizard, /already started learning about your business/);
   assert.equal(wizard.includes("Fill out"), false);

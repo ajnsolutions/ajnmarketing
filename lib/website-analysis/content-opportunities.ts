@@ -142,28 +142,82 @@ function readSeoScore(value: unknown, fallback: number): number {
   return Math.max(50, Math.min(98, Math.round(parsed)));
 }
 
-function uniqueTopics(extraction: ExtractionContext): string[] {
-  return [
-    ...new Set(
-      [...extraction.primaryServices, ...extraction.secondaryServices, ...extraction.keywords]
-        .map((item) => item.trim())
-        .filter((item) => item.length > 1)
-    ),
-  ].slice(0, 6);
+type TopicWithSource = { topic: string; centrality: "primary" | "secondary" | "keyword" };
+
+/** Tags each topic by where it came from — primaryServices is the most central to the business, keywords the least — so the "score" below can be grounded in something real instead of pure list position. */
+function uniqueTopicsWithSource(extraction: ExtractionContext): TopicWithSource[] {
+  const seen = new Set<string>();
+  const results: TopicWithSource[] = [];
+
+  const sources: Array<[string[], TopicWithSource["centrality"]]> = [
+    [extraction.primaryServices, "primary"],
+    [extraction.secondaryServices, "secondary"],
+    [extraction.keywords, "keyword"],
+  ];
+
+  for (const [items, centrality] of sources) {
+    for (const item of items) {
+      const trimmed = item.trim();
+      if (trimmed.length <= 1) continue;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push({ topic: trimmed, centrality });
+    }
+  }
+
+  return results.slice(0, 6);
 }
 
+function uniqueTopics(extraction: ExtractionContext): string[] {
+  return uniqueTopicsWithSource(extraction).map((item) => item.topic);
+}
+
+/** Grounds the "relevance score" in how central the topic is to the business (a primary service beats an incidental keyword) plus its position within that tier — not a bare, unexplained list-position countdown. */
+const CENTRALITY_BASE_SCORE: Record<TopicWithSource["centrality"], number> = {
+  primary: 88,
+  secondary: 80,
+  keyword: 72,
+};
+
+function scoreForTopic(topic: TopicWithSource, indexWithinTier: number): number {
+  return Math.max(50, CENTRALITY_BASE_SCORE[topic.centrality] - indexWithinTier * 2);
+}
+
+const MAX_AUDIENCE_LENGTH = 48;
+
+/**
+ * Shortens a persona for use inline in a title. Previously this bailed
+ * straight to the generic "Their Customers" whenever a real, specific
+ * persona happened to run a little long and had no comma/period to split
+ * on — which, found via the Internal Alpha eval dataset, was silently
+ * discarding good personas (e.g. "Individuals and businesses seeking legal
+ * guidance or representation for a specific matter") for the exact generic
+ * fallback this whole file exists to avoid. Now it truncates at a clean word
+ * boundary instead of giving up.
+ */
 function shortenAudience(customerPersona: string): string {
   const trimmed = customerPersona.trim();
   if (!trimmed) return "Their Customers";
 
-  if (trimmed.length <= 48) return trimmed;
+  if (trimmed.length <= MAX_AUDIENCE_LENGTH) return trimmed;
 
-  const firstClause = trimmed.split(/[.;,]/)[0]?.trim();
-  return firstClause && firstClause.length <= 48 ? firstClause : "Their Customers";
+  const firstClause = trimmed.split(/[.;,]/)[0]?.trim() ?? trimmed;
+  if (firstClause.length <= MAX_AUDIENCE_LENGTH) return firstClause;
+
+  const words = firstClause.split(/\s+/);
+  let result = "";
+  for (const word of words) {
+    const candidate = result ? `${result} ${word}` : word;
+    if (candidate.length > MAX_AUDIENCE_LENGTH) break;
+    result = candidate;
+  }
+
+  return result || "Their Customers";
 }
 
 function buildNeutralOpportunities(extraction: ExtractionContext): ContentOpportunity[] {
-  const topics = uniqueTopics(extraction);
+  const topics = uniqueTopicsWithSource(extraction);
   const businessType = extraction.industry.trim() || extraction.businessName.trim() || "This Business";
   const audience = shortenAudience(extraction.customerPersona);
 
@@ -186,14 +240,21 @@ function buildNeutralOpportunities(extraction: ExtractionContext): ContentOpport
     (topic) => `A Practical Guide to ${topic}`,
     (topic) => `What Customers Should Know About ${topic}`,
     (topic) => `How ${businessType} Helps ${audience} With ${topic}`,
-    (topic) => `A Practical Guide to ${topic}`,
+    (topic) => `${topic}: Common Questions, Answered`,
   ];
 
-  return topics.slice(0, 4).map((topic, index) => ({
-    title: patterns[index]?.(topic) ?? `A Practical Guide to ${topic}`,
-    seoScore: Math.max(72, 86 - index * 3),
-    competition: index % 2 === 0 ? "Low" : "Medium",
-  }));
+  const withinTierIndex = new Map<TopicWithSource["centrality"], number>();
+
+  return topics.slice(0, 4).map((topicEntry, index) => {
+    const tierIndex = withinTierIndex.get(topicEntry.centrality) ?? 0;
+    withinTierIndex.set(topicEntry.centrality, tierIndex + 1);
+
+    return {
+      title: patterns[index]?.(topicEntry.topic) ?? `A Practical Guide to ${topicEntry.topic}`,
+      seoScore: scoreForTopic(topicEntry, tierIndex),
+      competition: index % 2 === 0 ? "Low" : "Medium",
+    };
+  });
 }
 
 function buildBenefitsOpportunities(extraction: ExtractionContext): ContentOpportunity[] {

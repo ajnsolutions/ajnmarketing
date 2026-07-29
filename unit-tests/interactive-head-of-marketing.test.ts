@@ -282,7 +282,7 @@ test("suggested prompts and UI/docs ship with accessibility + mobile layout", ()
   assert.ok(INTERACTIVE_HOM_SUGGESTED_PROMPTS.length >= 6);
 
   const panel = readFileSync(join(root, "components/dashboard/ask-head-of-marketing.tsx"), "utf8");
-  assert.match(panel, /Ask your Head of Marketing/i);
+  assert.match(panel, /Ask your Growth Advisor/i);
   assert.match(panel, /aria-labelledby/);
   assert.match(panel, /aria-live/);
   assert.match(panel, /hom-focusable/);
@@ -290,7 +290,7 @@ test("suggested prompts and UI/docs ship with accessibility + mobile layout", ()
   assert.match(panel, /Looking through what we already know|Asking…/);
   assert.doesNotMatch(panel, /approveRecommendation|publishContent|openai/i);
 
-  const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+  const page = readFileSync(join(root, "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   assert.match(page, /AskHeadOfMarketingPanel/);
   const campaignsJsx = page.indexOf("<CampaignsSection");
   const askJsx = page.indexOf("<AskHeadOfMarketingPanel");

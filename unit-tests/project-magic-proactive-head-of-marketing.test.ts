@@ -236,7 +236,7 @@ test("Proactive HoM docs and UI stay presentation-only", () => {
   assert.equal(proactiveSrc.includes("generateWeeklyApprovalPackage"), false);
 
   const page = readFileSync(
-    join(root, "components/dashboard/head-of-marketing-page.tsx"),
+    join(root, "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   assert.match(page, /ProactivePresenceSection/);

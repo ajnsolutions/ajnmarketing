@@ -3,7 +3,7 @@ import { getApprovalDashboardData } from "@/lib/content-approval-server";
 
 export const metadata = {
   title: "This Week",
-  description: "Review what your Head of Marketing prepared for your opinion this week.",
+  description: "Review what your Growth Advisor prepared for your opinion this week.",
 };
 
 export default async function ApprovalsRoute({

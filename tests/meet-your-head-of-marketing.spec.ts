@@ -12,9 +12,9 @@ test("Meet Your HoM onboarding ships conversation and trust seed", async () => {
     join(process.cwd(), "components/onboarding/onboarding-wizard.tsx"),
     "utf8",
   );
-  expect(wizard).toContain("excited to become your Head of Marketing");
+  expect(wizard).toContain("excited to become your Growth Advisor");
   expect(wizard).toContain("Where do your customers come from");
-  expect(wizard).toContain("Meet Your Head of Marketing");
+  expect(wizard).toContain("Meet Your Growth Advisor");
   expect(wizard).toContain("give me more responsibility");
   expect(wizard).not.toContain("Initializing");
 

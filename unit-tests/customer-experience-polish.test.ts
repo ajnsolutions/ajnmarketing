@@ -59,24 +59,33 @@ test("confidenceLabel covers every real DecisionEvidenceConfidenceState, includi
   assert.equal(confidenceLabel("not_applicable").label, "Not scored");
 });
 
-test("Head of Marketing hierarchy places strategy and action above history", () => {
-  const page = readFileSync(join(root, "components/dashboard/head-of-marketing-page.tsx"), "utf8");
+test("Growth Advisor hierarchy places the conversation and primary action above supporting history", () => {
+  // The primary action now lives in the hero (growth-advisor-page.tsx), rendered
+  // before <GrowthAdvisorSupportingContext> is ever composed — structurally, not
+  // just by convention, since that component call appears after the primary
+  // action markup in the same file. The supporting widgets it used to sit above
+  // now live together in supporting-context.tsx, in their own relative order.
+  const hero = readFileSync(join(root, "components/dashboard/growth-advisor/growth-advisor-page.tsx"), "utf8");
+  const primary = hero.indexOf('id="growth-advisor-primary-action"');
+  const supportingContextCall = hero.indexOf("<GrowthAdvisorSupportingContext");
+  assert.ok(primary >= 0 && supportingContextCall > primary);
+  assert.match(hero, /hom-skip-link/);
+
+  const page = readFileSync(join(root, "components/dashboard/growth-advisor/supporting-context.tsx"), "utf8");
   const executive = page.indexOf("<ExecutiveBriefSection");
-  const primary = page.indexOf('id="hom-primary-action"');
   const why = page.indexOf("<WhyPlanChangedSection");
   const calendar = page.indexOf("<StrategicCalendarPreviewSection");
   const campaigns = page.indexOf("<CampaignsSection");
   const experiments = page.indexOf("<ExperimentsSection");
   const ask = page.indexOf("<AskHeadOfMarketingPanel");
   const monthly = page.indexOf("<MonthlyFocusSection");
-  assert.ok(executive >= 0 && primary > executive);
-  assert.ok(why > primary);
+  assert.ok(executive >= 0 && why > executive);
   assert.ok(calendar > why);
   assert.ok(campaigns > calendar);
   assert.ok(experiments > campaigns);
   assert.ok(ask > experiments);
   assert.ok(monthly > ask);
-  assert.match(page, /hom-skip-link/);
+
   assert.match(page, /decision-intelligence/);
 });
 

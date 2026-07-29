@@ -37,7 +37,7 @@ const iconSettings = (
  * Weekly review and Google remain contextual (HoM CTA / Settings / More).
  */
 export const primaryDashboardNavItems: DashboardNavItem[] = [
-  { label: "Your Head of Marketing", href: "/dashboard", icon: iconHome },
+  { label: "Your Growth Advisor", href: "/dashboard", icon: iconHome },
   { label: "Results", href: "/dashboard/results", icon: iconResults },
   { label: "Library", href: "/dashboard/library", icon: iconLibrary },
   { label: "Settings", href: "/dashboard/settings", icon: iconSettings },

@@ -28,15 +28,20 @@ test("page-chrome ships orientation and workflow trail primitives", () => {
   assert.match(chrome, /aria-current/);
 });
 
-test("HoM reduces supporting-detail noise and clarifies next step", () => {
-  const hom = readFileSync(
-    join(root, "components/dashboard/head-of-marketing-page.tsx"),
+test("Growth Advisor reduces supporting-detail noise and clarifies next step", () => {
+  const hero = readFileSync(
+    join(root, "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  assert.match(hom, /This is your home base/);
-  assert.match(hom, /Supporting detail/);
+  assert.match(hero, /What I recommend/);
+
+  const hom = readFileSync(
+    join(root, "components/dashboard/growth-advisor/supporting-context.tsx"),
+    "utf8",
+  );
+  assert.match(hom, /Supporting context/);
   assert.match(hom, /<details/);
-  assert.match(hom, /nothing\s+publishes without your approval/i);
+  assert.match(hero, /nothing\s+publishes without your approval/i);
   assert.match(hom, /\/dashboard\/setup/);
 });
 

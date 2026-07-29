@@ -30,7 +30,7 @@ export function ProactivePresenceSection({ presence }: { presence: ProactivePres
           {presence.primary.label}
         </span>
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-          From your Head of Marketing
+          From your Growth Advisor
         </p>
       </div>
       <p className="mt-3 text-base leading-7 text-navy-900 sm:text-lg sm:leading-8">

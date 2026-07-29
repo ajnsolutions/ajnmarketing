@@ -7,9 +7,9 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("Campaign Intelligence ships on Head of Marketing with timeline and cron gate", async () => {
+test("Campaign Intelligence ships on Your Growth Advisor with timeline and cron gate", async () => {
   const pageSource = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
   expect(pageSource).toContain("CampaignsSection");

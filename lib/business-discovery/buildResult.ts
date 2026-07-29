@@ -29,6 +29,7 @@ import {
   type OnlinePresenceInsight,
   type UnifiedBusinessProfile,
 } from "@/lib/business-discovery/types";
+import { LOW_CONFIDENCE_CUSTOMER_PERSONA } from "@/lib/website-analysis/customer-persona";
 
 const KNOWN_SCORE = 90;
 const ASSUMED_SCORE = 55;
@@ -45,10 +46,23 @@ function scoreFor(tier: DiscoveryConfidenceTier): number {
   return MISSING_SCORE;
 }
 
-/** Joins up to two evidence details into the "because X and Y" clause of a reason sentence. */
+/**
+ * Joins evidence details into the "because X and Y" clause of a reason
+ * sentence — up to 3 (not 2), and when a field is corroborated by more than
+ * one distinct source, that agreement is named explicitly ("2 signals
+ * agree:") rather than silently reading like a single generic guess. This is
+ * the difference between "we believe X because of evidence" (boilerplate)
+ * and actually saying how much independent support a claim has.
+ */
 function evidencePhrase(evidenceRefs: DiscoveryEvidenceRef[]): string {
-  const details = evidenceRefs.map((ref) => ref.detail).slice(0, 2);
-  return details.join(" and ");
+  const details = evidenceRefs.map((ref) => ref.detail).slice(0, 3);
+  if (details.length === 0) return "";
+  if (details.length === 1) return details[0];
+
+  const distinctSourceCount = new Set(evidenceRefs.map((ref) => ref.source)).size;
+  const joined = details.length === 2 ? details.join(" and ") : `${details.slice(0, -1).join(", ")}, and ${details[details.length - 1]}`;
+
+  return distinctSourceCount > 1 ? `${distinctSourceCount} signals agreeing — ${joined}` : joined;
 }
 
 function hasArrayValue(value: string[] | null): value is string[] {
@@ -92,8 +106,24 @@ function buildPrimaryServices(unified: UnifiedBusinessProfile): DiscoveryInsight
   });
 }
 
+/**
+ * The website-analysis layer's persona engine (customer-persona.ts) has an
+ * honest internal name for its own last-resort guess —
+ * LOW_CONFIDENCE_CUSTOMER_PERSONA — for exactly the case where it found no
+ * real signal at all. Before this fix, that placeholder string still flowed
+ * through as if it were a genuine (if uncertain) Assumed inference, scored
+ * the same 55 as a real AI guess. It should read as Missing instead: we
+ * really don't know yet, rather than presenting a guess we know is a guess
+ * about nothing as if it were evidence-backed.
+ */
 function buildTargetCustomers(unified: UnifiedBusinessProfile): DiscoveryInsight<string> {
-  return buildInsight(unified.targetAudience, hasScalarValue, (tier, value, evidence) => {
+  const targetAudience = unified.targetAudience;
+  const isLowConfidencePlaceholder = targetAudience.value === LOW_CONFIDENCE_CUSTOMER_PERSONA;
+  const merged: MergedField<string> = isLowConfidencePlaceholder
+    ? { ...targetAudience, value: null, hasVerifiedFactSource: false }
+    : targetAudience;
+
+  return buildInsight(merged, hasScalarValue, (tier, value, evidence) => {
     if (tier === DiscoveryConfidenceTiers.KNOWN) return `You told us your target customers are ${value}.`;
     if (tier === DiscoveryConfidenceTiers.ASSUMED) return `We believe your primary audience is ${value} because ${evidence}.`;
     return "We don't yet know who your target customers are — a website analysis or a quick note usually answers this.";

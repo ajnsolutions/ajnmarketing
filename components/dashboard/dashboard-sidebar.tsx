@@ -139,7 +139,7 @@ export function DashboardSidebar({
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
             Your workspace
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-300">Head of Marketing</p>
+          <p className="mt-1 text-sm font-medium text-slate-300">Growth Advisor</p>
         </div>
       </aside>
 

@@ -230,7 +230,7 @@ export function GbpConnectPage({
                   Google connection is temporarily unavailable.
                 </p>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
-                  Connecting Google is optional. You can keep using Head of Marketing and finish
+                  Connecting Google is optional. You can keep using Growth Advisor and finish
                   other setup while this is unavailable. If you need Google features, contact
                   support — technical configuration stays with your workspace admins.
                 </p>

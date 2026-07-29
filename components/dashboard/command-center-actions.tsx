@@ -89,7 +89,7 @@ export function CommandCenterQuickActions() {
         Advanced actions
       </summary>
       <p className="mt-2 text-sm text-text-muted">
-        Prefer Your Head of Marketing for the weekly check-in. These tools stay available when you
+        Prefer Your Growth Advisor for the weekly check-in. These tools stay available when you
         need them.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

@@ -48,10 +48,10 @@ test("Phase 4A ships orientation, grouped nav, workflow trail, and cron gate", a
   expect(groups).toContain("/dashboard/ai-profile");
 
   const hom = readFileSync(
-    join(process.cwd(), "components/dashboard/head-of-marketing-page.tsx"),
+    join(process.cwd(), "components/dashboard/growth-advisor/supporting-context.tsx"),
     "utf8",
   );
-  expect(hom).toContain("Supporting detail");
+  expect(hom).toContain("Supporting context");
   expect(hom).toContain("<details");
 
   const docs = readFileSync(
