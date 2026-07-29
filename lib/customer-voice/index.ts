@@ -81,3 +81,5 @@ export {
   growthAdvisorCustomerVoiceLines,
   toInsightCard,
 } from "@/lib/customer-voice/presentation";
+
+export { customerVoiceThemeToBusinessInsight } from "@/lib/customer-voice/toBusinessInsight";

@@ -1,6 +1,6 @@
 # Project Magic 2.0 — Business Brain
 
-**Companion to:** [`CONNECTOR_FRAMEWORK.md`](./CONNECTOR_FRAMEWORK.md) · [`SMART_UPLOADS.md`](./SMART_UPLOADS.md) · [`CUSTOMER_VOICE.md`](./CUSTOMER_VOICE.md) · [`MARKET_RADAR.md`](./MARKET_RADAR.md) · [`SEASONAL_INTELLIGENCE.md`](./SEASONAL_INTELLIGENCE.md) · [`GROWTH_ENGINE.md`](./GROWTH_ENGINE.md) · [`../MARKETING_MEMORY_ARCHITECTURE.md`](../MARKETING_MEMORY_ARCHITECTURE.md) (existing implementation this builds on)
+**Companion to:** [`CONNECTOR_FRAMEWORK.md`](./CONNECTOR_FRAMEWORK.md) · [`SMART_UPLOADS.md`](./SMART_UPLOADS.md) · [`CUSTOMER_VOICE.md`](./CUSTOMER_VOICE.md) · [`EXTERNAL_INTELLIGENCE.md`](./EXTERNAL_INTELLIGENCE.md) · [`MARKET_RADAR.md`](./MARKET_RADAR.md) · [`SEASONAL_INTELLIGENCE.md`](./SEASONAL_INTELLIGENCE.md) · [`GROWTH_ENGINE.md`](./GROWTH_ENGINE.md) · [`../MARKETING_MEMORY_ARCHITECTURE.md`](../MARKETING_MEMORY_ARCHITECTURE.md) (existing implementation this builds on)
 
 The Business Brain is the single, durable, structured understanding of a real business that every AJN Marketing capability reads from and writes to. It is the technical and conceptual center of the Growth Engine — the thing that makes "we understand your business better than you have time to" true rather than aspirational.
 
