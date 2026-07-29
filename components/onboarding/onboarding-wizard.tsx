@@ -7,11 +7,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   initialOnboardingData,
   learningProgressMessages,
+  marketingGoalOptions,
   type BusinessAudience,
   type CustomerOrigin,
   type GbpAnswer,
+  type GoalTimeframeChoice,
   type OnboardingData,
 } from "@/lib/onboarding-storage";
+import { GOAL_TIMEFRAME_OPTIONS } from "@/lib/goals/catalog";
 import { profileRowToOnboardingData } from "@/lib/business-profile";
 import { fetchBusinessProfile, saveOnboardingProgress } from "@/lib/business-profile-client";
 import { mergeOnboardingPrefill } from "@/lib/business-discovery/continuation/onboardingPrefill";
@@ -26,6 +29,7 @@ type MagicStep =
   | "businessName"
   | "audience"
   | "customerOrigin"
+  | "successGoals"
   | "gbp"
   | "gbpReassure"
   | "facebook"
@@ -40,6 +44,7 @@ const QUESTION_STEPS: MagicStep[] = [
   "businessName",
   "audience",
   "customerOrigin",
+  "successGoals",
   "gbp",
   "facebook",
   "instagram",
@@ -229,6 +234,10 @@ export function OnboardingWizard({
       return;
     }
     if (current === "customerOrigin") {
+      setStep("successGoals");
+      return;
+    }
+    if (current === "successGoals") {
       setStep("gbp");
       return;
     }
@@ -280,6 +289,11 @@ export function OnboardingWizard({
 
     if (step === "customerOrigin" && !data.customerOrigin) {
       setSavedNotice("Choose the option that fits best.");
+      return;
+    }
+
+    if (step === "successGoals" && data.marketingGoals.length === 0) {
+      setSavedNotice("Pick at least one picture of success so I know what to aim for.");
       return;
     }
 
@@ -568,6 +582,82 @@ export function OnboardingWizard({
                     </span>
                   </ChoiceButton>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {step === "successGoals" && (
+            <div className="space-y-5">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
+                  What would success look like for your business over the next year?
+                </h1>
+                <WhyINeedThis>
+                  Pick everything that matters — order is priority. I&apos;ll aim recommendations at
+                  these goals.
+                </WhyINeedThis>
+              </div>
+              <div className="space-y-3" role="group" aria-label="Success goals">
+                {marketingGoalOptions.map((goal) => {
+                  const selected = data.marketingGoals.includes(goal);
+                  const priority = selected ? data.marketingGoals.indexOf(goal) + 1 : null;
+                  return (
+                    <ChoiceButton
+                      key={goal}
+                      selected={selected}
+                      onClick={() => {
+                        updateField(
+                          "marketingGoals",
+                          selected
+                            ? data.marketingGoals.filter((item) => item !== goal)
+                            : [...data.marketingGoals, goal],
+                        );
+                      }}
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span>{goal}</span>
+                        {priority ? (
+                          <span className="shrink-0 text-xs font-semibold text-brand-600">
+                            #{priority}
+                          </span>
+                        ) : null}
+                      </span>
+                    </ChoiceButton>
+                  );
+                })}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-navy-900" id="goal-timeframe-label">
+                  Optional target timeframe
+                </p>
+                <div
+                  className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+                  role="group"
+                  aria-labelledby="goal-timeframe-label"
+                >
+                  {GOAL_TIMEFRAME_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={data.goalTimeframe === option.id}
+                      onClick={() =>
+                        updateField(
+                          "goalTimeframe",
+                          (data.goalTimeframe === option.id
+                            ? ""
+                            : option.id) as GoalTimeframeChoice,
+                        )
+                      }
+                      className={`hom-focusable min-h-11 rounded-xl border px-4 py-2.5 text-sm font-semibold ${
+                        data.goalTimeframe === option.id
+                          ? "border-brand-300 bg-brand-50/70 text-navy-900"
+                          : "border-slate-200 bg-white text-navy-900"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

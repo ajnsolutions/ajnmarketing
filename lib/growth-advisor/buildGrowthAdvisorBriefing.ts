@@ -8,10 +8,9 @@
  * → what I noticed (top 3) → what I recommend (exactly one) → primary action
  * → supporting context.
  *
- * This file computes NO new scores, decisions, or recommendations. Every
- * sentence here traces back to a field the briefing already produced from
- * real signals — see docs/project-magic/GROWTH_ADVISOR.md's "reuse, don't
- * rebuild" rule.
+ * Wave III adds goal progress + strategy-layer annotation on the single
+ * recommendation. This file still computes NO new recommendation scores or
+ * rankings — see docs/project-magic/GOALS_AND_STRATEGY.md.
  */
 
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
@@ -19,10 +18,18 @@ import { confidenceExplanation, confidenceLabelText } from "@/lib/recommendation
 import type {
   GrowthAdvisorBriefing,
   GrowthAdvisorEmptyStateKind,
+  GrowthAdvisorGoalProgressSummary,
   GrowthAdvisorObservation,
   GrowthAdvisorRecommendation,
 } from "@/lib/growth-advisor/types";
 import type { BusinessDiscoveryResult } from "@/lib/business-discovery/types";
+import type { BusinessGoal } from "@/lib/goals/types";
+import {
+  buildGoalProgress,
+  primaryStrategicFocus,
+  type GoalProgressSignals,
+} from "@/lib/goals/progress";
+import { explainGoalRelevance } from "@/lib/strategy/goalRelevance";
 
 /**
  * Plain-language "why it matters" per noticed-item category. `buildNoticed`
@@ -107,15 +114,70 @@ function estimatedEffortFromTimeLabel(timeRespectLabel: string): string {
   return `About ${timeRespectLabel} of your time.`;
 }
 
-function buildRecommendation(briefing: HeadOfMarketingBriefing): GrowthAdvisorRecommendation | null {
+function signalsFromBriefing(briefing: HeadOfMarketingBriefing): GoalProgressSignals {
+  return {
+    gbpConnected: briefing.confidence.gbpConnected,
+    unansweredReviews: 0,
+    pendingApprovals: briefing.confidence.pendingApprovals,
+    publishFailures: briefing.confidence.publishFailures,
+    openRecommendations: briefing.confidence.openRecommendations,
+    weeklyReviewCount: briefing.confidence.weeklyNewReviews,
+    weeklyPostCount: briefing.confidence.weeklyPublishedPosts,
+    websiteConnected: Boolean(briefing.confidence.hasMarketingPlan) || briefing.confidence.gbpConnected,
+    setupComplete: briefing.confidence.gbpConnected && !briefing.isEarlyCustomer,
+    isEarlyCustomer: briefing.isEarlyCustomer,
+  };
+}
+
+function buildGoalProgressSummary(
+  goals: BusinessGoal[],
+  briefing: HeadOfMarketingBriefing,
+  signalOverrides?: Partial<GoalProgressSignals>,
+): GrowthAdvisorGoalProgressSummary {
+  if (goals.length === 0) {
+    return {
+      items: [],
+      strategicFocus: null,
+      primaryState: null,
+      emptyDetail:
+        "When you tell me what success looks like, I can track progress toward those goals here.",
+    };
+  }
+
+  const signals: GoalProgressSignals = {
+    ...signalsFromBriefing(briefing),
+    ...signalOverrides,
+  };
+  const items = buildGoalProgress(goals, signals);
+  const focus = primaryStrategicFocus(goals);
+
+  return {
+    items,
+    strategicFocus: focus?.label ?? null,
+    primaryState: items[0]?.state ?? null,
+    emptyDetail: null,
+  };
+}
+
+function buildRecommendation(
+  briefing: HeadOfMarketingBriefing,
+  goals: BusinessGoal[],
+): GrowthAdvisorRecommendation | null {
   const recommendation = briefing.recommendation;
   if (!recommendation) return null;
 
   const detail = briefing.topRecommendationDetail;
   const confidenceLabel = detail?.confidenceLabel ?? null;
+  const relevance = explainGoalRelevance(
+    goals,
+    detail?.actionType ?? null,
+    detail?.title ?? recommendation.title,
+  );
 
   return {
     title: detail?.title ?? recommendation.title,
+    supportsGoal: relevance?.supportsGoal ?? null,
+    whySupportsGoal: relevance?.whySupportsGoal ?? null,
     whyNow: detail?.whyNow ?? recommendation.why,
     expectedImpact: detail?.expectedBenefit ?? recommendation.expectedBenefit,
     estimatedEffort: estimatedEffortFromTimeLabel(briefing.timeRespectLabel),
@@ -137,17 +199,26 @@ function resolveEmptyStateKind(
   return null;
 }
 
+export type BuildGrowthAdvisorBriefingOptions = {
+  goals?: BusinessGoal[];
+  /** Optional signal overrides (e.g. unanswered review count from a richer fetch). */
+  progressSignals?: Partial<GoalProgressSignals>;
+};
+
 export function buildGrowthAdvisorBriefing(
   briefing: HeadOfMarketingBriefing,
   businessDiscovery?: BusinessDiscoveryResult | null,
+  options?: BuildGrowthAdvisorBriefingOptions,
 ): GrowthAdvisorBriefing {
-  const recommendation = buildRecommendation(briefing);
+  const goals = options?.goals ?? [];
+  const recommendation = buildRecommendation(briefing, goals);
 
   return {
     greeting: briefing.greeting,
     businessName: briefing.businessName,
     whatChanged: buildWhatChanged(briefing),
     whatINoticed: buildWhatINoticed(briefing, businessDiscovery),
+    goalProgress: buildGoalProgressSummary(goals, briefing, options?.progressSignals),
     recommendation,
     primaryAction: briefing.primaryAction,
     primaryActionIsReassurance: briefing.primaryAction.kind === "none",

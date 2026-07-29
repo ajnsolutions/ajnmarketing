@@ -4,6 +4,8 @@ export type CustomerOrigin = "local_community" | "regional" | "national" | "";
 
 export type GbpAnswer = "yes" | "no" | "not_sure" | "";
 
+export type GoalTimeframeChoice = "90_days" | "6_months" | "1_year" | "";
+
 export type OnboardingData = {
   businessName: string;
   industry: string;
@@ -31,7 +33,10 @@ export type OnboardingData = {
   competitor2: string;
   competitor3: string;
   competitorsSkipped: boolean;
+  /** Selected success-goal labels (order = priority). */
   marketingGoals: string[];
+  /** Optional shared target timeframe for selected goals. */
+  goalTimeframe: GoalTimeframeChoice;
   tone: string;
   wordsToUse: string;
   wordsToAvoid: string;
@@ -63,20 +68,25 @@ export const initialOnboardingData: OnboardingData = {
   competitor3: "",
   competitorsSkipped: false,
   marketingGoals: [],
+  goalTimeframe: "",
   tone: "",
   wordsToUse: "",
   wordsToAvoid: "",
   exampleMessage: "",
 };
 
+/** Wave III success goals — also exported from lib/goals/catalog for strategy mapping. */
 export const marketingGoalOptions = [
-  "More phone calls",
-  "More Google visibility",
-  "More reviews",
-  "Better content consistency",
-  "More website traffic",
-  "Better local ranking",
-  "Less time managing marketing",
+  "Increase revenue",
+  "Generate more leads",
+  "Increase recurring customers",
+  "Improve online reputation",
+  "Increase website conversions",
+  "Launch a new service",
+  "Expand into a new market",
+  "Grow memberships",
+  "Reduce seasonality",
+  "Save time with automation",
 ];
 
 const AUDIENCE_LOCAL = "Audience: Local business";
@@ -137,7 +147,9 @@ export function customerOriginFromGoals(goals: string[]): CustomerOrigin {
 /** Strip Magic markers so UI goal pickers stay clean. */
 export function stripMagicGoalMarkers(goals: string[]): string[] {
   return goals.filter(
-    (goal) => !(MAGIC_GOAL_MARKERS as readonly string[]).includes(goal),
+    (goal) =>
+      !(MAGIC_GOAL_MARKERS as readonly string[]).includes(goal) &&
+      !goal.startsWith("__business_goals_v1__:"),
   );
 }
 

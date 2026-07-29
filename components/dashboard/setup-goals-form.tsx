@@ -11,15 +11,24 @@ import {
   audienceFromGoals,
   customerOriginFromGoals,
   marketingGoalOptions,
-  stripMagicGoalMarkers,
   type BusinessAudience,
   type CustomerOrigin,
+  type GoalTimeframeChoice,
 } from "@/lib/onboarding-storage";
+import { GOAL_TIMEFRAME_OPTIONS } from "@/lib/goals/catalog";
+import {
+  applyBusinessGoalsToMarketingGoals,
+  decodeBusinessGoalsFromMarketingGoals,
+  goalsFromSelectedLabels,
+  reorderGoals,
+} from "@/lib/goals/persistence";
+import type { GoalKey } from "@/lib/goals/types";
 
 export function SetupGoalsForm() {
   const router = useRouter();
   const formId = useId();
   const [goals, setGoals] = useState<string[]>([]);
+  const [timeframe, setTimeframe] = useState<GoalTimeframeChoice>("");
   const [audience, setAudience] = useState<BusinessAudience>("");
   const [origin, setOrigin] = useState<CustomerOrigin>("");
   const [loading, setLoading] = useState(true);
@@ -38,7 +47,9 @@ export function SetupGoalsForm() {
         return;
       }
       const existing = profile.marketing_goals ?? [];
-      setGoals(stripMagicGoalMarkers(existing));
+      const structured = decodeBusinessGoalsFromMarketingGoals(existing);
+      setGoals(structured.map((goal) => goal.label));
+      setTimeframe((structured[0]?.targetTimeframe as GoalTimeframeChoice) ?? "");
       setAudience(audienceFromGoals(existing));
       setOrigin(customerOriginFromGoals(existing));
       setLoading(false);
@@ -55,11 +66,24 @@ export function SetupGoalsForm() {
     );
   }
 
+  function moveGoal(label: string, direction: -1 | 1) {
+    setGoals((current) => {
+      const index = current.indexOf(label);
+      if (index < 0) return current;
+      const next = index + direction;
+      if (next < 0 || next >= current.length) return current;
+      const copy = [...current];
+      const [item] = copy.splice(index, 1);
+      copy.splice(next, 0, item!);
+      return copy;
+    });
+  }
+
   async function onSave() {
     setError(null);
     setSuccess(null);
     if (goals.length === 0 && !audience && !origin) {
-      setError("Choose at least one marketing goal, or confirm audience and customer origin.");
+      setError("Choose at least one success goal, or confirm audience and customer origin.");
       return;
     }
 
@@ -71,10 +95,20 @@ export function SetupGoalsForm() {
       return;
     }
 
-    const marketing_goals = applyCustomerOriginToGoals(
-      applyAudienceToGoals(goals, audience),
-      origin,
+    const timeframeValue =
+      timeframe === "90_days" || timeframe === "6_months" || timeframe === "1_year"
+        ? timeframe
+        : null;
+    let structured = goalsFromSelectedLabels(goals, timeframeValue);
+    structured = reorderGoals(
+      structured,
+      goals
+        .map((label) => structured.find((goal) => goal.label === label)?.key)
+        .filter(Boolean) as GoalKey[],
     );
+
+    const base = applyCustomerOriginToGoals(applyAudienceToGoals([], audience), origin);
+    const marketing_goals = applyBusinessGoalsToMarketingGoals(base, structured);
 
     const { error: saveError } = await upsertBusinessProfile({
       ...profile,
@@ -83,55 +117,106 @@ export function SetupGoalsForm() {
     setSaving(false);
 
     if (saveError) {
-      setError("Unable to save marketing goals. Please try again.");
+      setError("Unable to save goals. Please try again.");
       return;
     }
 
-    setSuccess("Marketing goals saved.");
+    setSuccess("Goals saved — your Growth Advisor will aim recommendations here.");
     router.refresh();
     document.getElementById(`${formId}-success`)?.focus();
   }
 
   if (loading) {
-    return <p className="text-sm text-text-muted">Loading marketing goals…</p>;
+    return <p className="text-sm text-text-muted">Loading goals…</p>;
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <PageHeader
         eyebrow="Setup"
-        title="Marketing goals"
-        description="Tell me what success looks like. This keeps Growth Advisor focused — it does not automatically regenerate strategy."
+        title="What success looks like"
+        description="Tell me what a great year would look like. This keeps Growth Advisor focused — it does not automatically regenerate strategy."
         backHref="/dashboard/setup"
         backLabel="Back to setup"
       />
 
       <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-bold text-navy-900">Primary goals</h2>
+        <h2 className="text-base font-bold text-navy-900">
+          What would success look like for your business over the next year?
+        </h2>
         <p className="text-sm text-text-muted">
-          Pick one or more. Examples stay short so you can decide quickly.
+          Select multiple goals. Use the arrows to set priority (first = most important).
         </p>
         <ul className="space-y-2">
           {marketingGoalOptions.map((goal) => {
             const selected = goals.includes(goal);
+            const priority = selected ? goals.indexOf(goal) + 1 : null;
             return (
-              <li key={goal}>
+              <li key={goal} className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button
                   type="button"
                   aria-pressed={selected}
                   onClick={() => toggleGoal(goal)}
-                  className={`hom-focusable w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                  className={`hom-focusable min-h-11 flex-1 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
                     selected
                       ? "border-brand-300 bg-brand-50/70 text-navy-900 ring-1 ring-brand-200"
                       : "border-slate-200 bg-white text-navy-900 hover:bg-slate-50"
                   }`}
                 >
-                  {goal}
+                  <span className="flex items-center justify-between gap-3">
+                    <span>{goal}</span>
+                    {priority ? (
+                      <span className="text-xs font-semibold text-brand-600">#{priority}</span>
+                    ) : null}
+                  </span>
                 </button>
+                {selected ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      aria-label={`Move ${goal} up in priority`}
+                      onClick={() => moveGoal(goal, -1)}
+                      className="hom-focusable min-h-11 min-w-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-navy-900"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move ${goal} down in priority`}
+                      onClick={() => moveGoal(goal, 1)}
+                      className="hom-focusable min-h-11 min-w-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-navy-900"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                ) : null}
               </li>
             );
           })}
         </ul>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-bold text-navy-900">Optional target timeframe</h2>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Target timeframe">
+          {GOAL_TIMEFRAME_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={timeframe === option.id}
+              onClick={() =>
+                setTimeframe((current) => (current === option.id ? "" : option.id))
+              }
+              className={`hom-focusable min-h-11 rounded-full px-4 py-2 text-sm font-semibold ring-1 ${
+                timeframe === option.id
+                  ? "bg-brand-600 text-white ring-brand-600"
+                  : "border border-slate-200 bg-white text-navy-900 ring-slate-200"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -228,7 +313,7 @@ export function SetupGoalsForm() {
           onClick={onSave}
           className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
         >
-          {saving ? "Saving…" : "Save marketing goals"}
+          {saving ? "Saving…" : "Save goals"}
         </button>
         <Link
           href="/dashboard/setup"

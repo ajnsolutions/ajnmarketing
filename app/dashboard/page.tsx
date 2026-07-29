@@ -9,12 +9,14 @@ import {
 import { getHeadOfMarketingBriefingForCurrentUser } from "@/lib/head-of-marketing/service";
 import { runBusinessDiscoveryForCurrentUser } from "@/lib/business-discovery/service";
 import { buildGrowthAdvisorBriefing } from "@/lib/growth-advisor/buildGrowthAdvisorBriefing";
+import { getBusinessGoalsForCurrentUser } from "@/lib/goals/service";
 
 export default async function DashboardPage() {
-  const [briefing, firstDays, setup] = await Promise.all([
+  const [briefing, firstDays, setup, goals] = await Promise.all([
     getHeadOfMarketingBriefingForCurrentUser(),
     getFirstDaysHomeForCurrentUser(),
     getCustomerSetupSnapshotForCurrentUser(),
+    getBusinessGoalsForCurrentUser(),
   ]);
 
   // Brand-new setups keep the First Five Minutes calm path until foundations exist.
@@ -26,7 +28,7 @@ export default async function DashboardPage() {
     // Business Discovery personalizes "What I noticed" honestly when there's
     // a real signal — never required, never blocks the page if unavailable.
     const businessDiscovery = await runBusinessDiscoveryForCurrentUser().catch(() => null);
-    const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery);
+    const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, { goals });
     return <GrowthAdvisorPage advisor={advisor} briefing={briefing} />;
   }
 

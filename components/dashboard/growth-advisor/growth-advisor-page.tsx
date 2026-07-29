@@ -80,6 +80,36 @@ export function GrowthAdvisorPage({
         </section>
       )}
 
+      {/* Progress toward goals + strategic focus */}
+      <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="goal-progress-heading">
+        <h2 id="goal-progress-heading" className="text-lg font-bold text-navy-900">
+          Progress toward goals
+        </h2>
+        {advisor.goalProgress.strategicFocus ? (
+          <p className="mt-2 text-sm leading-7 text-slate-600">
+            Strategic focus:{" "}
+            <span className="font-semibold text-navy-900">{advisor.goalProgress.strategicFocus}</span>
+          </p>
+        ) : null}
+        {advisor.goalProgress.emptyDetail ? (
+          <p className="mt-3 text-sm leading-7 text-text-muted">{advisor.goalProgress.emptyDetail}</p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {advisor.goalProgress.items.slice(0, 3).map((item) => (
+              <li key={item.goalKey}>
+                <p className="text-sm font-semibold text-navy-900">
+                  {item.label}
+                  <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-brand-600">
+                    {item.state.replace(/_/g, " ")}
+                  </span>
+                </p>
+                <p className="mt-1 text-sm leading-6 text-text-muted">{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* What I recommend */}
       <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="what-i-recommend-heading">
         <h2 id="what-i-recommend-heading" className="text-lg font-bold text-navy-900">

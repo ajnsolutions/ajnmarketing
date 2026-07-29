@@ -121,6 +121,11 @@ export type MarketingDirectorTopRecommendationDetail = {
   whyNow: string;
   expectedBenefit: string;
   confidenceLabel: ConfidenceLabel;
+  /**
+   * Raw recommended_action_type for presentation layers (e.g. goal relevance).
+   * Never used to rescore or re-rank — annotation only.
+   */
+  actionType?: string;
 };
 
 export type MarketingDirectorInput = {

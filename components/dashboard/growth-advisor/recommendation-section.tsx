@@ -31,6 +31,11 @@ export function GrowthAdvisorRecommendationSection({
   return (
     <div>
       <p className="text-base font-semibold text-navy-900">{recommendation.title}</p>
+      {recommendation.supportsGoal ? (
+        <p className="mt-2 text-sm font-medium text-brand-700">
+          Supports goal: {recommendation.supportsGoal}
+        </p>
+      ) : null}
       <p className="mt-2 text-sm leading-7 text-slate-600">{recommendation.whyNow}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -63,6 +68,14 @@ export function GrowthAdvisorRecommendationSection({
 
       {expanded && (
         <dl className="hom-disclose-content mt-4 space-y-3 rounded-xl bg-[#F8FAFC] p-4 ring-1 ring-slate-100">
+          {recommendation.whySupportsGoal ? (
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Why this supports your goal
+              </dt>
+              <dd className="mt-1 text-sm leading-6 text-navy-900">{recommendation.whySupportsGoal}</dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Expected impact</dt>
             <dd className="mt-1 text-sm leading-6 text-navy-900">{recommendation.expectedImpact}</dd>

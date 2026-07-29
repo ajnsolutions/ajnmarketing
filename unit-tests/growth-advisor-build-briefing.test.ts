@@ -101,6 +101,14 @@ test("recommendation includes why now, expected impact, estimated effort, and wh
   assert.ok(advisor.recommendation!.expectedImpact.length > 0);
   assert.ok(advisor.recommendation!.estimatedEffort.length > 0);
   assert.ok(advisor.recommendation!.whyIBelieve.length > 0);
+  assert.ok("supportsGoal" in advisor.recommendation!);
+});
+
+test("goal progress empty state is honest when no goals are selected", () => {
+  const briefing = buildWeeklyBriefing(baseInput);
+  const advisor = buildGrowthAdvisorBriefing(briefing, null, { goals: [] });
+  assert.equal(advisor.goalProgress.strategicFocus, null);
+  assert.match(advisor.goalProgress.emptyDetail ?? "", /success looks like/i);
 });
 
 test("recommendation without real recommendation-presentation detail still gives an honest, non-fabricated 'why I believe' sentence", () => {
