@@ -35,6 +35,8 @@ import { buildWhatINoticedObservations } from "@/lib/growth-advisor/observations
 import { resolveExpectedBusinessOutcomes } from "@/lib/growth-advisor/expectedImpact";
 import { buildNextWeekMonitoring } from "@/lib/growth-advisor/nextWeek";
 import { TrustCertaintyLevels } from "@/lib/growth-advisor/trust";
+import type { GuidedSetupExperience } from "@/lib/guided-setup/types";
+import { KnowledgeStates } from "@/lib/guided-setup/types";
 
 function buildWhatChanged(briefing: HeadOfMarketingBriefing): GrowthAdvisorBriefing["whatChanged"] {
   const hasMeaningfulChange = briefing.thisWeek.length > 1;
@@ -176,6 +178,7 @@ function buildLearningState(input: {
   customerVoice?: CustomerVoiceIntelligence | null;
   externalIntelligence?: ExternalIntelligence | null;
   goals: BusinessGoal[];
+  guidedSetup?: GuidedSetupExperience | null;
 }): GrowthAdvisorLearningState {
   const suggestions: string[] = [];
   const gbpConnected = input.briefing.confidence.gbpConnected;
@@ -187,6 +190,12 @@ function buildLearningState(input: {
     !input.externalIntelligence ||
     input.externalIntelligence.emptyState === "no_evidence" ||
     input.externalIntelligence.emptyState === "insufficient_evidence";
+
+  if (input.guidedSetup?.recommendedNext && !input.guidedSetup.advisorReady) {
+    suggestions.push(
+      `${input.guidedSetup.recommendedNext.title}: ${input.guidedSetup.recommendedNext.brainImprovement}`,
+    );
+  }
 
   if (!gbpConnected) {
     suggestions.push("Connect Google Business Profile so I can learn from your local presence and reviews.");
@@ -200,20 +209,31 @@ function buildLearningState(input: {
     suggestions.push("As market signals develop, I'll fold seasonal and local context into our weekly meeting.");
   }
 
+  const waitingCount =
+    input.guidedSetup?.knowledgeSignals.filter((s) => s.state === KnowledgeStates.WAITING).length ?? 0;
+  const learningCount =
+    input.guidedSetup?.knowledgeSignals.filter((s) => s.state === KnowledgeStates.LEARNING).length ?? 0;
+
   const isLearning =
     input.whatINoticedCount < 2 ||
     !gbpConnected ||
-    (cvEmpty && eiEmpty && input.goals.length === 0);
+    (cvEmpty && eiEmpty && input.goals.length === 0) ||
+    waitingCount > 0 ||
+    learningCount > 0 ||
+    Boolean(input.guidedSetup && !input.guidedSetup.advisorReady);
 
   if (!isLearning) {
     return { isLearning: false, message: null, improvementSuggestions: [] };
   }
 
+  const guidedMessage = input.guidedSetup?.latestFirstWin
+    ? `New insight unlocked: ${input.guidedSetup.latestFirstWin.title}. I'm still learning — recommendations stay honest about what's Known vs Waiting.`
+    : "I'm still learning your business. I'll clearly mark what's Known, what I'm Learning, and what I'm Waiting for — I won't invent insights.";
+
   return {
     isLearning: true,
-    message:
-      "I'm still learning your business. Recommendations stay conservative until more evidence arrives — I won't invent insights.",
-    improvementSuggestions: suggestions.slice(0, 3),
+    message: guidedMessage,
+    improvementSuggestions: [...new Set(suggestions)].slice(0, 3),
   };
 }
 
@@ -235,6 +255,8 @@ export type BuildGrowthAdvisorBriefingOptions = {
   customerVoice?: CustomerVoiceIntelligence | null;
   /** External Intelligence — presentation only; never re-ranks. */
   externalIntelligence?: ExternalIntelligence | null;
+  /** Guided setup / first-wins — presentation only; never re-ranks. */
+  guidedSetup?: GuidedSetupExperience | null;
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -276,6 +298,7 @@ export function buildGrowthAdvisorBriefing(
     customerVoice: options?.customerVoice,
     externalIntelligence: options?.externalIntelligence,
     goals,
+    guidedSetup: options?.guidedSetup,
   });
 
   return {
