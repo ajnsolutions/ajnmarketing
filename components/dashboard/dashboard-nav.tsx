@@ -151,6 +151,17 @@ export const advancedDashboardNavItems: DashboardNavItem[] = [
     ),
   },
   {
+    label: "Business Connections",
+    href: "/dashboard/business-connections",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8M12 8v8" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" />
+      </svg>
+    ),
+  },
+  {
     label: "Brand voice",
     href: "/dashboard/brand-voice",
     icon: (
