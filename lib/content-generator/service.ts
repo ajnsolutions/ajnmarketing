@@ -24,6 +24,8 @@ import { getAnalyticsFeedbackForUser } from "@/lib/analytics/analyticsEngine";
 import { buildMarketContextPromptSummary } from "@/lib/market-context/prompt-context";
 import { getLatestMarketContextBriefForUser } from "@/lib/market-context/marketContextService";
 import { createClient } from "@/lib/supabase/server";
+import { formatCustomerVoiceForContentPrompt } from "@/lib/customer-voice/copySuggestions";
+import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 
 async function loadGenerationContext(userId: string): Promise<ContentGenerationContext | null> {
   const supabase = await createClient();
@@ -36,20 +38,28 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
 
   if (error || !profile) return null;
 
-  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback] =
+  const businessProfile = profile as BusinessProfile;
+
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, customerVoice] =
     await Promise.all([
     getAiMarketingProfileForUser(supabase, userId),
     getWebsiteAnalysisForUser(supabase, userId),
     getLatestMarketContextBriefForUser(userId),
     getAnalyticsFeedbackForUser(userId),
+    getCustomerVoiceIntelligence({
+      userId,
+      businessProfileId: businessProfile.id,
+      supabase,
+    }).catch(() => null),
   ]);
 
   return {
-    businessProfile: profile as BusinessProfile,
+    businessProfile,
     aiMarketingProfile: aiMarketingProfile as AiMarketingProfile | null,
     websiteAnalysis: websiteAnalysis as WebsiteAnalysis | null,
     marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
     analyticsFeedback,
+    customerVoicePromptBlock: formatCustomerVoiceForContentPrompt(customerVoice),
   };
 }
 

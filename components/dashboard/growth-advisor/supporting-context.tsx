@@ -13,6 +13,8 @@ import { StatusBadge } from "@/components/dashboard/ui/status-badge";
 import type { CustomerStatusPresentation } from "@/lib/customer-ux/statusVocabulary";
 import { buildTrustSignals } from "@/lib/customer-ux/trustPresentation";
 import type { HeadOfMarketingBriefing, MarketingHealthState } from "@/lib/head-of-marketing/types";
+import type { GrowthAdvisorSupportingContext as AdvisorSupporting } from "@/lib/growth-advisor/types";
+import type { CustomerVoiceHealthState } from "@/lib/customer-voice/health";
 
 function healthPresentation(state: MarketingHealthState, label: string, message: string): CustomerStatusPresentation {
   const toneByState: Record<MarketingHealthState, CustomerStatusPresentation["tone"]> = {
@@ -24,19 +26,32 @@ function healthPresentation(state: MarketingHealthState, label: string, message:
   return { label, description: message, tone: toneByState[state] };
 }
 
+function customerVoiceHealthPresentation(
+  state: CustomerVoiceHealthState,
+  label: string,
+  message: string,
+): CustomerStatusPresentation {
+  const toneByState: Record<CustomerVoiceHealthState, CustomerStatusPresentation["tone"]> = {
+    healthy: "success",
+    emerging_concerns: "warning",
+    limited_feedback: "neutral",
+    establishing_baseline: "neutral",
+  };
+  return { label: `Customer Voice · ${label}`, description: message, tone: toneByState[state] };
+}
+
 /**
  * Everything that isn't the conversation: Marketing Health (one line, not a
- * hero), recent activity, upcoming scheduled content, performance trends,
- * and opportunity history. Positioned below the primary action, never
- * competing with it — see Section 6 of the Growth Advisor sprint spec.
- *
- * Reuses (relocated, not rebuilt) the previous page's confidence strip,
- * proactive-presence celebrations, and full Executive Brief — their content
- * is now genuinely secondary once the hero conversation covers the primary
- * "what changed / what I noticed / what I recommend" ground, but it's still
- * real, tested, useful detail worth keeping reachable.
+ * hero), Customer Voice Health, recent activity, and secondary tools.
+ * Positioned below the primary action, never competing with it.
  */
-export function GrowthAdvisorSupportingContext({ briefing }: { briefing: HeadOfMarketingBriefing }) {
+export function GrowthAdvisorSupportingContext({
+  briefing,
+  customerVoiceHealth,
+}: {
+  briefing: HeadOfMarketingBriefing;
+  customerVoiceHealth?: AdvisorSupporting["customerVoiceHealth"];
+}) {
   const trustSignals = buildTrustSignals([
     { label: "Briefing generated", isoDate: briefing.executiveBrief.generatedAt },
     { label: "Profile since", isoDate: briefing.confidence.profileCreatedAt },
@@ -56,6 +71,25 @@ export function GrowthAdvisorSupportingContext({ briefing }: { briefing: HeadOfM
           See performance trends →
         </Link>
       </div>
+
+      {customerVoiceHealth ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
+          <StatusBadge
+            presentation={customerVoiceHealthPresentation(
+              customerVoiceHealth.state,
+              customerVoiceHealth.label,
+              customerVoiceHealth.message,
+            )}
+          />
+          <p className="text-sm leading-6 text-text-muted">{customerVoiceHealth.message}</p>
+          <Link
+            href="/dashboard/customer-voice"
+            className="hom-focusable ml-auto text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+          >
+            Open Customer Voice →
+          </Link>
+        </div>
+      ) : null}
 
       <CustomerConfidencePanel
         facts={{
@@ -119,6 +153,7 @@ export function GrowthAdvisorSupportingContext({ briefing }: { briefing: HeadOfM
               { href: "/dashboard/decision-intelligence", label: "Why the plan changed" },
               { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
+              { href: "/dashboard/customer-voice", label: "Customer Voice" },
               { href: "/dashboard/tasks", label: "What I'm working on" },
               { href: "/dashboard/google-business-profile", label: "Google Profile" },
               { href: "/dashboard/command-center", label: "Detailed workspace (advanced)" },

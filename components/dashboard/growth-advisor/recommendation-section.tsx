@@ -31,12 +31,18 @@ export function GrowthAdvisorRecommendationSection({
   return (
     <div>
       <p className="text-base font-semibold text-navy-900">{recommendation.title}</p>
+      {recommendation.customerVoiceContext ? (
+        <p className="mt-2 text-sm leading-7 text-navy-900">{recommendation.customerVoiceContext}</p>
+      ) : null}
       {recommendation.supportsGoal ? (
         <p className="mt-2 text-sm font-medium text-brand-700">
-          Supports goal: {recommendation.supportsGoal}
+          This supports your goal of {recommendation.supportsGoal.toLowerCase()}.
         </p>
       ) : null}
-      <p className="mt-2 text-sm leading-7 text-slate-600">{recommendation.whyNow}</p>
+      <p className="mt-2 text-sm leading-7 text-slate-600">
+        <span className="font-medium text-navy-900">Recommended next step. </span>
+        {recommendation.whyNow}
+      </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <button

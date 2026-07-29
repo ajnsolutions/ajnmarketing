@@ -115,6 +115,7 @@ export function buildBusinessIntel(context: ContentGenerationContext): ContentGe
       aiMarketingProfile?.google_business_strategy ?? "Not available",
     avoidWords: splitList(businessProfile.avoid_words?.replace(/,/g, "\n")),
     marketingGoals: businessProfile.marketing_goals ?? [],
+    customerVoicePromptBlock: context.customerVoicePromptBlock ?? null,
   };
 }
 
@@ -132,6 +133,7 @@ export function buildContentGenerationPrompt(
     "Never invent services, audiences, cities, industries, emergencies, repairs, homeowners, plumbing, HVAC, dental, or other details unless explicitly supported by the source data.",
     "Never use generic placeholder copy or template filler.",
     "Use the business brand voice exactly.",
+    "When Customer Voice is provided, weave recurring customer phrases and authentic strengths naturally — never keyword-stuff, never invent praise.",
     "Return structured JSON only.",
   ].join(" ");
 
@@ -166,6 +168,9 @@ export function buildContentGenerationPrompt(
       2
     ),
     "",
+    ...(intel.customerVoicePromptBlock
+      ? [intel.customerVoicePromptBlock, ""]
+      : []),
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]
       : []),
@@ -237,6 +242,7 @@ export function buildMarketingPlanItemContentPrompt(
     "Never invent services, audiences, cities, industries, emergencies, repairs, homeowners, plumbing, HVAC, dental, or other details unless explicitly supported by the source data.",
     "Never use generic placeholder copy or template filler.",
     "Use the business brand voice exactly.",
+    "When Customer Voice is provided, weave recurring customer phrases and authentic strengths naturally — never keyword-stuff, never invent praise.",
     "Return structured JSON only.",
   ].join(" ");
 
@@ -271,6 +277,9 @@ export function buildMarketingPlanItemContentPrompt(
       2
     ),
     "",
+    ...(intel.customerVoicePromptBlock
+      ? [intel.customerVoicePromptBlock, ""]
+      : []),
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]
       : []),

@@ -62,6 +62,11 @@ export type ContentGenerationContext = {
   websiteAnalysis: WebsiteAnalysis | null;
   marketContextSummary: MarketContextPromptSummary | null;
   analyticsFeedback: AnalyticsFeedback | null;
+  /**
+   * Pre-formatted Customer Voice prompt block (phrases + strengths).
+   * Null when evidence is thin — generators must not invent customer praise.
+   */
+  customerVoicePromptBlock?: string | null;
 };
 
 export interface ContentGenerator {
@@ -94,6 +99,8 @@ export type ContentGenerationBusinessIntel = {
   googleBusinessStrategy: string;
   avoidWords: string[];
   marketingGoals: string[];
+  /** Optional Customer Voice block for authentic language — never fabricated. */
+  customerVoicePromptBlock: string | null;
 };
 
 export type MarketingPlanItemType =

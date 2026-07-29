@@ -259,24 +259,13 @@ test("sentiment helpers stay bounded", () => {
   assert.equal(sentimentFromTextAndRating("Terrible and disappointing service", 1), "negative");
 });
 
-test("Phase 1 docs and modules exist; no Customer Voice UI page", () => {
+test("Phase 1 foundation modules remain and docs still cover the intelligence layer", () => {
   const docs = readFileSync(join(root, "docs/project-magic/CUSTOMER_VOICE.md"), "utf8");
   assert.match(docs, /Provider interface/);
   assert.match(docs, /Evidence normalization/);
   assert.match(docs, /Customer Voice Score/);
   assert.match(docs, /Extension guide/);
-  assert.match(docs, /No Customer Voice UI/);
 
   assert.ok(readFileSync(join(root, "lib/customer-voice/compose.ts"), "utf8").includes("composeCustomerVoiceIntelligence"));
   assert.ok(readFileSync(join(root, "lib/customer-voice/service.ts"), "utf8").includes("getCustomerVoiceIntelligence"));
-
-  // Phase 1 must not ship a customer-facing Customer Voice page.
-  let uiPage = false;
-  try {
-    readFileSync(join(root, "app/dashboard/customer-voice/page.tsx"), "utf8");
-    uiPage = true;
-  } catch {
-    uiPage = false;
-  }
-  assert.equal(uiPage, false);
 });

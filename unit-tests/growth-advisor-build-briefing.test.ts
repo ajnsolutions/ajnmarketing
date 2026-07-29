@@ -185,6 +185,8 @@ test("supporting context health mirrors the briefing's own Marketing Health verb
   assert.equal(advisor.supporting.health.state, briefing.health.state);
   assert.equal(advisor.supporting.health.label, briefing.health.label);
   assert.equal(advisor.supporting.health.message, briefing.health.message);
+  assert.ok(advisor.supporting.customerVoiceHealth);
+  assert.equal(advisor.recommendation?.customerVoiceContext ?? null, null);
 });
 
 test("a real Business Discovery growth opportunity supplements What I Noticed only when signals are thin, never displacing a real signal", () => {

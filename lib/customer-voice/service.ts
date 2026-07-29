@@ -42,7 +42,8 @@ function defaultProviders(supabase: SupabaseClient): CustomerVoiceProvider[] {
 
 /**
  * Business Brain Customer Voice service — generate intelligence once, reuse everywhere.
- * Phase 1: foundation only (no Growth Advisor / Marketing Health UI wiring).
+ * Experience surfaces (Growth Advisor, Customer Voice page, Content Generator, Health)
+ * consume this package; they do not re-analyze raw reviews.
  */
 export async function getCustomerVoiceIntelligence(input: {
   userId: string;
