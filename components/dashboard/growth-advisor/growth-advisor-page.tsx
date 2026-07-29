@@ -2,24 +2,29 @@ import { GrowthAdvisorPrimaryAction } from "@/components/dashboard/growth-adviso
 import { GrowthAdvisorRecommendationSection } from "@/components/dashboard/growth-advisor/recommendation-section";
 import { GrowthAdvisorSupportingContext } from "@/components/dashboard/growth-advisor/supporting-context";
 import { GrowthAdvisorViewTracker } from "@/components/dashboard/growth-advisor/view-tracker";
+import { WeeklyGrowthPlanSection } from "@/components/dashboard/growth-advisor/weekly-growth-plan-section";
 import { PrimaryActionBar } from "@/components/dashboard/ui/page-chrome";
 import type { GrowthAdvisorBriefing } from "@/lib/growth-advisor/types";
+import type { WeeklyGrowthPlanBundle } from "@/lib/growth-planner/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import { trustLabel } from "@/lib/growth-advisor/trust";
 
 /**
  * Your Growth Advisor — conversational weekly meeting experience.
  *
- * Flow: This Week → What I Noticed → Recommendation → Expected Impact →
- * Next Week → One Action → Supporting context.
- * Exactly one primary recommendation. See GROWTH_ADVISOR_EXPERIENCE.md.
+ * Flow: This Week → What I Noticed → Weekly Growth Plan → Recommendation →
+ * Expected Impact → Next Week → One Action → Supporting context.
+ * Exactly one primary recommendation / objective. See GROWTH_ADVISOR_EXPERIENCE.md
+ * and AUTONOMOUS_GROWTH_PLANNER.md.
  */
 export function GrowthAdvisorPage({
   advisor,
   briefing,
+  weeklyPlan,
 }: {
   advisor: GrowthAdvisorBriefing;
   briefing: HeadOfMarketingBriefing;
+  weeklyPlan?: WeeklyGrowthPlanBundle | null;
 }) {
   const recommendationId = briefing.topRecommendationDetail?.recommendationId ?? null;
 
@@ -139,6 +144,8 @@ export function GrowthAdvisorPage({
           </ul>
         )}
       </section>
+
+      {weeklyPlan ? <WeeklyGrowthPlanSection bundle={weeklyPlan} /> : null}
 
       {/* Recommendation */}
       <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="what-i-recommend-heading">
