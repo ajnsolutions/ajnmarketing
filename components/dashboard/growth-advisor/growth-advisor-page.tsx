@@ -5,16 +5,14 @@ import { GrowthAdvisorViewTracker } from "@/components/dashboard/growth-advisor/
 import { PrimaryActionBar } from "@/components/dashboard/ui/page-chrome";
 import type { GrowthAdvisorBriefing } from "@/lib/growth-advisor/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
+import { trustLabel } from "@/lib/growth-advisor/trust";
 
 /**
- * Your Growth Advisor — the authenticated home experience.
+ * Your Growth Advisor — conversational weekly meeting experience.
  *
- * Conversational hierarchy (never reordered): greeting → what changed → what
- * I noticed → what I recommend → primary action → supporting context. See
- * docs/project-magic/GROWTH_ADVISOR.md for the full philosophy and the
- * reasoning behind dropping the previous page's separate confidence panel,
- * proactive-presence card, and executive-brief card — their job is now done
- * by this hierarchy directly, not by three additional cards above it.
+ * Flow: This Week → What I Noticed → Recommendation → Expected Impact →
+ * Next Week → One Action → Supporting context.
+ * Exactly one primary recommendation. See GROWTH_ADVISOR_EXPERIENCE.md.
  */
 export function GrowthAdvisorPage({
   advisor,
@@ -41,13 +39,13 @@ export function GrowthAdvisorPage({
         </h1>
       </header>
 
-      {/* What changed */}
-      <section className="mt-6" aria-labelledby="what-changed-heading">
-        <h2 id="what-changed-heading" className="sr-only">
-          What changed
+      {/* This Week */}
+      <section className="mt-8" aria-labelledby="this-week-heading">
+        <h2 id="this-week-heading" className="text-lg font-bold text-navy-900">
+          This week
         </h2>
         {advisor.whatChanged.hasMeaningfulChange ? (
-          <ul className="space-y-2">
+          <ul className="mt-3 space-y-2">
             {advisor.whatChanged.items.map((item) => (
               <li key={item} className="flex items-start gap-2 text-base leading-7 text-navy-900">
                 <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
@@ -56,7 +54,7 @@ export function GrowthAdvisorPage({
             ))}
           </ul>
         ) : (
-          <p className="text-base leading-7 text-navy-900">{advisor.whatChanged.items[0]}</p>
+          <p className="mt-3 text-base leading-7 text-navy-900">{advisor.whatChanged.items[0]}</p>
         )}
         {advisor.whatChanged.memoryLine && (
           <p className="mt-3 text-sm leading-7 text-text-muted">{advisor.whatChanged.memoryLine}</p>
@@ -64,21 +62,53 @@ export function GrowthAdvisorPage({
       </section>
 
       {/* What I noticed */}
-      {advisor.whatINoticed.length > 0 && (
-        <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="what-i-noticed-heading">
-          <h2 id="what-i-noticed-heading" className="text-lg font-bold text-navy-900">
-            What I noticed
-          </h2>
-          <ul className="mt-4 space-y-4">
+      <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="what-i-noticed-heading">
+        <h2 id="what-i-noticed-heading" className="text-lg font-bold text-navy-900">
+          What I noticed
+        </h2>
+        {advisor.whatINoticed.length > 0 ? (
+          <ul className="mt-4 space-y-5">
             {advisor.whatINoticed.map((observation) => (
               <li key={observation.headline}>
-                <p className="text-sm font-semibold text-navy-900">{observation.headline}</p>
-                <p className="mt-1 text-sm leading-6 text-text-muted">{observation.whyItMatters}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  {trustLabel(observation.certainty)}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-navy-900">{observation.headline}</p>
+                <p className="mt-1 text-sm leading-6 text-text-muted">
+                  <span className="font-medium text-slate-600">Why it matters. </span>
+                  {observation.whyItMatters}
+                </p>
               </li>
             ))}
           </ul>
+        ) : (
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            I don&apos;t have enough grounded signals yet to share observations — I&apos;ll keep
+            learning rather than inventing insights.
+          </p>
+        )}
+      </section>
+
+      {/* Learning / empty state */}
+      {advisor.learning.isLearning ? (
+        <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="still-learning-heading">
+          <h2 id="still-learning-heading" className="text-lg font-bold text-navy-900">
+            What I&apos;m still learning
+          </h2>
+          {advisor.learning.message ? (
+            <p className="mt-3 text-sm leading-7 text-slate-600">{advisor.learning.message}</p>
+          ) : null}
+          {advisor.learning.improvementSuggestions.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {advisor.learning.improvementSuggestions.map((suggestion) => (
+                <li key={suggestion} className="text-sm leading-6 text-text-muted">
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
-      )}
+      ) : null}
 
       {/* Progress toward goals + strategic focus */}
       <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="goal-progress-heading">
@@ -110,10 +140,10 @@ export function GrowthAdvisorPage({
         )}
       </section>
 
-      {/* What I recommend */}
+      {/* Recommendation */}
       <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="what-i-recommend-heading">
         <h2 id="what-i-recommend-heading" className="text-lg font-bold text-navy-900">
-          What I recommend
+          Recommendation
         </h2>
         <div className="mt-4">
           {advisor.recommendation ? (
@@ -130,7 +160,32 @@ export function GrowthAdvisorPage({
         </div>
       </section>
 
-      {/* Primary action */}
+      {/* Next week */}
+      <section className="mt-8 border-t border-slate-100 pt-6" aria-labelledby="next-week-heading">
+        <h2 id="next-week-heading" className="text-lg font-bold text-navy-900">
+          Next week
+        </h2>
+        <p className="mt-2 text-sm leading-7 text-text-muted">
+          Here&apos;s what I expect to monitor as we continue.
+        </p>
+        {advisor.nextWeek.length > 0 ? (
+          <ul className="mt-4 space-y-3">
+            {advisor.nextWeek.map((item) => (
+              <li key={item.id}>
+                <p className="text-sm font-semibold text-navy-900">{item.label}</p>
+                <p className="mt-1 text-sm leading-6 text-text-muted">{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            I&apos;ll keep learning quietly in the background until there&apos;s something useful
+            to watch together.
+          </p>
+        )}
+      </section>
+
+      {/* One primary action */}
       <div id="growth-advisor-primary-action">
         <PrimaryActionBar>
           {advisor.primaryActionIsReassurance ? (
@@ -144,7 +199,7 @@ export function GrowthAdvisorPage({
             <>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Recommended next step
+                  One action
                 </p>
                 <p className="mt-1 text-base font-semibold text-navy-900">{advisor.primaryAction.label}</p>
                 <p className="mt-1 text-sm text-text-muted">
@@ -152,7 +207,10 @@ export function GrowthAdvisorPage({
                   publishes without your approval.
                 </p>
               </div>
-              <GrowthAdvisorPrimaryAction action={advisor.primaryAction} recommendationId={recommendationId} />
+              <GrowthAdvisorPrimaryAction
+                action={advisor.primaryAction}
+                recommendationId={recommendationId}
+              />
             </>
           )}
         </PrimaryActionBar>

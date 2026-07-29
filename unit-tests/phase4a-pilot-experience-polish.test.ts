@@ -33,7 +33,8 @@ test("Growth Advisor reduces supporting-detail noise and clarifies next step", (
     join(root, "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  assert.match(hero, /What I recommend/);
+  assert.match(hero, /Recommendation/);
+  assert.match(hero, /One action/);
 
   const hom = readFileSync(
     join(root, "components/dashboard/growth-advisor/supporting-context.tsx"),

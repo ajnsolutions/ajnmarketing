@@ -23,7 +23,7 @@ test("Product Readiness polish ships without backend or schedule changes", async
     join(process.cwd(), "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
   );
-  expect(hom).toContain("What changed");
+  expect(hom).toContain("This week");
   expect(hom).toContain("hom-skip-link");
 
   const gate = readFileSync(

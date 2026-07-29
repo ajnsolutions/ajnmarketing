@@ -27,7 +27,7 @@ test("Growth Advisor surfaces goal progress and supports-goal on recommendations
   const page = read("components/dashboard/growth-advisor/growth-advisor-page.tsx");
   expect(page).toContain("Progress toward goals");
   expect(page).toContain("Strategic focus");
-  expect(page).toContain("Recommended next step");
+  expect(page).toContain("One action");
 
   const rec = read("components/dashboard/growth-advisor/recommendation-section.tsx");
   expect(rec).toContain("This supports your goal of");

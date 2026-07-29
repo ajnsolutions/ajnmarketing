@@ -1,16 +1,14 @@
 /**
  * Your Growth Advisor — pure presentation transform.
  *
- * Takes the already-computed HeadOfMarketingBriefing (built by
- * lib/head-of-marketing/weeklyBriefing.ts from Marketing Director,
- * Marketing Health, the Journal, and Marketing Memory) and reshapes it into
- * the conversational hierarchy this sprint asks for: greeting → what changed
- * → what I noticed (top 3) → what I recommend (exactly one) → primary action
- * → supporting context.
+ * Takes the already-computed HeadOfMarketingBriefing and reshapes it into the
+ * conversational weekly meeting hierarchy:
+ * This Week → What I Noticed → Recommendation → Expected Impact → Next Week → One Action.
  *
- * Wave III adds goal progress + strategy-layer annotation on the single
- * recommendation. This file still computes NO new recommendation scores or
- * rankings — see docs/project-magic/GOALS_AND_STRATEGY.md.
+ * Still computes NO new recommendation scores or rankings — Marketing Director
+ * remains the sole prioritizer. Business Brain sources enrich presentation only.
+ *
+ * See docs/project-magic/GROWTH_ADVISOR_EXPERIENCE.md.
  */
 
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
@@ -19,7 +17,7 @@ import type {
   GrowthAdvisorBriefing,
   GrowthAdvisorEmptyStateKind,
   GrowthAdvisorGoalProgressSummary,
-  GrowthAdvisorObservation,
+  GrowthAdvisorLearningState,
   GrowthAdvisorRecommendation,
 } from "@/lib/growth-advisor/types";
 import type { BusinessDiscoveryResult } from "@/lib/business-discovery/types";
@@ -32,90 +30,12 @@ import {
 import { explainGoalRelevance } from "@/lib/strategy/goalRelevance";
 import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import { growthAdvisorCustomerVoiceLines } from "@/lib/customer-voice/presentation";
+import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
+import { buildWhatINoticedObservations } from "@/lib/growth-advisor/observations";
+import { resolveExpectedBusinessOutcomes } from "@/lib/growth-advisor/expectedImpact";
+import { buildNextWeekMonitoring } from "@/lib/growth-advisor/nextWeek";
+import { TrustCertaintyLevels } from "@/lib/growth-advisor/trust";
 
-
-/**
- * Plain-language "why it matters" per noticed-item category. `buildNoticed`
- * (lib/head-of-marketing/weeklyBriefing.ts) already prefixes each item with
- * one of these category labels — this is the same fixed vocabulary, not a
- * new taxonomy, so parsing it here can't silently drift out of sync in a way
- * that produces a wrong "why it matters" for a real category.
- */
-const WHY_IT_MATTERS: Record<string, string> = {
-  "Search visibility": "That's often the first way a new customer finds you.",
-  "Review trends": "Reviews shape whether someone trusts you enough to reach out.",
-  "Competitor activity": "Knowing what others are doing helps keep your offer sharp.",
-  "Seasonal opportunities": "Timing well means less competition for the same customers.",
-  "Community & content": "A few minutes now keeps your content moving without it piling up.",
-};
-
-const GENERIC_WHY_IT_MATTERS = "Worth keeping an eye on as the week goes on.";
-
-/** Splits a "Category: sentence." noticed-item into headline + why-it-matters. */
-function toObservation(item: string): GrowthAdvisorObservation {
-  const separatorIndex = item.indexOf(": ");
-  if (separatorIndex === -1) {
-    return { headline: item, whyItMatters: GENERIC_WHY_IT_MATTERS };
-  }
-
-  const category = item.slice(0, separatorIndex);
-  const headline = item.slice(separatorIndex + 2);
-  return { headline, whyItMatters: WHY_IT_MATTERS[category] ?? GENERIC_WHY_IT_MATTERS };
-}
-
-/**
- * A single, honestly-derived observation from Business Discovery — used only
- * to fill out "What I noticed" when the primary signals (buildNoticed) are
- * thin, never to displace a real signal. Never fabricates: only fires when a
- * genuine growth-opportunity insight exists with an actual value.
- */
-function businessDiscoveryObservation(
-  businessDiscovery: BusinessDiscoveryResult | null | undefined,
-): GrowthAdvisorObservation | null {
-  const opportunities = businessDiscovery?.growthOpportunities;
-  if (!opportunities?.value?.length) return null;
-
-  return {
-    headline: `Your business profile: ${opportunities.value[0]}`,
-    whyItMatters: "Something I noticed while studying your business and website.",
-  };
-}
-
-function customerVoiceObservation(
-  noticedLine: string | null,
-): GrowthAdvisorObservation | null {
-  if (!noticedLine) return null;
-  return {
-    headline: noticedLine,
-    whyItMatters: "Customer language is one of the strongest cues for authentic marketing.",
-  };
-}
-
-function buildWhatINoticed(
-  briefing: HeadOfMarketingBriefing,
-  businessDiscovery: BusinessDiscoveryResult | null | undefined,
-  customerVoiceLine: string | null,
-): GrowthAdvisorObservation[] {
-  const fromSignals = briefing.noticed
-    .filter((item) => !/^Nothing urgent/.test(item))
-    .map(toObservation);
-
-  const voice = customerVoiceObservation(customerVoiceLine);
-  const withVoice = voice ? [voice, ...fromSignals] : fromSignals;
-  if (withVoice.length >= 3) return withVoice.slice(0, 3);
-
-  const supplement = businessDiscoveryObservation(businessDiscovery);
-  const combined = supplement ? [...withVoice, supplement] : withVoice;
-  return combined.slice(0, 3);
-}
-
-/**
- * "This week" always resolves to at least one line — even the fallback path
- * (lib/head-of-marketing/weeklyBriefing.ts's buildThisWeek) returns a single
- * honest, low-key sentence rather than nothing. A single item is a reliable
- * proxy for "nothing meaningful happened yet" without needing this
- * presentation layer to re-derive the raw weekly-wins counts itself.
- */
 function buildWhatChanged(briefing: HeadOfMarketingBriefing): GrowthAdvisorBriefing["whatChanged"] {
   const hasMeaningfulChange = briefing.thisWeek.length > 1;
   return {
@@ -175,6 +95,20 @@ function buildGoalProgressSummary(
   };
 }
 
+function buildSupportingEvidence(input: {
+  detailWhyNow: string | null;
+  customerVoiceContext: string | null;
+  supportsGoal: string | null;
+  confidenceLabelText: string | null;
+}): string[] {
+  const evidence: string[] = [];
+  if (input.detailWhyNow) evidence.push(input.detailWhyNow);
+  if (input.customerVoiceContext) evidence.push(input.customerVoiceContext);
+  if (input.supportsGoal) evidence.push(`Related to your goal: ${input.supportsGoal}.`);
+  if (input.confidenceLabelText) evidence.push(`Confidence: ${input.confidenceLabelText}.`);
+  return evidence.slice(0, 5);
+}
+
 function buildRecommendation(
   briefing: HeadOfMarketingBriefing,
   goals: BusinessGoal[],
@@ -191,19 +125,95 @@ function buildRecommendation(
     detail?.title ?? recommendation.title,
   );
 
+  const expectedBenefit = detail?.expectedBenefit ?? recommendation.expectedBenefit;
+  const outcomes = resolveExpectedBusinessOutcomes({
+    actionType: detail?.actionType ?? null,
+    expectedBenefit,
+    supportsGoal: relevance?.supportsGoal ?? null,
+  });
+
+  const confidenceLabelTextValue = confidenceLabel ? confidenceLabelText(confidenceLabel) : null;
+  const whyNow = detail?.whyNow ?? recommendation.why;
+
+  const whyIBelieveParts = [
+    confidenceLabel
+      ? confidenceExplanation(confidenceLabel)
+      : "This is the clearest next step based on where things stand today.",
+  ];
+  if (customerVoiceContext) {
+    whyIBelieveParts.push(customerVoiceContext);
+  }
+  if (relevance?.supportsGoal) {
+    whyIBelieveParts.push(`It supports your goal of ${relevance.supportsGoal.toLowerCase()}.`);
+  }
+
   return {
     title: detail?.title ?? recommendation.title,
     supportsGoal: relevance?.supportsGoal ?? null,
     whySupportsGoal: relevance?.whySupportsGoal ?? null,
-    whyNow: detail?.whyNow ?? recommendation.why,
-    expectedImpact: detail?.expectedBenefit ?? recommendation.expectedBenefit,
+    whyNow,
+    expectedImpact: outcomes.summary,
+    expectedOutcomes: outcomes.outcomes,
     estimatedEffort: estimatedEffortFromTimeLabel(briefing.timeRespectLabel),
-    whyIBelieve: confidenceLabel
-      ? confidenceExplanation(confidenceLabel)
-      : "This is the clearest next step based on where things stand today.",
+    whyIBelieve: whyIBelieveParts.join(" "),
+    supportingEvidence: buildSupportingEvidence({
+      detailWhyNow: whyNow,
+      customerVoiceContext,
+      supportsGoal: relevance?.supportsGoal ?? null,
+      confidenceLabelText: confidenceLabelTextValue,
+    }),
+    businessImpactLabel: confidenceLabel ? "Meaningful" : null,
     confidenceLabel,
-    confidenceLabelText: confidenceLabel ? confidenceLabelText(confidenceLabel) : null,
+    confidenceLabelText: confidenceLabelTextValue,
     customerVoiceContext,
+    certainty: TrustCertaintyLevels.SUGGESTED,
+  };
+}
+
+function buildLearningState(input: {
+  briefing: HeadOfMarketingBriefing;
+  whatINoticedCount: number;
+  customerVoice?: CustomerVoiceIntelligence | null;
+  externalIntelligence?: ExternalIntelligence | null;
+  goals: BusinessGoal[];
+}): GrowthAdvisorLearningState {
+  const suggestions: string[] = [];
+  const gbpConnected = input.briefing.confidence.gbpConnected;
+  const cvEmpty =
+    !input.customerVoice ||
+    input.customerVoice.emptyState === "no_evidence" ||
+    input.customerVoice.emptyState === "insufficient_evidence";
+  const eiEmpty =
+    !input.externalIntelligence ||
+    input.externalIntelligence.emptyState === "no_evidence" ||
+    input.externalIntelligence.emptyState === "insufficient_evidence";
+
+  if (!gbpConnected) {
+    suggestions.push("Connect Google Business Profile so I can learn from your local presence and reviews.");
+  } else if (cvEmpty) {
+    suggestions.push("Sync recent reviews so I can learn how customers naturally talk about you.");
+  }
+  if (input.goals.length === 0) {
+    suggestions.push("Tell me what success looks like so recommendations stay tied to your goals.");
+  }
+  if (eiEmpty && gbpConnected) {
+    suggestions.push("As market signals develop, I'll fold seasonal and local context into our weekly meeting.");
+  }
+
+  const isLearning =
+    input.whatINoticedCount < 2 ||
+    !gbpConnected ||
+    (cvEmpty && eiEmpty && input.goals.length === 0);
+
+  if (!isLearning) {
+    return { isLearning: false, message: null, improvementSuggestions: [] };
+  }
+
+  return {
+    isLearning: true,
+    message:
+      "I'm still learning your business. Recommendations stay conservative until more evidence arrives — I won't invent insights.",
+    improvementSuggestions: suggestions.slice(0, 3),
   };
 }
 
@@ -223,6 +233,8 @@ export type BuildGrowthAdvisorBriefingOptions = {
   progressSignals?: Partial<GoalProgressSignals>;
   /** Existing Customer Voice intelligence — presentation only; never re-ranks. */
   customerVoice?: CustomerVoiceIntelligence | null;
+  /** External Intelligence — presentation only; never re-ranks. */
+  externalIntelligence?: ExternalIntelligence | null;
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -231,6 +243,10 @@ export function buildGrowthAdvisorBriefing(
   options?: BuildGrowthAdvisorBriefingOptions,
 ): GrowthAdvisorBriefing {
   const goals = options?.goals ?? [];
+  const progressSignals: GoalProgressSignals = {
+    ...signalsFromBriefing(briefing),
+    ...options?.progressSignals,
+  };
   const voiceLines = growthAdvisorCustomerVoiceLines(options?.customerVoice);
   const recommendation = buildRecommendation(
     briefing,
@@ -238,13 +254,39 @@ export function buildGrowthAdvisorBriefing(
     voiceLines.recommendationContext,
   );
 
+  const whatINoticed = buildWhatINoticedObservations({
+    briefing,
+    businessDiscovery,
+    customerVoice: options?.customerVoice,
+    externalIntelligence: options?.externalIntelligence,
+    goals,
+    progressSignals,
+  });
+
+  const nextWeek = buildNextWeekMonitoring({
+    briefing,
+    goals,
+    customerVoice: options?.customerVoice,
+    externalIntelligence: options?.externalIntelligence,
+  });
+
+  const learning = buildLearningState({
+    briefing,
+    whatINoticedCount: whatINoticed.length,
+    customerVoice: options?.customerVoice,
+    externalIntelligence: options?.externalIntelligence,
+    goals,
+  });
+
   return {
     greeting: briefing.greeting,
     businessName: briefing.businessName,
     whatChanged: buildWhatChanged(briefing),
-    whatINoticed: buildWhatINoticed(briefing, businessDiscovery, voiceLines.noticedLine),
+    whatINoticed,
     goalProgress: buildGoalProgressSummary(goals, briefing, options?.progressSignals),
     recommendation,
+    nextWeek,
+    learning,
     primaryAction: briefing.primaryAction,
     primaryActionIsReassurance: briefing.primaryAction.kind === "none",
     emptyStateKind: resolveEmptyStateKind(briefing, recommendation),

@@ -2,6 +2,9 @@ import type { HeadOfMarketingPrimaryAction, MarketingHealthState } from "@/lib/h
 import type { ConfidenceLabel } from "@/lib/recommendation-presentation/types";
 import type { GoalProgress, GoalProgressState } from "@/lib/goals/types";
 import type { CustomerVoiceHealthState } from "@/lib/customer-voice/health";
+import type { TrustCertainty } from "@/lib/growth-advisor/trust";
+import type { ExpectedBusinessOutcome } from "@/lib/growth-advisor/expectedImpact";
+import type { NextWeekMonitorItem } from "@/lib/growth-advisor/nextWeek";
 
 /**
  * Your Growth Advisor — the conversational shape of the authenticated home
@@ -10,7 +13,8 @@ import type { CustomerVoiceHealthState } from "@/lib/customer-voice/health";
  * no new decision-making, scoring, or recommendation logic of its own.
  * "Growth Advisor" is the customer-facing name; internal architecture
  * (Marketing Director, Head of Marketing modules, Business Brain) keeps its
- * existing names — see docs/project-magic/GROWTH_ADVISOR.md.
+ * existing names — see docs/project-magic/GROWTH_ADVISOR.md and
+ * docs/project-magic/GROWTH_ADVISOR_EXPERIENCE.md.
  */
 
 export type GrowthAdvisorObservation = {
@@ -18,6 +22,10 @@ export type GrowthAdvisorObservation = {
   headline: string;
   /** Why it matters — a second clause explaining the consequence, never technical. */
   whyItMatters: string;
+  /** Trust vocabulary — Observed / Likely / Predicted / Suggested. */
+  certainty: TrustCertainty;
+  /** Opaque evidence source key for explainability — never chain-of-thought. */
+  evidenceSource: string;
 };
 
 export type GrowthAdvisorRecommendation = {
@@ -28,12 +36,18 @@ export type GrowthAdvisorRecommendation = {
   whySupportsGoal: string | null;
   /** Why now. */
   whyNow: string;
-  /** Expected impact. */
+  /** Expected impact summary (business language). */
   expectedImpact: string;
+  /** Business-language outcome chips — never fake numbers. */
+  expectedOutcomes: ExpectedBusinessOutcome[];
   /** Estimated effort — reuses the briefing's own already-computed time estimate. */
   estimatedEffort: string;
-  /** Why I believe this — reuses existing recommendation-presentation confidence explainability when available. */
+  /** Why I believe this — customer-safe evidence summary. */
   whyIBelieve: string;
+  /** Supporting evidence bullets for progressive disclosure. */
+  supportingEvidence: string[];
+  /** Business impact label for trust — Low / Medium / High when known. */
+  businessImpactLabel: string | null;
   /** Present only when this recommendation came from a real ranked marketing recommendation. */
   confidenceLabel: ConfidenceLabel | null;
   confidenceLabelText: string | null;
@@ -42,6 +56,8 @@ export type GrowthAdvisorRecommendation = {
    * Presentation only — does not change ranking. Null when evidence is thin.
    */
   customerVoiceContext: string | null;
+  /** Trust certainty for the recommendation itself — always Suggested as the action. */
+  certainty: TrustCertainty;
 };
 
 export type GrowthAdvisorGoalProgressSummary = {
@@ -61,6 +77,14 @@ export type GrowthAdvisorWhatChanged = {
   items: string[];
   /** Continuity sentence from real history only (relationship memory / journal) — null when nothing honest to say. */
   memoryLine: string | null;
+};
+
+export type GrowthAdvisorLearningState = {
+  /** True when evidence is thin and the advisor should say what it's still learning. */
+  isLearning: boolean;
+  message: string | null;
+  /** Honest suggestions that would improve recommendations — never fabricated insights. */
+  improvementSuggestions: string[];
 };
 
 export type GrowthAdvisorSupportingContext = {
@@ -91,10 +115,15 @@ export type GrowthAdvisorBriefing = {
   greeting: string;
   businessName: string;
   whatChanged: GrowthAdvisorWhatChanged;
+  /** 3–5 Business Brain observations when evidence allows. */
   whatINoticed: GrowthAdvisorObservation[];
   /** Progress toward goals + strategic focus (Wave III). */
   goalProgress: GrowthAdvisorGoalProgressSummary;
   recommendation: GrowthAdvisorRecommendation | null;
+  /** What the advisor expects to monitor next. */
+  nextWeek: NextWeekMonitorItem[];
+  /** Empty / thin-evidence learning state. */
+  learning: GrowthAdvisorLearningState;
   primaryAction: HeadOfMarketingPrimaryAction;
   /** Set when the primary action itself is "nothing to do" — renders reassurance copy instead of a CTA. */
   primaryActionIsReassurance: boolean;

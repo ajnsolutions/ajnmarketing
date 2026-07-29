@@ -128,7 +128,7 @@ test("Weekly Briefing docs and orchestration stay presentation-only", () => {
     "utf8",
   );
   assert.match(page, /Your Growth Advisor/);
-  assert.match(page, /What changed/);
+  assert.match(page, /This week/);
   assert.match(page, /growth-advisor-primary-action/);
 
   const transform = readFileSync(

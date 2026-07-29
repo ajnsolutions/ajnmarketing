@@ -12,6 +12,7 @@ import { buildGrowthAdvisorBriefing } from "@/lib/growth-advisor/buildGrowthAdvi
 import { getBusinessGoalsForCurrentUser } from "@/lib/goals/service";
 import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
+import { getExternalIntelligence } from "@/lib/external-intelligence/service";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals] = await Promise.all([
@@ -27,24 +28,31 @@ export default async function DashboardPage() {
   }
 
   if (briefing) {
-    // Business Discovery personalizes "What I noticed" honestly when there's
-    // a real signal — never required, never blocks the page if unavailable.
-    // Customer Voice is presentation-only enrichment of the same pipeline.
+    // Business Brain enrichment is presentation-only — never blocks the page,
+    // never re-ranks Marketing Director's single recommendation.
     const [businessDiscovery, profile] = await Promise.all([
       runBusinessDiscoveryForCurrentUser().catch(() => null),
       getBusinessProfileForUser().catch(() => null),
     ]);
 
-    const customerVoice = profile
-      ? await getCustomerVoiceIntelligence({
-          userId: profile.user_id,
-          businessProfileId: profile.id,
-        }).catch(() => null)
-      : null;
+    const [customerVoice, externalIntelligence] = profile
+      ? await Promise.all([
+          getCustomerVoiceIntelligence({
+            userId: profile.user_id,
+            businessProfileId: profile.id,
+          }).catch(() => null),
+          getExternalIntelligence({
+            userId: profile.user_id,
+            businessProfileId: profile.id,
+            knownGoalKeys: goals.map((g) => g.key),
+          }).catch(() => null),
+        ])
+      : [null, null];
 
     const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, {
       goals,
       customerVoice,
+      externalIntelligence,
     });
     return <GrowthAdvisorPage advisor={advisor} briefing={briefing} />;
   }

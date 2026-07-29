@@ -13,9 +13,10 @@ test("Weekly Briefing content ships on Your Growth Advisor surface without new n
     "utf8",
   );
   expect(pageSource).toContain("Your Growth Advisor");
-  expect(pageSource).toContain("What changed");
+  expect(pageSource).toContain("This week");
   expect(pageSource).toContain("What I noticed");
-  expect(pageSource).toContain("What I recommend");
+  expect(pageSource).toContain("Recommendation");
+  expect(pageSource).toContain("Next week");
 
   const transform = readFileSync(
     join(process.cwd(), "lib/growth-advisor/buildGrowthAdvisorBriefing.ts"),
