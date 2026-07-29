@@ -43,6 +43,11 @@ const FOUNDATION_LINKS = [
     description: "Optional connection for local posts, reviews, and insights.",
   },
   {
+    href: "/dashboard/business-connections",
+    label: "Business Connections",
+    description: "See what the Business Brain can learn — and the highest-value next connection.",
+  },
+  {
     href: "/dashboard/marketing-preferences",
     label: "Marketing preferences",
     description: "Standing instructions I should remember (days to avoid, context to skip).",
