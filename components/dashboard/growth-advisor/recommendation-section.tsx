@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { trackGrowthAdvisorEvent } from "@/lib/growth-advisor/clientAnalytics";
 import type { GrowthAdvisorRecommendation } from "@/lib/growth-advisor/types";
+import { trustLabel } from "@/lib/growth-advisor/trust";
 
 /**
- * Exactly one recommendation — never a list. "Tell me more" reveals expected
- * impact, estimated effort, and why the advisor believes this, so the first
- * glance stays to a title and a single "why now" sentence (Progressive
- * Disclosure section of the sprint spec).
+ * Exactly one recommendation — never a list. Progressive disclosure reveals
+ * expected impact, supporting evidence, and why the advisor believes this.
  */
 export function GrowthAdvisorRecommendationSection({
   recommendation,
@@ -30,7 +29,10 @@ export function GrowthAdvisorRecommendationSection({
 
   return (
     <div>
-      <p className="text-base font-semibold text-navy-900">{recommendation.title}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {trustLabel(recommendation.certainty)}
+      </p>
+      <p className="mt-2 text-base font-semibold text-navy-900">{recommendation.title}</p>
       {recommendation.customerVoiceContext ? (
         <p className="mt-2 text-sm leading-7 text-navy-900">{recommendation.customerVoiceContext}</p>
       ) : null}
@@ -44,6 +46,25 @@ export function GrowthAdvisorRecommendationSection({
         {recommendation.whyNow}
       </p>
 
+      <div className="mt-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          Expected impact
+        </p>
+        <p className="mt-1 text-sm leading-6 text-navy-900">{recommendation.expectedImpact}</p>
+        {recommendation.expectedOutcomes.length > 0 ? (
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {recommendation.expectedOutcomes.map((outcome) => (
+              <li
+                key={outcome}
+                className="rounded-full bg-[#F8FAFC] px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-100"
+              >
+                {outcome}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <button
           type="button"
@@ -51,20 +72,24 @@ export function GrowthAdvisorRecommendationSection({
             const next = !expanded;
             setExpanded(next);
             if (next) {
-              trackGrowthAdvisorEvent("recommendation_expanded", { recommendationId: recommendationId ?? undefined });
+              trackGrowthAdvisorEvent("recommendation_expanded", {
+                recommendationId: recommendationId ?? undefined,
+              });
               trackGrowthAdvisorEvent("tell_me_more", { section: "recommendation" });
             }
           }}
           aria-expanded={expanded}
           className="hom-focusable text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
         >
-          {expanded ? "Show less" : "Tell me more"}
+          {expanded ? "Show less" : "Why I believe this"}
         </button>
         <button
           type="button"
           onClick={() => {
             setDismissed(true);
-            trackGrowthAdvisorEvent("recommendation_dismissed", { recommendationId: recommendationId ?? undefined });
+            trackGrowthAdvisorEvent("recommendation_dismissed", {
+              recommendationId: recommendationId ?? undefined,
+            });
           }}
           className="hom-focusable text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
         >
@@ -83,15 +108,27 @@ export function GrowthAdvisorRecommendationSection({
             </div>
           ) : null}
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Expected impact</dt>
-            <dd className="mt-1 text-sm leading-6 text-navy-900">{recommendation.expectedImpact}</dd>
+            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Supporting evidence
+            </dt>
+            <dd className="mt-1">
+              <ul className="space-y-1.5 text-sm leading-6 text-navy-900">
+                {recommendation.supportingEvidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Estimated effort</dt>
+            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Estimated effort
+            </dt>
             <dd className="mt-1 text-sm leading-6 text-navy-900">{recommendation.estimatedEffort}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Why I believe this</dt>
+            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Why I believe this
+            </dt>
             <dd className="mt-1 text-sm leading-6 text-navy-900">
               {recommendation.whyIBelieve}
               {recommendation.confidenceLabelText && (

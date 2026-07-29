@@ -22,7 +22,7 @@ test("unauthenticated /dashboard redirects toward login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("Your Growth Advisor ships the conversational hierarchy in order: greeting → what changed → what I noticed → what I recommend → primary action → supporting context", async () => {
+test("Your Growth Advisor ships the conversational hierarchy in order: greeting → this week → what I noticed → recommendation → next week → primary action → supporting context", async () => {
   const hero = readFileSync(
     join(process.cwd(), "components/dashboard/growth-advisor/growth-advisor-page.tsx"),
     "utf8",
@@ -32,17 +32,19 @@ test("Your Growth Advisor ships the conversational hierarchy in order: greeting 
   expect(hero).toContain("{advisor.greeting}");
 
   const greetingIndex = hero.indexOf("{advisor.greeting}");
-  const whatChangedIndex = hero.indexOf("what-changed-heading");
+  const thisWeekIndex = hero.indexOf("this-week-heading");
   const noticedIndex = hero.indexOf("what-i-noticed-heading");
   const recommendIndex = hero.indexOf("what-i-recommend-heading");
+  const nextWeekIndex = hero.indexOf("next-week-heading");
   const primaryActionIndex = hero.indexOf('id="growth-advisor-primary-action"');
   const supportingContextIndex = hero.indexOf("<GrowthAdvisorSupportingContext");
 
   expect(greetingIndex).toBeGreaterThanOrEqual(0);
-  expect(whatChangedIndex).toBeGreaterThan(greetingIndex);
-  expect(noticedIndex).toBeGreaterThan(whatChangedIndex);
+  expect(thisWeekIndex).toBeGreaterThan(greetingIndex);
+  expect(noticedIndex).toBeGreaterThan(thisWeekIndex);
   expect(recommendIndex).toBeGreaterThan(noticedIndex);
-  expect(primaryActionIndex).toBeGreaterThan(recommendIndex);
+  expect(nextWeekIndex).toBeGreaterThan(recommendIndex);
+  expect(primaryActionIndex).toBeGreaterThan(nextWeekIndex);
   expect(supportingContextIndex).toBeGreaterThan(primaryActionIndex);
 
   // Never starts with cards, charts, or metrics — no chart/metric-shaped
@@ -61,7 +63,7 @@ test("recommendation includes why now, expected impact, estimated effort, and wh
   expect(section).toContain("Expected impact");
   expect(section).toContain("Estimated effort");
   expect(section).toContain("Why I believe this");
-  expect(section).toContain("Tell me more");
+  expect(section).toContain("Supporting evidence");
 
   const transform = readFileSync(
     join(process.cwd(), "lib/growth-advisor/buildGrowthAdvisorBriefing.ts"),

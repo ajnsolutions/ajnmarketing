@@ -63,7 +63,7 @@ test("what changed honestly says so when nothing meaningful happened, never fabr
   assert.equal(advisor.whatChanged.items.length, 1);
 });
 
-test("what I noticed never exceeds 3 observations, each with a headline and why-it-matters", () => {
+test("what I noticed stays between 0 and 5 observations, each with why-it-matters and trust certainty", () => {
   const noisyInput: WeeklyBriefingInput = {
     ...baseInput,
     unansweredReviews: 1,
@@ -74,10 +74,11 @@ test("what I noticed never exceeds 3 observations, each with a headline and why-
   const briefing = buildWeeklyBriefing(noisyInput);
   const advisor = buildGrowthAdvisorBriefing(briefing);
 
-  assert.ok(advisor.whatINoticed.length <= 3);
+  assert.ok(advisor.whatINoticed.length <= 5);
   for (const observation of advisor.whatINoticed) {
     assert.ok(observation.headline.length > 0);
     assert.ok(observation.whyItMatters.length > 0);
+    assert.ok(["observed", "likely", "predicted", "suggested"].includes(observation.certainty));
   }
 });
 
@@ -101,7 +102,11 @@ test("recommendation includes why now, expected impact, estimated effort, and wh
   assert.ok(advisor.recommendation!.expectedImpact.length > 0);
   assert.ok(advisor.recommendation!.estimatedEffort.length > 0);
   assert.ok(advisor.recommendation!.whyIBelieve.length > 0);
+  assert.ok(Array.isArray(advisor.recommendation!.expectedOutcomes));
+  assert.ok(Array.isArray(advisor.recommendation!.supportingEvidence));
+  assert.equal(advisor.recommendation!.certainty, "suggested");
   assert.ok("supportsGoal" in advisor.recommendation!);
+  assert.ok(advisor.nextWeek.length > 0);
 });
 
 test("goal progress empty state is honest when no goals are selected", () => {
@@ -189,7 +194,7 @@ test("supporting context health mirrors the briefing's own Marketing Health verb
   assert.equal(advisor.recommendation?.customerVoiceContext ?? null, null);
 });
 
-test("a real Business Discovery growth opportunity supplements What I Noticed only when signals are thin, never displacing a real signal", () => {
+test("Business Discovery can enrich What I Noticed without exceeding five observations", () => {
   const richBriefing = buildWeeklyBriefing({
     ...baseInput,
     unansweredReviews: 1,
@@ -197,11 +202,15 @@ test("a real Business Discovery growth opportunity supplements What I Noticed on
     seasonalHint: "Back-to-school (August)",
   });
   const businessDiscovery = {
-    growthOpportunities: { value: ["Your maintenance plan isn't linked from your homepage"] },
+    growthOpportunities: {
+      value: ["Your maintenance plan isn't linked from your homepage"],
+      confidenceTier: "assumed",
+    },
   } as never;
 
   const advisorRich = buildGrowthAdvisorBriefing(richBriefing, businessDiscovery);
-  assert.ok(!advisorRich.whatINoticed.some((item) => item.headline.includes("Your business profile")));
+  assert.ok(advisorRich.whatINoticed.length <= 5);
+  assert.ok(advisorRich.whatINoticed.length >= 1);
 
   const thinInput: WeeklyBriefingInput = {
     ...baseInput,
