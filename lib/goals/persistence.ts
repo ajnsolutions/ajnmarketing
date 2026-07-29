@@ -14,6 +14,8 @@ import {
 } from "@/lib/goals/types";
 
 export const BUSINESS_GOALS_MARKER_PREFIX = "__business_goals_v1__:";
+/** Keep in sync with lib/growth-planner/history.ts — avoid circular imports. */
+const WEEKLY_GROWTH_PLANS_MARKER_PREFIX = "__weekly_growth_plans_v1__:";
 
 type StoredGoalV1 = {
   key: GoalKey;
@@ -119,6 +121,7 @@ export function encodeBusinessGoalsMarker(goals: BusinessGoal[]): string {
 /**
  * Merge structured goals into marketing_goals:
  * - keeps audience/origin Magic markers
+ * - keeps weekly growth plan history markers
  * - stores one `__business_goals_v1__:` marker
  * - stores human-readable goal labels for existing consumers
  */
@@ -132,12 +135,19 @@ export function applyBusinessGoalsToMarketingGoals(
       resolveGoalKeyFromLabel(item) == null &&
       !GOAL_CATALOG.some((entry) => entry.label === item),
   );
+  // Preserve plan history even when goals are cleared.
+  const planMarkers = withoutGoals.filter((item) =>
+    item.startsWith(WEEKLY_GROWTH_PLANS_MARKER_PREFIX),
+  );
+  const otherMarkers = withoutGoals.filter(
+    (item) => !item.startsWith(WEEKLY_GROWTH_PLANS_MARKER_PREFIX),
+  );
   const activeLabels = goals
     .filter((goal) => goal.status === GoalStatuses.ACTIVE)
     .sort((a, b) => a.priority - b.priority)
     .map((goal) => goal.label);
-  if (goals.length === 0) return withoutGoals;
-  return [...withoutGoals, ...activeLabels, encodeBusinessGoalsMarker(goals)];
+  if (goals.length === 0) return [...otherMarkers, ...planMarkers];
+  return [...otherMarkers, ...activeLabels, encodeBusinessGoalsMarker(goals), ...planMarkers];
 }
 
 export function decodeBusinessGoalsFromMarketingGoals(

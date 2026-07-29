@@ -149,7 +149,8 @@ export function stripMagicGoalMarkers(goals: string[]): string[] {
   return goals.filter(
     (goal) =>
       !(MAGIC_GOAL_MARKERS as readonly string[]).includes(goal) &&
-      !goal.startsWith("__business_goals_v1__:"),
+      !goal.startsWith("__business_goals_v1__:") &&
+      !goal.startsWith("__weekly_growth_plans_v1__:"),
   );
 }
 

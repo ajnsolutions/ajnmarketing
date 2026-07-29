@@ -13,6 +13,7 @@ import { getBusinessGoalsForCurrentUser } from "@/lib/goals/service";
 import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 import { getExternalIntelligence } from "@/lib/external-intelligence/service";
+import { getWeeklyGrowthPlanForCurrentUser } from "@/lib/growth-planner/service";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals] = await Promise.all([
@@ -54,7 +55,19 @@ export default async function DashboardPage() {
       customerVoice,
       externalIntelligence,
     });
-    return <GrowthAdvisorPage advisor={advisor} briefing={briefing} />;
+
+    // Strategic weekly plan — recommends only; customer approves; never auto-executes.
+    const weeklyPlan = await getWeeklyGrowthPlanForCurrentUser({
+      briefing,
+      businessDiscovery,
+      goals,
+      customerVoice,
+      externalIntelligence,
+    }).catch(() => null);
+
+    return (
+      <GrowthAdvisorPage advisor={advisor} briefing={briefing} weeklyPlan={weeklyPlan} />
+    );
   }
 
   // Honest readiness gate — never invent strategy when setup is insufficient.
