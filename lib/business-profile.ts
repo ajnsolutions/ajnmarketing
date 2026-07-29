@@ -6,8 +6,14 @@ import {
   buildDeferredConnectionsNote,
   customerOriginFromGoals,
   parseDeferredConnections,
-  stripMagicGoalMarkers,
+  type GoalTimeframeChoice,
 } from "@/lib/onboarding-storage";
+import {
+  applyBusinessGoalsToMarketingGoals,
+  decodeBusinessGoalsFromMarketingGoals,
+  goalsFromSelectedLabels,
+} from "@/lib/goals/persistence";
+import type { GoalTimeframe } from "@/lib/goals/types";
 
 export type BusinessProfile = {
   id: string;
@@ -89,11 +95,26 @@ function serializeCompetitors(data: OnboardingData): string | null {
   return items.length > 0 ? items.join("\n") : null;
 }
 
+function timeframeFromChoice(choice: GoalTimeframeChoice): GoalTimeframe | null {
+  if (choice === "90_days" || choice === "6_months" || choice === "1_year") return choice;
+  return null;
+}
+
 export function onboardingDataToProfileRow(
   userId: string,
   data: OnboardingData,
   onboardingCompleted = false
 ): BusinessProfileUpsert {
+  const structured = goalsFromSelectedLabels(
+    data.marketingGoals,
+    timeframeFromChoice(data.goalTimeframe ?? ""),
+  );
+  const withAudience = applyCustomerOriginToGoals(
+    applyAudienceToGoals([], data.businessAudience),
+    data.customerOrigin,
+  );
+  const marketing_goals = applyBusinessGoalsToMarketingGoals(withAudience, structured);
+
   return {
     user_id: userId,
     business_name: data.businessName || null,
@@ -109,10 +130,7 @@ export function onboardingDataToProfileRow(
     seasonal_services: data.seasonalServices || null,
     specialty_services: data.specialtyServices || null,
     competitors: serializeCompetitors(data),
-    marketing_goals: applyCustomerOriginToGoals(
-      applyAudienceToGoals(data.marketingGoals, data.businessAudience),
-      data.customerOrigin,
-    ),
+    marketing_goals,
     brand_voice_tone: data.tone || null,
     preferred_words: data.wordsToUse || null,
     avoid_words: data.wordsToAvoid || null,
@@ -131,6 +149,7 @@ export function profileRowToOnboardingData(profile: BusinessProfile): Onboarding
   const voiceNotes = profile.voice_notes ?? "";
   const deferred = parseDeferredConnections(voiceNotes);
   const goals = profile.marketing_goals ?? [];
+  const structuredGoals = decodeBusinessGoalsFromMarketingGoals(goals);
 
   return {
     businessName: profile.business_name ?? "",
@@ -156,7 +175,8 @@ export function profileRowToOnboardingData(profile: BusinessProfile): Onboarding
     competitor2: competitors.competitor2,
     competitor3: competitors.competitor3,
     competitorsSkipped: competitors.competitorsSkipped,
-    marketingGoals: stripMagicGoalMarkers(goals),
+    marketingGoals: structuredGoals.map((goal) => goal.label),
+    goalTimeframe: (structuredGoals[0]?.targetTimeframe as GoalTimeframeChoice) ?? "",
     tone: profile.brand_voice_tone ?? "",
     wordsToUse: profile.preferred_words ?? "",
     wordsToAvoid: profile.avoid_words ?? "",

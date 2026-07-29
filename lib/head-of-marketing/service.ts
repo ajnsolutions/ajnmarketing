@@ -97,6 +97,7 @@ async function loadMarketingDirectorCandidates(
         whyNow: decisionPackage.whyNow,
         expectedBenefit: decisionPackage.expectedBenefit,
         confidenceLabel: decisionPackage.confidenceLabel,
+        actionType: top.actionType,
       }
     : null;
 

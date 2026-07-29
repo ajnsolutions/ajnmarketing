@@ -1,5 +1,6 @@
 import type { HeadOfMarketingPrimaryAction, MarketingHealthState } from "@/lib/head-of-marketing/types";
 import type { ConfidenceLabel } from "@/lib/recommendation-presentation/types";
+import type { GoalProgress, GoalProgressState } from "@/lib/goals/types";
 
 /**
  * Your Growth Advisor — the conversational shape of the authenticated home
@@ -20,6 +21,10 @@ export type GrowthAdvisorObservation = {
 
 export type GrowthAdvisorRecommendation = {
   title: string;
+  /** Supports Goal — customer goal this recommendation is tied to (strategy layer). */
+  supportsGoal: string | null;
+  /** Why this recommendation supports the goal — strategy layer, not a new score. */
+  whySupportsGoal: string | null;
   /** Why now. */
   whyNow: string;
   /** Expected impact. */
@@ -31,6 +36,16 @@ export type GrowthAdvisorRecommendation = {
   /** Present only when this recommendation came from a real ranked marketing recommendation. */
   confidenceLabel: ConfidenceLabel | null;
   confidenceLabelText: string | null;
+};
+
+export type GrowthAdvisorGoalProgressSummary = {
+  items: GoalProgress[];
+  /** Primary strategic focus label — null when no goals selected. */
+  strategicFocus: string | null;
+  /** Rollup state for the primary goal — never fabricated. */
+  primaryState: GoalProgressState | null;
+  /** Calm empty / baseline copy when goals or evidence are thin. */
+  emptyDetail: string | null;
 };
 
 export type GrowthAdvisorWhatChanged = {
@@ -65,6 +80,8 @@ export type GrowthAdvisorBriefing = {
   businessName: string;
   whatChanged: GrowthAdvisorWhatChanged;
   whatINoticed: GrowthAdvisorObservation[];
+  /** Progress toward goals + strategic focus (Wave III). */
+  goalProgress: GrowthAdvisorGoalProgressSummary;
   recommendation: GrowthAdvisorRecommendation | null;
   primaryAction: HeadOfMarketingPrimaryAction;
   /** Set when the primary action itself is "nothing to do" — renders reassurance copy instead of a CTA. */

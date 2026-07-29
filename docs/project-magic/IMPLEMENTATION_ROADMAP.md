@@ -50,9 +50,13 @@ Prioritization rule: **highest customer impact first**, informed by the [`EXISTI
 
 ---
 
-## Wave III — Customer Voice + Market Radar + Seasonal Intelligence
+## Wave III — Goals & Strategy *(shipped first in this wave)*
 
-**Why third, and why these three together:** All three read from the richer input surface Wave II unlocks (connectors, uploads) and all three feed the same downstream consumer — Marketing Director's evidence base and, eventually, Business Pulse. Per the [`EXISTING_SYSTEM_AUDIT.md`](./EXISTING_SYSTEM_AUDIT.md), Market Radar and Seasonal Intelligence are **expansions of real existing foundations** (`lib/market-context/`, `lib/marketing-memory/seasonality.ts`), not new builds — this materially de-risks and likely shortens this wave relative to a naive estimate.
+**Shipped:** Goal model, strategy-layer goal relevance, Goal Progress, goal-aware Growth Advisor briefing, conversational success-goals onboarding. See [`GOALS_AND_STRATEGY.md`](./GOALS_AND_STRATEGY.md). Does not change recommendation ranking/scoring; cron gate remains closed.
+
+**Still in Wave III scope (next):** Customer Voice + Market Radar + Seasonal Intelligence
+
+**Why these three together after Goals:** All three read from the richer input surface Wave II unlocks (connectors, uploads) and all three feed the same downstream consumer — Marketing Director's evidence base and, eventually, Business Pulse. Per the [`EXISTING_SYSTEM_AUDIT.md`](./EXISTING_SYSTEM_AUDIT.md), Market Radar and Seasonal Intelligence are **expansions of real existing foundations** (`lib/market-context/`, `lib/marketing-memory/seasonality.ts`), not new builds — this materially de-risks and likely shortens this wave relative to a naive estimate.
 
 **Scope:**
 - Customer Voice: theme/sentiment/objection extraction from reviews (expand existing review-reading), and from calls/messages once the relevant Wave II connector exists (see [`CUSTOMER_VOICE.md`](./CUSTOMER_VOICE.md)) — genuinely new intelligence, no existing foundation
