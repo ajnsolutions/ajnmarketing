@@ -382,43 +382,45 @@ test("location lookup is scoped by userId and businessProfileId", async () => {
 });
 
 test("losing atomic claim never reaches provider.publish (no GBP connection queries)", async () => {
-  const queued = baseJob({ status: PublishingJobStatuses.QUEUED });
-  const alreadyPublishing = baseJob({ status: PublishingJobStatuses.PUBLISHING });
-  let publishingJobsMaybeSingle = 0;
+  await withEnv(GOOGLE_OAUTH_ENV, async () => {
+    const queued = baseJob({ status: PublishingJobStatuses.QUEUED });
+    const alreadyPublishing = baseJob({ status: PublishingJobStatuses.PUBLISHING });
+    let publishingJobsMaybeSingle = 0;
 
-  const { client, calls } = createFakeSupabaseClient({
-    publishing_jobs: (op) => {
-      if (op === "maybeSingle") {
-        publishingJobsMaybeSingle += 1;
-        // 1) getPublishingJobById → claimable queued job
-        // 2) claimPublishingJobForExecution → lost (0 rows)
-        // 3) getPublishingJobById after loss → already publishing
-        if (publishingJobsMaybeSingle === 1) return { data: queued, error: null };
-        if (publishingJobsMaybeSingle === 2) return { data: null, error: null };
-        return { data: alreadyPublishing, error: null };
-      }
-      return { data: queued, error: null };
-    },
-    google_business_profile_connections: {
-      data: connectedRow(),
-      error: null,
-    },
-    publishing_queue: { data: { id: "queue-1", content: "x" }, error: null },
+    const { client, calls } = createFakeSupabaseClient({
+      publishing_jobs: (op) => {
+        if (op === "maybeSingle") {
+          publishingJobsMaybeSingle += 1;
+          // 1) getPublishingJobById → claimable queued job
+          // 2) claimPublishingJobForExecution → lost (0 rows)
+          // 3) getPublishingJobById after loss → already publishing
+          if (publishingJobsMaybeSingle === 1) return { data: queued, error: null };
+          if (publishingJobsMaybeSingle === 2) return { data: null, error: null };
+          return { data: alreadyPublishing, error: null };
+        }
+        return { data: queued, error: null };
+      },
+      google_business_profile_connections: {
+        data: connectedRow(),
+        error: null,
+      },
+      publishing_queue: { data: { id: "queue-1", content: "x" }, error: null },
+    });
+
+    const result = await executePublishingJobById("job-1", "user-1", client);
+
+    assert.match(result.error ?? "", /already being executed/i);
+    assert.equal(
+      calls.some((c) => c.table === "google_business_profile_connections"),
+      false,
+      "provider must not run after a lost claim"
+    );
+    assert.equal(
+      calls.some((c) => c.table === "publishing_queue"),
+      false,
+      "queue load happens only after a successful claim"
+    );
   });
-
-  const result = await executePublishingJobById("job-1", "user-1", client);
-
-  assert.match(result.error ?? "", /already being executed/i);
-  assert.equal(
-    calls.some((c) => c.table === "google_business_profile_connections"),
-    false,
-    "provider must not run after a lost claim"
-  );
-  assert.equal(
-    calls.some((c) => c.table === "publishing_queue"),
-    false,
-    "queue load happens only after a successful claim"
-  );
 });
 
 test("concurrent claim harness: exactly one of two racers wins", async () => {

@@ -112,4 +112,60 @@
  *
  * - `unit-tests/guided-setup-first-wins.test.ts`  
  * - `tests/guided-setup-first-wins.spec.ts`  
+ *
+ * ---
+ *
+ * ## CI baseline (PR #87)
+ *
+ * `tests/guided-onboarding-setup.spec.ts` predates this sprint's copy change to
+ * `components/dashboard/setup-hom-readiness.tsx` (the old percent-based readiness
+ * gate read "A little more setup first" / "Nothing strategic is"; the milestone-based
+ * panel shipped here reads "Recommended next" / "What's missing" instead). The
+ * assertions were stale, not a regression — `tests/guided-setup-first-wins.spec.ts`
+ * already asserted the current copy. Updated the two stale lines to check the
+ * stable, current headings instead of the retired prose.
+ *
+ * While establishing a green baseline, also fixed (all pre-existing, unrelated to
+ * this feature):
+ * - `unit-tests/publishing-provider-client.test.ts`: one test constructed a
+ *   Google Business fixture via `encryptToken` without wrapping it in the file's
+ *   `withEnv(GOOGLE_OAUTH_ENV, …)` helper, so `TOKEN_ENCRYPTION_KEY` wasn't set yet
+ *   — a missing test-env-setup bug, not a production secret requirement. Wrapped it
+ *   like every other test in the file; uses only a deterministic non-production key
+ *   (`"0".repeat(64)`, already defined in that file).
+ * - `components/dashboard/schedule-post-modal.tsx`: lint error
+ *   (`react-hooks/set-state-in-effect`) from setting default state synchronously in
+ *   an effect. Moved the default-date computation to the render-time "adjust state
+ *   when a prop changes" pattern instead.
+ * - `tsconfig.json`: added `allowImportingTsExtensions` — `unit-tests/*.test.ts`
+ *   import sibling modules with explicit `.ts` extensions (required for Node's
+ *   native test runner), which plain `tsc --noEmit` rejected under `moduleResolution:
+ *   "bundler"`. This only affects standalone `tsc` linting; `next build`'s own
+ *   TypeScript pass was unaffected and already excluded `unit-tests/`.
+ * - A handful of `unit-tests/*.test.ts` tenant-isolation tests declared two
+ *   `const` fixture user ids that TypeScript narrowed to their string-literal
+ *   types; combined with `assert.ok(ids.every(id => id === userA))` (an inferred
+ *   type predicate under an assertion function), TS then statically flagged the
+ *   companion `ids.includes(userB)` cross-tenant check as unreachable. Added
+ *   explicit `: string` annotations to widen those fixture ids — no behavior
+ *   change, standalone `tsc --noEmit` only.
+ *
+ * No Supabase Edge Functions, Deno config, or `runtime = "edge"` routes exist in
+ * this repo (all API routes declare `runtime = "nodejs"`); the only Edge-runtime
+ * code is Next's `middleware.ts`, already exercised end-to-end by the
+ * unauthenticated-redirect Playwright tests.
+ *
+ * Quality gate commands used to validate this baseline:
+ *
+ * ```
+ * npm run test:unit
+ * npm run lint
+ * npx tsc --noEmit
+ * NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run build
+ * CI=true NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run test:e2e
+ * ```
+ *
+ * `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` only need to be
+ * well-formed (e.g. `https://placeholder.supabase.co` / any string) for a local
+ * build or test run — no production credentials required.
  */

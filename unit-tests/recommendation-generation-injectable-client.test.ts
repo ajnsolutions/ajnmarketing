@@ -62,8 +62,8 @@ test("generateRecommendationsForUser executes to completion using an injected cl
 
 test("generateRecommendationsForUser uses the supplied userId consistently throughout the full path (tenant isolation)", async () => {
   await withEnv(GOOGLE_OAUTH_ENV, async () => {
-    const userA = "user-tenant-rec-a";
-    const userB = "user-tenant-rec-b";
+    const userA: string = "user-tenant-rec-a";
+    const userB: string = "user-tenant-rec-b";
 
     const fakeA = createFakeClient(userA);
     const fakeB = createFakeClient(userB);

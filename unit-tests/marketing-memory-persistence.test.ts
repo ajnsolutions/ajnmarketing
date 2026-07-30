@@ -18,8 +18,8 @@ import {
 } from "../lib/marketing-memory/types.ts";
 import { createFakeSupabaseClient, userIdsQueried } from "./support/fake-supabase-client.ts";
 
-const USER = "user-1";
-const OTHER_USER = "user-2";
+const USER: string = "user-1";
+const OTHER_USER: string = "user-2";
 const BIZ = "biz-1";
 
 function observationRow(overrides: Record<string, unknown> = {}) {

@@ -22,8 +22,8 @@ import {
 } from "../lib/marketing-memory/learningTypes.ts";
 import { createFakeSupabaseClient, userIdsQueried } from "./support/fake-supabase-client.ts";
 
-const USER = "user-1";
-const OTHER_USER = "user-2";
+const USER: string = "user-1";
+const OTHER_USER: string = "user-2";
 const BIZ = "biz-1";
 
 function evaluationResult(overrides: Partial<LearningEvaluationResult> = {}): LearningEvaluationResult {

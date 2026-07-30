@@ -84,8 +84,8 @@ test("runMarketingDecisionEngineForUser: only evaluates opportunities scoped to 
 });
 
 test("runMarketingDecisionEngineForUser: uses the supplied userId consistently throughout the full path (tenant isolation)", async () => {
-  const userA = "user-dec-a";
-  const userB = "user-dec-b";
+  const userA: string = "user-dec-a";
+  const userB: string = "user-dec-b";
 
   const fakeA = createFakeClient([
     opportunityRow({ id: "opp-a", user_id: userA, business_profile_id: "biz-a" }),

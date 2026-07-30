@@ -88,8 +88,8 @@ test("captureSnapshotForUser executes to completion using an injected client, wi
 
 test("captureSnapshotForUser respects tenant isolation: every query is scoped to the given userId", async () => {
   await withEnv(GOOGLE_OAUTH_ENV, async () => {
-    const userA = "user-tenant-a";
-    const userB = "user-tenant-b";
+    const userA: string = "user-tenant-a";
+    const userB: string = "user-tenant-b";
 
     const fakeA = createFakeClient(userA, { hasBusinessProfile: true });
     const fakeB = createFakeClient(userB, { hasBusinessProfile: true });
