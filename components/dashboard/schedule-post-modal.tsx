@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type SchedulePostModalProps = {
   open: boolean;
@@ -22,15 +22,19 @@ export function SchedulePostModal({
   onConfirm,
 }: SchedulePostModalProps) {
   const [scheduledFor, setScheduledFor] = useState("");
+  const [wasOpen, setWasOpen] = useState(open);
 
-  useEffect(() => {
+  // Adjust state during render (not in an effect) when `open` flips true, per
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(9, 0, 0, 0);
       setScheduledFor(toLocalDateTimeValue(tomorrow));
     }
-  }, [open]);
+  }
 
   if (!open) return null;
 

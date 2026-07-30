@@ -15,8 +15,8 @@ import type { MarketingOpportunity } from "../lib/marketing-opportunities/types.
 import type { ContentGenerationContext } from "../lib/content-generator/types.ts";
 import type { GeneratedContentDraft } from "../lib/content-generator/types.ts";
 
-const USER = "user-1";
-const OTHER_USER = "user-other";
+const USER: string = "user-1";
+const OTHER_USER: string = "user-other";
 const BIZ = "biz-1";
 const REC_ID = "rec-1";
 

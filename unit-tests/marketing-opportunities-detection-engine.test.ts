@@ -73,8 +73,8 @@ test("evaluateOpportunitiesForUser: returns null (not throw) when the user has n
 
 test("evaluateOpportunitiesForUser: uses the supplied userId consistently throughout the full path (tenant isolation)", async () => {
   await withEnv(GOOGLE_OAUTH_ENV, async () => {
-    const userA = "user-opp-a";
-    const userB = "user-opp-b";
+    const userA: string = "user-opp-a";
+    const userB: string = "user-opp-b";
 
     const fakeA = createFakeClient(userA, "biz-a");
     const fakeB = createFakeClient(userB, "biz-b");

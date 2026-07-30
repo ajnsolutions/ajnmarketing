@@ -62,8 +62,12 @@ test("guided onboarding ships setup model, page, card, and cron gate", async () 
     join(process.cwd(), "components/dashboard/setup-hom-readiness.tsx"),
     "utf8",
   );
-  expect(hom).toContain("A little more setup first");
-  expect(hom).toContain("Nothing strategic is");
+  // Guided Setup replaced the old percent-based readiness gate copy with a
+  // milestone-driven experience (recommended next step + calm empty states).
+  // Assert on the stable customer-visible headings rather than exact prose.
+  expect(hom).toContain("Recommended next");
+  expect(hom).toContain("What&apos;s missing");
+  expect(hom).not.toMatch(/failed setup|system error/i);
 
   const migration = readFileSync(
     join(process.cwd(), "supabase/migrations/031_customer_setup_preferences.sql"),

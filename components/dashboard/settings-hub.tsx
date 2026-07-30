@@ -4,8 +4,8 @@ import { OrientationNote, PageHeader } from "@/components/dashboard/ui/page-chro
 const FOUNDATION_LINKS = [
   {
     href: "/dashboard/setup",
-    label: "Setup checklist",
-    description: "See what is required, optional, blocked, or ready — and what to do next.",
+    label: "Guided setup",
+    description: "Meaningful milestones, first wins, and the highest-value next step.",
   },
   {
     href: "/dashboard/setup/business",

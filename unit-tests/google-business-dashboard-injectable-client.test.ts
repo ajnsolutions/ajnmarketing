@@ -86,8 +86,8 @@ test("getGoogleBusinessDashboardDataForUser uses the supplied userId, not a curr
 
 test("getGoogleBusinessDashboardDataForUser respects tenant isolation across two different users", async () => {
   await withEnv(GOOGLE_OAUTH_ENV, async () => {
-    const userA = "user-tenant-a";
-    const userB = "user-tenant-b";
+    const userA: string = "user-tenant-a";
+    const userB: string = "user-tenant-b";
 
     const fakeA = createConnectedFakeClient(userA);
     const fakeB = createConnectedFakeClient(userB);

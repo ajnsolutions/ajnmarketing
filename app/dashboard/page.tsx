@@ -3,9 +3,7 @@ import { FirstDaysHome } from "@/components/dashboard/first-days-home";
 import { GrowthAdvisorPage } from "@/components/dashboard/growth-advisor/growth-advisor-page";
 import { SetupHomReadinessPanel } from "@/components/dashboard/setup-hom-readiness";
 import { getFirstDaysHomeForCurrentUser } from "@/lib/dashboard/first-days-home-server";
-import {
-  getCustomerSetupSnapshotForCurrentUser,
-} from "@/lib/customer-setup/service";
+import { getCustomerSetupSnapshotForCurrentUser } from "@/lib/customer-setup/service";
 import { getHeadOfMarketingBriefingForCurrentUser } from "@/lib/head-of-marketing/service";
 import { runBusinessDiscoveryForCurrentUser } from "@/lib/business-discovery/service";
 import { buildGrowthAdvisorBriefing } from "@/lib/growth-advisor/buildGrowthAdvisorBriefing";
@@ -14,13 +12,15 @@ import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 import { getExternalIntelligence } from "@/lib/external-intelligence/service";
 import { getWeeklyGrowthPlanForCurrentUser } from "@/lib/growth-planner/service";
+import { getGuidedSetupExperienceForCurrentUser } from "@/lib/guided-setup/service";
 
 export default async function DashboardPage() {
-  const [briefing, firstDays, setup, goals] = await Promise.all([
+  const [briefing, firstDays, setup, goals, guidedSetup] = await Promise.all([
     getHeadOfMarketingBriefingForCurrentUser(),
     getFirstDaysHomeForCurrentUser(),
     getCustomerSetupSnapshotForCurrentUser(),
     getBusinessGoalsForCurrentUser(),
+    getGuidedSetupExperienceForCurrentUser().catch(() => null),
   ]);
 
   // Brand-new setups keep the First Five Minutes calm path until foundations exist.
@@ -54,9 +54,9 @@ export default async function DashboardPage() {
       goals,
       customerVoice,
       externalIntelligence,
+      guidedSetup,
     });
 
-    // Strategic weekly plan — recommends only; customer approves; never auto-executes.
     const weeklyPlan = await getWeeklyGrowthPlanForCurrentUser({
       briefing,
       businessDiscovery,
@@ -66,13 +66,18 @@ export default async function DashboardPage() {
     }).catch(() => null);
 
     return (
-      <GrowthAdvisorPage advisor={advisor} briefing={briefing} weeklyPlan={weeklyPlan} />
+      <GrowthAdvisorPage
+        advisor={advisor}
+        briefing={briefing}
+        weeklyPlan={weeklyPlan}
+        guidedSetup={guidedSetup}
+      />
     );
   }
 
   // Honest readiness gate — never invent strategy when setup is insufficient.
-  if (setup && !setup.headOfMarketingReady) {
-    return <SetupHomReadinessPanel snapshot={setup} />;
+  if (setup && !setup.headOfMarketingReady && guidedSetup) {
+    return <SetupHomReadinessPanel experience={guidedSetup} />;
   }
 
   if (firstDays) {
