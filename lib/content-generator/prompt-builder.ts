@@ -117,6 +117,8 @@ export function buildBusinessIntel(context: ContentGenerationContext): ContentGe
     marketingGoals: businessProfile.marketing_goals ?? [],
     customerVoicePromptBlock: context.customerVoicePromptBlock ?? null,
     smartUploadsPromptBlock: context.smartUploadsPromptBlock ?? null,
+    testimonialKnowledgePromptBlock: context.testimonialKnowledgePromptBlock ?? null,
+    testimonialQuotesPromptBlock: context.testimonialQuotesPromptBlock ?? null,
   };
 }
 
@@ -135,6 +137,7 @@ export function buildContentGenerationPrompt(
     "Never use generic placeholder copy or template filler.",
     "Use the business brand voice exactly.",
     "When Customer Voice is provided, weave recurring customer phrases and authentic strengths naturally — never keyword-stuff, never invent praise.",
+    "When real customer quotes are provided, only ever reuse them verbatim and attribute honestly — never invent a quote, never invent a customer story, never alter a quoted customer's words.",
     "Return structured JSON only.",
   ].join(" ");
 
@@ -174,6 +177,12 @@ export function buildContentGenerationPrompt(
       : []),
     ...(intel.smartUploadsPromptBlock
       ? [intel.smartUploadsPromptBlock, ""]
+      : []),
+    ...(intel.testimonialKnowledgePromptBlock
+      ? [intel.testimonialKnowledgePromptBlock, ""]
+      : []),
+    ...(intel.testimonialQuotesPromptBlock
+      ? [intel.testimonialQuotesPromptBlock, ""]
       : []),
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]
@@ -247,6 +256,7 @@ export function buildMarketingPlanItemContentPrompt(
     "Never use generic placeholder copy or template filler.",
     "Use the business brand voice exactly.",
     "When Customer Voice is provided, weave recurring customer phrases and authentic strengths naturally — never keyword-stuff, never invent praise.",
+    "When real customer quotes are provided, only ever reuse them verbatim and attribute honestly — never invent a quote, never invent a customer story, never alter a quoted customer's words.",
     "Return structured JSON only.",
   ].join(" ");
 
@@ -286,6 +296,12 @@ export function buildMarketingPlanItemContentPrompt(
       : []),
     ...(intel.smartUploadsPromptBlock
       ? [intel.smartUploadsPromptBlock, ""]
+      : []),
+    ...(intel.testimonialKnowledgePromptBlock
+      ? [intel.testimonialKnowledgePromptBlock, ""]
+      : []),
+    ...(intel.testimonialQuotesPromptBlock
+      ? [intel.testimonialQuotesPromptBlock, ""]
       : []),
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]

@@ -217,6 +217,7 @@ export function GrowthAdvisorSupportingContext({
               { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
               { href: "/dashboard/customer-voice", label: "Customer Voice" },
+              { href: "/dashboard/testimonials", label: "Website Testimonials" },
               { href: "/dashboard/business-timeline", label: "Business Timeline" },
               { href: "/dashboard/tasks", label: "What I'm working on" },
               { href: "/dashboard/google-business-profile", label: "Google Profile" },

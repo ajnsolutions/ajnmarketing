@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import { hasNoWebsiteConfirmed } from "@/lib/onboarding-storage";
 import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence";
+import { listTestimonialsForUser } from "@/lib/testimonials/persistence";
 
 export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<BusinessConnectionsSnapshot | null> {
   const profile = await getBusinessProfileForUser();
@@ -41,17 +42,20 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
         smartUploadsConnected: false,
         smartUploadsNeedsAttention: false,
         smartUploadsLastSyncAt: null,
+        testimonialsConnected: false,
+        testimonialsLastSyncAt: null,
       },
       { hasProfile: false },
     );
   }
 
   const supabase = await createClient();
-  const [gbpStatus, websiteAnalysis, searchConsoleStatus, smartUploadDocuments] = await Promise.all([
+  const [gbpStatus, websiteAnalysis, searchConsoleStatus, smartUploadDocuments, testimonials] = await Promise.all([
     getGoogleBusinessProfileConnectionStatusForCurrentUser().catch(() => null),
     getWebsiteAnalysisForUser(supabase, profile.user_id).catch(() => null),
     getGoogleSearchConsoleConnectionStatusForCurrentUser().catch(() => null),
     listSmartUploadDocumentsForUser(supabase, profile.user_id).catch(() => []),
+    listTestimonialsForUser(supabase, profile.user_id, profile.id).catch(() => []),
   ]);
 
   const platformUnavailable =
@@ -99,6 +103,13 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
       .sort()
       .at(-1) ?? null;
 
+  const testimonialsConnected = testimonials.length > 0;
+  const testimonialsLastSyncAt =
+    testimonials
+      .map((t) => t.updated_at)
+      .sort()
+      .at(-1) ?? null;
+
   const signals: LiveConnectionSignals = {
     gbpConnected,
     gbpNeedsAttention,
@@ -115,6 +126,8 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
     smartUploadsConnected,
     smartUploadsNeedsAttention,
     smartUploadsLastSyncAt,
+    testimonialsConnected,
+    testimonialsLastSyncAt,
   };
 
   return composeBusinessConnectionsSnapshot(signals, { hasProfile: true });

@@ -28,6 +28,11 @@ import { formatCustomerVoiceForContentPrompt } from "@/lib/customer-voice/copySu
 import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 import { formatSmartUploadKnowledgeForContentPrompt } from "@/lib/smart-uploads/contentPromptBlock";
 import { getActiveSmartUploadKnowledgeForUser } from "@/lib/smart-uploads/service";
+import {
+  formatTestimonialKnowledgeForContentPrompt,
+  formatTestimonialQuotesForContentPrompt,
+} from "@/lib/testimonials/contentPromptBlock";
+import { getActiveTestimonialKnowledgeForUser, listTestimonialsForUser } from "@/lib/testimonials/persistence";
 
 async function loadGenerationContext(userId: string): Promise<ContentGenerationContext | null> {
   const supabase = await createClient();
@@ -42,8 +47,16 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
 
   const businessProfile = profile as BusinessProfile;
 
-  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, customerVoice, smartUploadFacts] =
-    await Promise.all([
+  const [
+    aiMarketingProfile,
+    websiteAnalysis,
+    marketContextBrief,
+    analyticsFeedback,
+    customerVoice,
+    smartUploadFacts,
+    testimonialFacts,
+    testimonials,
+  ] = await Promise.all([
     getAiMarketingProfileForUser(supabase, userId),
     getWebsiteAnalysisForUser(supabase, userId),
     getLatestMarketContextBriefForUser(userId),
@@ -54,6 +67,8 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
       supabase,
     }).catch(() => null),
     getActiveSmartUploadKnowledgeForUser(supabase, userId, businessProfile.id).catch(() => []),
+    getActiveTestimonialKnowledgeForUser(supabase, userId, businessProfile.id).catch(() => []),
+    listTestimonialsForUser(supabase, userId, businessProfile.id).catch(() => []),
   ]);
 
   return {
@@ -64,6 +79,8 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
     analyticsFeedback,
     customerVoicePromptBlock: formatCustomerVoiceForContentPrompt(customerVoice),
     smartUploadsPromptBlock: formatSmartUploadKnowledgeForContentPrompt(smartUploadFacts),
+    testimonialKnowledgePromptBlock: formatTestimonialKnowledgeForContentPrompt(testimonialFacts),
+    testimonialQuotesPromptBlock: formatTestimonialQuotesForContentPrompt(testimonials),
   };
 }
 
@@ -171,13 +188,15 @@ export async function getContentGenerationContextForCurrentUser(): Promise<Conte
   const profile = await getBusinessProfileForUser();
   if (!profile) return null;
 
-  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, smartUploadFacts] =
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, smartUploadFacts, testimonialFacts, testimonials] =
     await Promise.all([
     getAiMarketingProfileForUser(supabase, user.id),
     getWebsiteAnalysisForUser(supabase, user.id),
     getLatestMarketContextBriefForUser(user.id),
     getAnalyticsFeedbackForUser(user.id),
     getActiveSmartUploadKnowledgeForUser(supabase, user.id, profile.id).catch(() => []),
+    getActiveTestimonialKnowledgeForUser(supabase, user.id, profile.id).catch(() => []),
+    listTestimonialsForUser(supabase, user.id, profile.id).catch(() => []),
   ]);
 
   return {
@@ -187,6 +206,8 @@ export async function getContentGenerationContextForCurrentUser(): Promise<Conte
     marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
     analyticsFeedback,
     smartUploadsPromptBlock: formatSmartUploadKnowledgeForContentPrompt(smartUploadFacts),
+    testimonialKnowledgePromptBlock: formatTestimonialKnowledgeForContentPrompt(testimonialFacts),
+    testimonialQuotesPromptBlock: formatTestimonialQuotesForContentPrompt(testimonials),
   };
 }
 

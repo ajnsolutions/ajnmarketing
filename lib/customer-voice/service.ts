@@ -5,8 +5,10 @@ import { composeCustomerVoiceIntelligence } from "@/lib/customer-voice/compose";
 import { normalizeProviderBatch } from "@/lib/customer-voice/normalize";
 import { createProviderRegistry, type CustomerVoiceProvider } from "@/lib/customer-voice/provider";
 import { createGoogleBusinessReviewsProvider } from "@/lib/customer-voice/providers/googleBusinessReviews";
+import { createWebsiteTestimonialsProvider } from "@/lib/customer-voice/providers/websiteTestimonials";
 import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { GoogleBusinessReview } from "@/lib/google-business/types";
+import { listTestimonialsForUser } from "@/lib/testimonials/persistence";
 import { createClient } from "@/lib/supabase/server";
 
 async function loadGoogleReviews(
@@ -36,6 +38,9 @@ function defaultProviders(supabase: SupabaseClient): CustomerVoiceProvider[] {
   return [
     createGoogleBusinessReviewsProvider(async (context) =>
       loadGoogleReviews(supabase, context.userId, context.businessProfileId),
+    ),
+    createWebsiteTestimonialsProvider(async (context) =>
+      listTestimonialsForUser(supabase, context.userId, context.businessProfileId),
     ),
   ];
 }

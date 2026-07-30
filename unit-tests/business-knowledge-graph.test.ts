@@ -896,6 +896,7 @@ test("computeBusinessKnowledgeHealth scores higher with more corroborated, conne
       customerVoice: true,
       externalIntelligence: true,
       smartUploads: true,
+      testimonials: true,
     },
     now: NOW,
   });
@@ -911,6 +912,7 @@ test("computeBusinessKnowledgeHealth scores higher with more corroborated, conne
       customerVoice: false,
       externalIntelligence: false,
       smartUploads: false,
+      testimonials: false,
     },
     now: NOW,
   });
@@ -963,6 +965,7 @@ test("computeBusinessKnowledgeHealth surfaces detected conflicts as missing know
       customerVoice: true,
       externalIntelligence: false,
       smartUploads: true,
+      testimonials: false,
     },
     now: NOW,
   });
@@ -1005,6 +1008,8 @@ const emptyConnectionSignals = {
   smartUploadsConnected: false,
   smartUploadsNeedsAttention: false,
   smartUploadsLastSyncAt: null,
+  testimonialsConnected: false,
+  testimonialsLastSyncAt: null,
 };
 
 test("recommendNextConnection cites the real missing capability instead of a generic pitch", () => {

@@ -50,6 +50,7 @@ export const ConnectionProviderIds = {
   BOOKING_SYSTEM: "booking_system",
   CRM: "crm",
   SMART_UPLOADS: "smart_uploads",
+  WEBSITE_TESTIMONIALS: "website_testimonials",
 } as const;
 
 export type ConnectionProviderId =

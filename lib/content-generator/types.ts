@@ -72,6 +72,16 @@ export type ContentGenerationContext = {
    * category). Null when no uploaded-document knowledge exists yet.
    */
   smartUploadsPromptBlock?: string | null;
+  /**
+   * Pre-formatted testimonial knowledge prompt block (grounded facts by
+   * category). Null when no testimonial knowledge exists yet.
+   */
+  testimonialKnowledgePromptBlock?: string | null;
+  /**
+   * A small number of real, verbatim testimonial quote excerpts. Null when
+   * no testimonials exist yet — generators must never invent quotes.
+   */
+  testimonialQuotesPromptBlock?: string | null;
 };
 
 export interface ContentGenerator {
@@ -108,6 +118,10 @@ export type ContentGenerationBusinessIntel = {
   customerVoicePromptBlock: string | null;
   /** Optional Smart Upload knowledge block — grounded facts only, never fabricated. */
   smartUploadsPromptBlock: string | null;
+  /** Optional testimonial knowledge block — grounded facts only, never fabricated. */
+  testimonialKnowledgePromptBlock: string | null;
+  /** Optional real, verbatim testimonial quotes — never invented. */
+  testimonialQuotesPromptBlock: string | null;
 };
 
 export type MarketingPlanItemType =

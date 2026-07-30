@@ -39,6 +39,9 @@ export type LiveConnectionSignals = {
   /** At least one document exists but is still processing or failed. */
   smartUploadsNeedsAttention: boolean;
   smartUploadsLastSyncAt: string | null;
+  /** At least one active website testimonial has been added. */
+  testimonialsConnected: boolean;
+  testimonialsLastSyncAt: string | null;
 };
 
 function actionsFor(
@@ -199,6 +202,27 @@ function resolveSmartUploads(
   });
 }
 
+function resolveTestimonials(
+  entry: ConnectionCatalogEntry,
+  signals: LiveConnectionSignals,
+): BusinessConnection {
+  if (signals.testimonialsConnected) {
+    return finalize(entry, {
+      status: ConnectionStatuses.CONNECTED,
+      health: ConnectionHealthLevels.HEALTHY,
+      lastSyncAt: signals.testimonialsLastSyncAt,
+      availableCapabilities: entry.capabilities,
+    });
+  }
+
+  return finalize(entry, {
+    status: ConnectionStatuses.NOT_CONNECTED,
+    health: ConnectionHealthLevels.NOT_APPLICABLE,
+    lastSyncAt: null,
+    availableCapabilities: [],
+  });
+}
+
 function resolveWebsite(
   entry: ConnectionCatalogEntry,
   signals: LiveConnectionSignals,
@@ -274,6 +298,9 @@ export function resolveBusinessConnections(
     }
     if (entry.providerId === ConnectionProviderIds.SMART_UPLOADS) {
       return resolveSmartUploads(entry, signals);
+    }
+    if (entry.providerId === ConnectionProviderIds.WEBSITE_TESTIMONIALS) {
+      return resolveTestimonials(entry, signals);
     }
     return resolvePlaceholder(entry);
   });
