@@ -1,3 +1,6 @@
+"use client";
+
+import { useId, useMemo, useState } from "react";
 import type { BusinessTimelineEntry, BusinessTimelineEntryType } from "@/lib/business-timeline/types";
 
 const ENTRY_TYPE_LABELS: Record<BusinessTimelineEntryType, string> = {
@@ -34,12 +37,27 @@ function TimelineEntryCard({ entry }: { entry: BusinessTimelineEntry }) {
 }
 
 /**
- * Business Timeline (Part 8) — customer-friendly chronological view across
- * recommendations, campaigns, uploads, search milestones, Customer Voice
- * milestones, and learning milestones. Every entry answers "what changed"
- * and, when genuinely applicable, "what did the AI learn."
+ * Business Timeline (Part 8; readability improved in Project Magic Phase 2,
+ * Part 5) — customer-friendly chronological view across recommendations,
+ * campaigns, uploads, search milestones, Customer Voice milestones, and
+ * learning milestones. A type filter lets a customer focus on one kind of
+ * change at a time instead of scanning a long, undifferentiated list —
+ * pure client-side filtering over the same entries, no new data fetch.
  */
 export function BusinessTimelinePage({ entries }: { entries: BusinessTimelineEntry[] }) {
+  const [filter, setFilter] = useState<"all" | BusinessTimelineEntryType>("all");
+  const filtersId = useId();
+
+  const typesPresent = useMemo(
+    () => Array.from(new Set(entries.map((entry) => entry.type))),
+    [entries],
+  );
+
+  const filteredEntries = useMemo(
+    () => (filter === "all" ? entries : entries.filter((entry) => entry.type === filter)),
+    [entries, filter],
+  );
+
   return (
     <div className="mx-auto max-w-2xl">
       <header>
@@ -56,14 +74,55 @@ export function BusinessTimelinePage({ entries }: { entries: BusinessTimelineEnt
       </header>
 
       {entries.length > 0 ? (
-        <section className="mt-8" aria-labelledby="timeline-heading">
-          <h2 id="timeline-heading" className="sr-only">
-            Timeline
-          </h2>
-          {entries.map((entry) => (
-            <TimelineEntryCard key={entry.id} entry={entry} />
-          ))}
-        </section>
+        <>
+          {typesPresent.length > 1 ? (
+            <div className="mt-6 flex flex-wrap gap-2" role="group" aria-labelledby={filtersId}>
+              <span id={filtersId} className="sr-only">
+                Filter timeline by type
+              </span>
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                aria-pressed={filter === "all"}
+                className={`hom-focusable inline-flex min-h-11 items-center rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
+                  filter === "all"
+                    ? "bg-brand-600 text-white ring-brand-600"
+                    : "border border-slate-200 bg-white text-navy-900 ring-slate-200 hover:border-brand-300 hover:text-brand-700"
+                }`}
+              >
+                All
+              </button>
+              {typesPresent.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFilter(type)}
+                  aria-pressed={filter === type}
+                  className={`hom-focusable inline-flex min-h-11 items-center rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
+                    filter === type
+                      ? "bg-brand-600 text-white ring-brand-600"
+                      : "border border-slate-200 bg-white text-navy-900 ring-slate-200 hover:border-brand-300 hover:text-brand-700"
+                  }`}
+                >
+                  {ENTRY_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <section className="mt-4" aria-labelledby="timeline-heading">
+            <h2 id="timeline-heading" className="sr-only">
+              Timeline
+            </h2>
+            {filteredEntries.length > 0 ? (
+              filteredEntries.map((entry) => <TimelineEntryCard key={entry.id} entry={entry} />)
+            ) : (
+              <p className="py-8 text-sm leading-7 text-text-muted">
+                Nothing in this category yet.
+              </p>
+            )}
+          </section>
+        </>
       ) : (
         <p className="mt-8 text-sm leading-7 text-text-muted">
           Nothing to show yet — as recommendations, campaigns, uploads, and learning happen, they&apos;ll

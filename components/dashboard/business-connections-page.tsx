@@ -167,22 +167,41 @@ export function BusinessConnectionsPage({
         </ul>
       </section>
 
-      {snapshot.byCategory.map((group) => (
-        <section
-          key={group.category}
-          className="mt-10 border-t border-slate-100 pt-8"
-          aria-labelledby={`category-${group.category}`}
-        >
-          <h2 id={`category-${group.category}`} className="text-lg font-bold text-navy-900">
-            {group.label}
-          </h2>
-          <div className="mt-2">
-            {group.connections.map((connection) => (
-              <ConnectionCard key={connection.id} connection={connection} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <details className="group mt-10 border-t border-slate-100 pt-8">
+        <summary className="hom-focusable cursor-pointer list-none font-semibold text-navy-900 marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex min-h-11 items-center gap-2 text-lg font-bold">
+            See all connections
+            <span
+              className="text-slate-400 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
+              aria-hidden
+            >
+              ›
+            </span>
+          </span>
+        </summary>
+        <div className="hom-disclose-content">
+          <p className="mt-2 text-sm leading-6 text-text-muted">
+            Every connection, grouped by category — for when you want the full picture, not just
+            the one recommendation above.
+          </p>
+          {snapshot.byCategory.map((group) => (
+            <section
+              key={group.category}
+              className="mt-8"
+              aria-labelledby={`category-${group.category}`}
+            >
+              <h3 id={`category-${group.category}`} className="text-base font-bold text-navy-900">
+                {group.label}
+              </h3>
+              <div className="mt-2">
+                {group.connections.map((connection) => (
+                  <ConnectionCard key={connection.id} connection={connection} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </details>
 
       <p className="mt-10 text-sm leading-7 text-text-muted">
         Looking for this week&apos;s priorities? Return to{" "}

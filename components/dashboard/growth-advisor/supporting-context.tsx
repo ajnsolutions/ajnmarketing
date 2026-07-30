@@ -14,7 +14,7 @@ import type { CustomerStatusPresentation } from "@/lib/customer-ux/statusVocabul
 import { buildTrustSignals } from "@/lib/customer-ux/trustPresentation";
 import type { HeadOfMarketingBriefing, MarketingHealthState } from "@/lib/head-of-marketing/types";
 import type { GrowthAdvisorSupportingContext as AdvisorSupporting } from "@/lib/growth-advisor/types";
-import type { CustomerVoiceHealthState } from "@/lib/customer-voice/health";
+import { buildMarketingHealthCoaching } from "@/lib/growth-advisor/marketingHealthCoaching";
 
 function healthPresentation(state: MarketingHealthState, label: string, message: string): CustomerStatusPresentation {
   const toneByState: Record<MarketingHealthState, CustomerStatusPresentation["tone"]> = {
@@ -24,20 +24,6 @@ function healthPresentation(state: MarketingHealthState, label: string, message:
     at_risk: "danger",
   };
   return { label, description: message, tone: toneByState[state] };
-}
-
-function customerVoiceHealthPresentation(
-  state: CustomerVoiceHealthState,
-  label: string,
-  message: string,
-): CustomerStatusPresentation {
-  const toneByState: Record<CustomerVoiceHealthState, CustomerStatusPresentation["tone"]> = {
-    healthy: "success",
-    emerging_concerns: "warning",
-    limited_feedback: "neutral",
-    establishing_baseline: "neutral",
-  };
-  return { label: `Customer Voice · ${label}`, description: message, tone: toneByState[state] };
 }
 
 /**
@@ -61,98 +47,76 @@ export function GrowthAdvisorSupportingContext({
     { label: "Profile since", isoDate: briefing.confidence.profileCreatedAt },
   ]);
 
+  const coaching = buildMarketingHealthCoaching({
+    health: briefing.health,
+    primaryAction: briefing.primaryAction,
+    customerVoiceHealth,
+    knowledgeHealth,
+    learningMaturity,
+  });
+
   return (
     <div className="mt-12 space-y-8 border-t border-slate-100 pt-8">
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Supporting context</p>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
-        <StatusBadge presentation={healthPresentation(briefing.health.state, briefing.health.label, briefing.health.message)} />
-        <p className="text-sm leading-6 text-text-muted">{briefing.health.message}</p>
-        <Link
-          href="/dashboard/results"
-          className="hom-focusable ml-auto text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
-        >
-          See performance trends →
-        </Link>
-      </div>
-
-      {customerVoiceHealth ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
-          <StatusBadge
-            presentation={customerVoiceHealthPresentation(
-              customerVoiceHealth.state,
-              customerVoiceHealth.label,
-              customerVoiceHealth.message,
-            )}
-          />
-          <p className="text-sm leading-6 text-text-muted">{customerVoiceHealth.message}</p>
+      {/* Marketing Health — one coaching card, not four disconnected score
+          badges. Explains what the score means, why it matters, the next
+          best action, and what improves next. */}
+      <div className="rounded-xl bg-[#F8FAFC] px-4 py-4 ring-1 ring-slate-100">
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge presentation={healthPresentation(briefing.health.state, coaching.label, coaching.whatItMeans)} />
           <Link
-            href="/dashboard/customer-voice"
+            href="/dashboard/results"
             className="hom-focusable ml-auto text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
           >
-            Open Customer Voice →
+            See performance trends →
           </Link>
         </div>
-      ) : null}
+        <p className="mt-3 text-sm leading-6 text-navy-900">{coaching.whatItMeans}</p>
+        <p className="mt-2 text-sm leading-6 text-text-muted">
+          <span className="font-medium text-slate-600">Why it matters. </span>
+          {coaching.whyItMatters}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-text-muted">
+          <span className="font-medium text-slate-600">What improves next. </span>
+          {coaching.expectedImprovement}
+        </p>
+        {coaching.nextBestAction ? (
+          <Link
+            href={coaching.nextBestAction.href}
+            className="hom-focusable mt-3 inline-flex text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+          >
+            {coaching.nextBestAction.label} →
+          </Link>
+        ) : null}
 
-      {knowledgeHealth ? (
-        <div className="rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge
-              presentation={{
-                label: `Business understanding · ${knowledgeHealth.overallScore}`,
-                description: "How well we understand your business across every connected source.",
-                tone:
-                  knowledgeHealth.overallScore >= 70
-                    ? "success"
-                    : knowledgeHealth.overallScore >= 35
-                      ? "warning"
-                      : "neutral",
-              }}
-            />
-          </div>
-          {knowledgeHealth.missingKnowledge.length > 0 ? (
-            <ul className="mt-3 space-y-1 text-sm leading-6 text-text-muted">
-              {knowledgeHealth.missingKnowledge.slice(0, 3).map((gap) => (
-                <li key={gap.label}>{gap.detail}</li>
+        {coaching.supportingScores.length > 0 ? (
+          <details className="group mt-4">
+            <summary className="hom-focusable cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex min-h-11 items-center gap-2">
+                What&apos;s behind this
+                <span
+                  className="text-slate-400 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
+                  aria-hidden
+                >
+                  ›
+                </span>
+              </span>
+            </summary>
+            <ul className="hom-disclose-content mt-2 space-y-2">
+              {coaching.supportingScores.map((supporting) => (
+                <li key={supporting.key} className="text-sm leading-6 text-text-muted">
+                  <span className="font-medium text-slate-600">
+                    {supporting.label}
+                    {supporting.score >= 0 ? ` · ${supporting.score}` : ""}.{" "}
+                  </span>
+                  {supporting.detail}
+                </li>
               ))}
             </ul>
-          ) : null}
-        </div>
-      ) : null}
-
-      {learningMaturity ? (
-        <div className="rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge
-              presentation={{
-                label: `Learning maturity · ${learningMaturity.overallScore}`,
-                description: "How much the Business Learning Engine has learned from real outcomes, and how much to trust it.",
-                tone:
-                  learningMaturity.overallScore >= 70
-                    ? "success"
-                    : learningMaturity.overallScore >= 35
-                      ? "warning"
-                      : "neutral",
-              }}
-            />
-            <Link
-              href="/dashboard/business-timeline"
-              className="hom-focusable ml-auto text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
-            >
-              See what we&apos;ve learned →
-            </Link>
-          </div>
-          <ul className="mt-3 space-y-1 text-sm leading-6 text-text-muted">
-            {Object.values(learningMaturity.dimensions)
-              .filter((dimension) => dimension.level !== "strong")
-              .slice(0, 2)
-              .map((dimension) => (
-                <li key={dimension.improvementTip}>{dimension.improvementTip}</li>
-              ))}
-          </ul>
-        </div>
-      ) : null}
+          </details>
+        ) : null}
+      </div>
 
       <CustomerConfidencePanel
         facts={{

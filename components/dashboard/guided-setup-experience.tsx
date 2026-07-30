@@ -5,7 +5,9 @@ import {
   type GuidedSetupExperience,
 } from "@/lib/guided-setup/types";
 
-function milestoneStateLabel(state: GuidedSetupExperience["milestones"][number]["state"]): string {
+type Milestone = GuidedSetupExperience["milestones"][number];
+
+function milestoneStateLabel(state: Milestone["state"]): string {
   switch (state) {
     case MilestoneStates.COMPLETE:
       return "Complete";
@@ -18,6 +20,25 @@ function milestoneStateLabel(state: GuidedSetupExperience["milestones"][number][
   }
 }
 
+function MilestoneItem({ milestone }: { milestone: Milestone }) {
+  return (
+    <li>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {milestoneStateLabel(milestone.state)}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-navy-900">{milestone.title}</p>
+      <p className="mt-1 text-sm leading-6 text-text-muted">
+        <span className="font-medium text-slate-600">What&apos;s known. </span>
+        {milestone.knownSummary}
+      </p>
+      <p className="mt-1 text-sm leading-6 text-text-muted">
+        <span className="font-medium text-slate-600">Business Brain. </span>
+        {milestone.brainImprovement}
+      </p>
+    </li>
+  );
+}
+
 /**
  * Guided setup experience — milestones, one next step, first wins.
  * No percentage bars. Never overwhelms with every connection.
@@ -27,6 +48,13 @@ export function GuidedSetupExperiencePage({
 }: {
   experience: GuidedSetupExperience;
 }) {
+  const completedMilestones = experience.milestones.filter(
+    (milestone) => milestone.state === MilestoneStates.COMPLETE,
+  );
+  const activeMilestones = experience.milestones.filter(
+    (milestone) => milestone.state !== MilestoneStates.COMPLETE,
+  );
+
   return (
     <div className="mx-auto max-w-2xl">
       <header>
@@ -101,24 +129,39 @@ export function GuidedSetupExperiencePage({
         <p className="mt-2 text-sm leading-6 text-text-muted">
           Not a percentage bar — just the stages that unlock real advice.
         </p>
-        <ol className="mt-5 space-y-5">
-          {experience.milestones.map((milestone) => (
-            <li key={milestone.key}>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                {milestoneStateLabel(milestone.state)}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-navy-900">{milestone.title}</p>
-              <p className="mt-1 text-sm leading-6 text-text-muted">
-                <span className="font-medium text-slate-600">What&apos;s known. </span>
-                {milestone.knownSummary}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-text-muted">
-                <span className="font-medium text-slate-600">Business Brain. </span>
-                {milestone.brainImprovement}
-              </p>
-            </li>
-          ))}
-        </ol>
+        {activeMilestones.length > 0 ? (
+          <ol className="mt-5 space-y-5">
+            {activeMilestones.map((milestone) => (
+              <MilestoneItem key={milestone.key} milestone={milestone} />
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-5 text-sm leading-6 text-navy-900">
+            Every setup milestone is complete — nice work.
+          </p>
+        )}
+
+        {completedMilestones.length > 0 ? (
+          <details className="group mt-6">
+            <summary className="hom-focusable cursor-pointer list-none text-sm font-semibold text-brand-600 marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex min-h-11 items-center gap-2">
+                See {completedMilestones.length} completed step
+                {completedMilestones.length === 1 ? "" : "s"}
+                <span
+                  className="text-slate-400 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
+                  aria-hidden
+                >
+                  ›
+                </span>
+              </span>
+            </summary>
+            <ol className="hom-disclose-content mt-3 space-y-5">
+              {completedMilestones.map((milestone) => (
+                <MilestoneItem key={milestone.key} milestone={milestone} />
+              ))}
+            </ol>
+          </details>
+        ) : null}
       </section>
 
       <section className="mt-10 border-t border-slate-100 pt-8" aria-labelledby="knowledge-heading">
