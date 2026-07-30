@@ -16,6 +16,7 @@ import type { PlanEvidenceItem } from "@/lib/growth-planner/types";
 import { findSearchDemandCrossovers } from "@/lib/smart-uploads/crossover";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import type { BusinessPattern } from "@/lib/business-learning-engine/types";
 
 function firstVoiceTheme(cv: CustomerVoiceIntelligence): CustomerVoiceTheme | null {
   return (
@@ -181,4 +182,27 @@ export function synthesizePlanEvidence(input: {
   }
 
   return items.slice(0, 6);
+}
+
+/**
+ * Historical learning (Part 6) — shown separately from `synthesizePlanEvidence`'s
+ * current evidence, never blended into it. Only speaks up once a pattern has
+ * real reinforcement behind it (never a single thin data point), and never
+ * silently pushes the objective's own confidence — it's additional context.
+ */
+export function buildHistoricalContext(
+  pattern: BusinessPattern | null | undefined,
+): PlanEvidenceItem[] {
+  if (!pattern || pattern.reinforcementCount < 2) return [];
+  if (pattern.direction !== "positive" && pattern.direction !== "negative") return [];
+
+  return [
+    {
+      id: `historical_${pattern.patternKey}`,
+      certainty:
+        pattern.effectiveConfidence === "high" ? PlanTrustCertaintyLevels.OBSERVED : PlanTrustCertaintyLevels.LIKELY,
+      statement: pattern.statement,
+      source: "business_learning_engine",
+    },
+  ];
 }

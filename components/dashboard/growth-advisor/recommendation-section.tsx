@@ -18,6 +18,28 @@ export function GrowthAdvisorRecommendationSection({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState<"helped" | "not_useful" | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  async function sendFeedback(feedback: "helped" | "not_useful") {
+    if (!recommendationId) return;
+    setFeedbackError(null);
+    try {
+      const response = await fetch("/api/recommendation-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendationId, feedback }),
+      });
+      if (!response.ok) throw new Error("Could not save feedback");
+      setFeedbackSent(feedback);
+      trackGrowthAdvisorEvent(
+        feedback === "helped" ? "recommendation_feedback_helped" : "recommendation_feedback_not_useful",
+        { recommendationId },
+      );
+    } catch {
+      setFeedbackError("Couldn't save your feedback — please try again.");
+    }
+  }
 
   if (dismissed) {
     return (
@@ -35,6 +57,9 @@ export function GrowthAdvisorRecommendationSection({
       <p className="mt-2 text-base font-semibold text-navy-900">{recommendation.title}</p>
       {recommendation.customerVoiceContext ? (
         <p className="mt-2 text-sm leading-7 text-navy-900">{recommendation.customerVoiceContext}</p>
+      ) : null}
+      {recommendation.historicalContext ? (
+        <p className="mt-2 text-sm leading-7 text-navy-900">{recommendation.historicalContext}</p>
       ) : null}
       {recommendation.supportsGoal ? (
         <p className="mt-2 text-sm font-medium text-brand-700">
@@ -96,6 +121,39 @@ export function GrowthAdvisorRecommendationSection({
           Not now
         </button>
       </div>
+
+      {recommendationId ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {feedbackSent ? (
+            <p className="text-sm text-text-muted" role="status">
+              {feedbackSent === "helped" ? "Thanks — glad this helped." : "Thanks for letting me know."}
+            </p>
+          ) : (
+            <>
+              <span className="text-xs font-medium text-slate-500">Was this helpful?</span>
+              <button
+                type="button"
+                onClick={() => void sendFeedback("helped")}
+                className="hom-focusable text-sm font-medium text-slate-600 transition-colors hover:text-brand-700"
+              >
+                This helped
+              </button>
+              <button
+                type="button"
+                onClick={() => void sendFeedback("not_useful")}
+                className="hom-focusable text-sm font-medium text-slate-600 transition-colors hover:text-brand-700"
+              >
+                Wasn&apos;t useful
+              </button>
+            </>
+          )}
+          {feedbackError ? (
+            <p className="text-xs text-red-600" role="alert">
+              {feedbackError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {expanded && (
         <dl className="hom-disclose-content mt-4 space-y-3 rounded-xl bg-[#F8FAFC] p-4 ring-1 ring-slate-100">

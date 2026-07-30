@@ -238,6 +238,7 @@ export function GrowthAdvisorPage({
         briefing={briefing}
         customerVoiceHealth={advisor.supporting.customerVoiceHealth}
         knowledgeHealth={advisor.supporting.knowledgeHealth}
+        learningMaturity={advisor.supporting.learningMaturity}
       />
     </div>
   );

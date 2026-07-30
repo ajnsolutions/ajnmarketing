@@ -6,6 +6,7 @@ import type { TrustCertainty } from "@/lib/growth-advisor/trust";
 import type { ExpectedBusinessOutcome } from "@/lib/growth-advisor/expectedImpact";
 import type { NextWeekMonitorItem } from "@/lib/growth-advisor/nextWeek";
 import type { BusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/knowledgeHealth";
+import type { LearningMaturity } from "@/lib/business-learning-engine/learningMaturity";
 
 /**
  * Your Growth Advisor — the conversational shape of the authenticated home
@@ -66,6 +67,13 @@ export type GrowthAdvisorRecommendation = {
   customerVoiceContext: string | null;
   /** Trust certainty for the recommendation itself — always Suggested as the action. */
   certainty: TrustCertainty;
+  /**
+   * Business Learning Engine context — e.g. "We've seen similar
+   * recommendations perform well for your business." Presentation only —
+   * never changes ranking. Null when there isn't yet a reinforced pattern
+   * relevant to this recommendation.
+   */
+  historicalContext: string | null;
 };
 
 export type GrowthAdvisorGoalProgressSummary = {
@@ -115,6 +123,13 @@ export type GrowthAdvisorSupportingContext = {
    * Additive only; never affects the recommendation shown above.
    */
   knowledgeHealth: BusinessKnowledgeHealth | null;
+  /**
+   * Learning Maturity (Part 7) — five dimensions describing how much the
+   * Business Learning Engine has actually learned and how much a customer
+   * can trust that learning. Additive only; never affects the
+   * recommendation shown above.
+   */
+  learningMaturity: LearningMaturity | null;
 };
 
 export type GrowthAdvisorEmptyStateKind =

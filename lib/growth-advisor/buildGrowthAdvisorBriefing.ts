@@ -40,6 +40,8 @@ import { KnowledgeStates } from "@/lib/guided-setup/types";
 import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import type { BusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/knowledgeHealth";
+import type { BusinessPattern } from "@/lib/business-learning-engine/types";
+import type { LearningMaturity } from "@/lib/business-learning-engine/learningMaturity";
 
 function buildWhatChanged(briefing: HeadOfMarketingBriefing): GrowthAdvisorBriefing["whatChanged"] {
   const hasMeaningfulChange = briefing.thisWeek.length > 1;
@@ -105,25 +107,41 @@ function buildSupportingEvidence(input: {
   customerVoiceContext: string | null;
   supportsGoal: string | null;
   confidenceLabelText: string | null;
+  historicalContext: string | null;
 }): string[] {
   const evidence: string[] = [];
   if (input.detailWhyNow) evidence.push(input.detailWhyNow);
   if (input.customerVoiceContext) evidence.push(input.customerVoiceContext);
+  if (input.historicalContext) evidence.push(input.historicalContext);
   if (input.supportsGoal) evidence.push(`Related to your goal: ${input.supportsGoal}.`);
   if (input.confidenceLabelText) evidence.push(`Confidence: ${input.confidenceLabelText}.`);
   return evidence.slice(0, 5);
+}
+
+/** Business Learning Engine context for the current top recommendation
+ * (Part 5) — always explains why, and only speaks up once a pattern has
+ * real reinforcement behind it (never a single thin data point). */
+export function historicalContextFromPattern(pattern: BusinessPattern | null | undefined): string | null {
+  if (!pattern || pattern.reinforcementCount < 2) return null;
+  if (pattern.direction !== "positive" && pattern.direction !== "negative") return null;
+
+  const sourceCount = pattern.contributingProviders.length;
+  const sourceClause = sourceCount > 1 ? ` across ${sourceCount} sources` : "";
+  return `${pattern.statement} We've seen this ${pattern.reinforcementCount} times${sourceClause}.`;
 }
 
 function buildRecommendation(
   briefing: HeadOfMarketingBriefing,
   goals: BusinessGoal[],
   customerVoiceContext: string | null,
+  businessLearningPattern: BusinessPattern | null | undefined,
 ): GrowthAdvisorRecommendation | null {
   const recommendation = briefing.recommendation;
   if (!recommendation) return null;
 
   const detail = briefing.topRecommendationDetail;
   const confidenceLabel = detail?.confidenceLabel ?? null;
+  const historicalContext = historicalContextFromPattern(businessLearningPattern);
   const relevance = explainGoalRelevance(
     goals,
     detail?.actionType ?? null,
@@ -148,6 +166,9 @@ function buildRecommendation(
   if (customerVoiceContext) {
     whyIBelieveParts.push(customerVoiceContext);
   }
+  if (historicalContext) {
+    whyIBelieveParts.push(historicalContext);
+  }
   if (relevance?.supportsGoal) {
     whyIBelieveParts.push(`It supports your goal of ${relevance.supportsGoal.toLowerCase()}.`);
   }
@@ -166,11 +187,13 @@ function buildRecommendation(
       customerVoiceContext,
       supportsGoal: relevance?.supportsGoal ?? null,
       confidenceLabelText: confidenceLabelTextValue,
+      historicalContext,
     }),
     businessImpactLabel: confidenceLabel ? "Meaningful" : null,
     confidenceLabel,
     confidenceLabelText: confidenceLabelTextValue,
     customerVoiceContext,
+    historicalContext,
     certainty: TrustCertaintyLevels.SUGGESTED,
   };
 }
@@ -267,6 +290,11 @@ export type BuildGrowthAdvisorBriefingOptions = {
   businessReasoning?: BusinessReasoningResult | null;
   /** Business Knowledge Health (Part 7) — presentation only; never re-ranks. */
   businessKnowledgeHealth?: BusinessKnowledgeHealth | null;
+  /** The Business Learning Engine pattern relevant to today's top
+   * recommendation (Part 5), if any — presentation only; never re-ranks. */
+  businessLearningPattern?: BusinessPattern | null;
+  /** Learning Maturity (Part 7) — presentation only; never re-ranks. */
+  learningMaturity?: LearningMaturity | null;
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -284,6 +312,7 @@ export function buildGrowthAdvisorBriefing(
     briefing,
     goals,
     voiceLines.recommendationContext,
+    options?.businessLearningPattern,
   );
 
   const whatINoticed = buildWhatINoticedObservations({
@@ -340,6 +369,7 @@ export function buildGrowthAdvisorBriefing(
       journalIntro: briefing.journal.intro,
       hasRecentActivity: briefing.journal.entries.length > 0,
       knowledgeHealth: options?.businessKnowledgeHealth ?? null,
+      learningMaturity: options?.learningMaturity ?? null,
     },
   };
 }

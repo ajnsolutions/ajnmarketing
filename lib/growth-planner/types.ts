@@ -93,7 +93,7 @@ export type PlanEvidenceItem = {
   /** Short customer-safe statement. */
   statement: string;
   /** Opaque Business Brain source key. */
-  source: "business_discovery" | "goals" | "customer_voice" | "external_intelligence" | "weekly_briefing" | "smart_uploads" | "business_reasoning";
+  source: "business_discovery" | "goals" | "customer_voice" | "external_intelligence" | "weekly_briefing" | "smart_uploads" | "business_reasoning" | "business_learning_engine";
 };
 
 export type PlanSupportingAction = {
@@ -145,6 +145,12 @@ export type WeeklyGrowthPlan = {
   };
   whatIllWatch: PlanWatchSignal[];
   evidence: PlanEvidenceItem[];
+  /**
+   * Business Learning Engine context (Part 6) — shown separately from
+   * current evidence, never blended into it. Empty when no reinforced
+   * pattern is relevant to this week's objective.
+   */
+  historicalContext: PlanEvidenceItem[];
   explainability: PlanExplainability;
 };
 

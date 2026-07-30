@@ -49,10 +49,12 @@ export function GrowthAdvisorSupportingContext({
   briefing,
   customerVoiceHealth,
   knowledgeHealth,
+  learningMaturity,
 }: {
   briefing: HeadOfMarketingBriefing;
   customerVoiceHealth?: AdvisorSupporting["customerVoiceHealth"];
   knowledgeHealth?: AdvisorSupporting["knowledgeHealth"];
+  learningMaturity?: AdvisorSupporting["learningMaturity"];
 }) {
   const trustSignals = buildTrustSignals([
     { label: "Briefing generated", isoDate: briefing.executiveBrief.generatedAt },
@@ -119,6 +121,39 @@ export function GrowthAdvisorSupportingContext({
         </div>
       ) : null}
 
+      {learningMaturity ? (
+        <div className="rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge
+              presentation={{
+                label: `Learning maturity · ${learningMaturity.overallScore}`,
+                description: "How much the Business Learning Engine has learned from real outcomes, and how much to trust it.",
+                tone:
+                  learningMaturity.overallScore >= 70
+                    ? "success"
+                    : learningMaturity.overallScore >= 35
+                      ? "warning"
+                      : "neutral",
+              }}
+            />
+            <Link
+              href="/dashboard/business-timeline"
+              className="hom-focusable ml-auto text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+            >
+              See what we&apos;ve learned →
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-1 text-sm leading-6 text-text-muted">
+            {Object.values(learningMaturity.dimensions)
+              .filter((dimension) => dimension.level !== "strong")
+              .slice(0, 2)
+              .map((dimension) => (
+                <li key={dimension.improvementTip}>{dimension.improvementTip}</li>
+              ))}
+          </ul>
+        </div>
+      ) : null}
+
       <CustomerConfidencePanel
         facts={{
           thisWeek: briefing.thisWeek,
@@ -182,6 +217,7 @@ export function GrowthAdvisorSupportingContext({
               { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
               { href: "/dashboard/customer-voice", label: "Customer Voice" },
+              { href: "/dashboard/business-timeline", label: "Business Timeline" },
               { href: "/dashboard/tasks", label: "What I'm working on" },
               { href: "/dashboard/google-business-profile", label: "Google Profile" },
               { href: "/dashboard/command-center", label: "Detailed workspace (advanced)" },
