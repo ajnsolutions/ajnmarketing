@@ -114,6 +114,7 @@ export type GrowthAdvisorSupportingContext = {
     state: CustomerVoiceHealthState;
     label: string;
     message: string;
+    reason: string;
   } | null;
   journalIntro: string;
   hasRecentActivity: boolean;

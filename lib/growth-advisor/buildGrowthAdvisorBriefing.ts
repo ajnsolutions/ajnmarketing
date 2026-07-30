@@ -365,6 +365,7 @@ export function buildGrowthAdvisorBriefing(
         state: voiceLines.health.state,
         label: voiceLines.health.label,
         message: voiceLines.health.message,
+        reason: voiceLines.health.reason,
       },
       journalIntro: briefing.journal.intro,
       hasRecentActivity: briefing.journal.entries.length > 0,

@@ -426,6 +426,7 @@ export function ApprovalQueue({
   const [filter, setFilter] = useState<"all" | ContentApprovalStatus>(initialFilter);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const [confirmingBulkApprove, setConfirmingBulkApprove] = useState(false);
   const filtersId = useId();
 
   const pendingCount = useMemo(
@@ -448,11 +449,7 @@ export function ApprovalQueue({
     const pending = initialApprovals.filter((item) => item.status === "pending");
     if (pending.length === 0) return;
 
-    const confirmed = window.confirm(
-      `Approve all ${pending.length} item${pending.length === 1 ? "" : "s"} that need your opinion? Nothing publishes until you send approved work to publishing.`,
-    );
-    if (!confirmed) return;
-
+    setConfirmingBulkApprove(false);
     setBulkBusy(true);
     setBulkMessage(`Approving ${pending.length} item${pending.length === 1 ? "" : "s"}…`);
 
@@ -507,15 +504,40 @@ export function ApprovalQueue({
           </button>
         </div>
 
-        {pendingCount > 0 ? (
+        {pendingCount > 0 && !confirmingBulkApprove ? (
           <button
             type="button"
             disabled={bulkBusy}
-            onClick={() => void approveAllPending()}
+            onClick={() => setConfirmingBulkApprove(true)}
             className="hom-focusable inline-flex min-h-11 items-center justify-center rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
           >
-            {bulkBusy ? "Approving…" : `Approve all needing review (${pendingCount})`}
+            {`Approve all needing review (${pendingCount})`}
           </button>
+        ) : null}
+
+        {confirmingBulkApprove ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-2.5">
+            <p className="text-sm leading-6 text-navy-900" role="note">
+              Approve all {pendingCount} item{pendingCount === 1 ? "" : "s"} that need your opinion?
+              Nothing publishes until you send approved work to publishing.
+            </p>
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => void approveAllPending()}
+              className="hom-focusable inline-flex min-h-11 items-center rounded-full bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
+            >
+              {bulkBusy ? "Approving…" : "Confirm approve"}
+            </button>
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => setConfirmingBulkApprove(false)}
+              className="hom-focusable inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
         ) : null}
       </div>
 
