@@ -16,6 +16,7 @@ import { getGuidedSetupExperienceForCurrentUser } from "@/lib/guided-setup/servi
 import { getActiveSmartUploadKnowledgeForUser } from "@/lib/smart-uploads/service";
 import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence";
 import { createClient } from "@/lib/supabase/server";
+import { getBusinessReasoning, getBusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/service";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals, guidedSetup] = await Promise.all([
@@ -59,6 +60,24 @@ export default async function DashboardPage() {
         ])
       : [null, null, [], []];
 
+    // The Business Knowledge Graph reasons across the same already-fetched
+    // Business Brain packages above — no second fetch, no new data store.
+    const businessReasoning = getBusinessReasoning({
+      businessDiscovery,
+      goals,
+      customerVoice,
+      externalIntelligence,
+      smartUploadFacts,
+    });
+
+    const businessKnowledgeHealth = getBusinessKnowledgeHealth({
+      businessDiscovery,
+      goals,
+      customerVoice,
+      externalIntelligence,
+      smartUploadFacts,
+    });
+
     const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, {
       goals,
       customerVoice,
@@ -66,6 +85,8 @@ export default async function DashboardPage() {
       guidedSetup,
       smartUploadFacts,
       smartUploadDocuments,
+      businessReasoning,
+      businessKnowledgeHealth,
     });
 
     const weeklyPlan = await getWeeklyGrowthPlanForCurrentUser({
@@ -75,6 +96,7 @@ export default async function DashboardPage() {
       customerVoice,
       externalIntelligence,
       smartUploadFacts,
+      businessReasoning,
     }).catch(() => null);
 
     return (

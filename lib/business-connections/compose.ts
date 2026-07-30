@@ -34,7 +34,7 @@ export function composeBusinessConnectionsSnapshot(
   const now = options?.now ?? new Date();
   const connections = resolveBusinessConnections(signals);
   const readiness = buildBusinessBrainReadiness(connections);
-  const recommendedNext = recommendNextConnection(connections);
+  const recommendedNext = recommendNextConnection(connections, readiness);
 
   const byCategory = CATEGORY_ORDER.map((category) => ({
     category,

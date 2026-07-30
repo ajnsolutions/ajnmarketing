@@ -38,6 +38,8 @@ import { TrustCertaintyLevels } from "@/lib/growth-advisor/trust";
 import type { GuidedSetupExperience } from "@/lib/guided-setup/types";
 import { KnowledgeStates } from "@/lib/guided-setup/types";
 import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
+import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import type { BusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/knowledgeHealth";
 
 function buildWhatChanged(briefing: HeadOfMarketingBriefing): GrowthAdvisorBriefing["whatChanged"] {
   const hasMeaningfulChange = briefing.thisWeek.length > 1;
@@ -261,6 +263,10 @@ export type BuildGrowthAdvisorBriefingOptions = {
   /** Smart Upload knowledge — presentation only; never re-ranks. */
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   smartUploadDocuments?: SmartUploadDocumentRecord[];
+  /** Business Knowledge Graph reasoning — presentation only; never re-ranks. */
+  businessReasoning?: BusinessReasoningResult | null;
+  /** Business Knowledge Health (Part 7) — presentation only; never re-ranks. */
+  businessKnowledgeHealth?: BusinessKnowledgeHealth | null;
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -289,6 +295,7 @@ export function buildGrowthAdvisorBriefing(
     progressSignals,
     smartUploadFacts: options?.smartUploadFacts,
     smartUploadDocuments: options?.smartUploadDocuments,
+    businessReasoning: options?.businessReasoning,
   });
 
   const nextWeek = buildNextWeekMonitoring({
@@ -332,6 +339,7 @@ export function buildGrowthAdvisorBriefing(
       },
       journalIntro: briefing.journal.intro,
       hasRecentActivity: briefing.journal.entries.length > 0,
+      knowledgeHealth: options?.businessKnowledgeHealth ?? null,
     },
   };
 }

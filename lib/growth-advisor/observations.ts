@@ -17,6 +17,7 @@ import {
 } from "@/lib/growth-advisor/trust";
 import { findSearchDemandCrossovers, findWebsiteContentGaps } from "@/lib/smart-uploads/crossover";
 import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
+import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 
 export type GrowthAdvisorObservationV2 = {
   headline: string;
@@ -24,6 +25,12 @@ export type GrowthAdvisorObservationV2 = {
   certainty: TrustCertainty;
   /** Opaque evidence source for explainability — never chain-of-thought. */
   evidenceSource: string;
+  /**
+   * Present only for a synthesized, multi-source Business Knowledge Graph
+   * conclusion — customer-safe evidence bullets citing each corroborating
+   * source. Absent for a single-source observation.
+   */
+  supportingEvidence?: string[];
 };
 
 const WHY_IT_MATTERS: Record<string, string> = {
@@ -201,6 +208,33 @@ function searchDemandCrossoverObservation(
 }
 
 /**
+ * The Business Knowledge Graph's top fused conclusion, synthesized into one
+ * observation citing every corroborating source — e.g. "We believe
+ * commercial roofing represents your best near-term growth opportunity
+ * because: search demand increased; your uploaded brochure highlights the
+ * service; customers consistently praise it; growing commercial work
+ * matches your stated goals." Never fabricates: only fires when the
+ * reasoning engine found genuine multi-source corroboration (2+ distinct
+ * providers) for a real entity.
+ */
+function synthesizedInsightObservation(
+  reasoning: BusinessReasoningResult | null | undefined,
+): GrowthAdvisorObservationV2 | null {
+  const top = reasoning?.conclusions[0];
+  if (!top) return null;
+
+  const topic = top.statement.replace(/^"|"$|" is a [a-z-]+ growth opportunity\.$/g, "");
+
+  return {
+    headline: `We believe ${topic} represents your best near-term growth opportunity.`,
+    whyItMatters: `${top.contributingProviderCount} independent sources agree — that's stronger evidence than any one signal alone.`,
+    certainty: top.confidence === "high" ? TrustCertaintyLevels.LIKELY : TrustCertaintyLevels.SUGGESTED,
+    evidenceSource: `business_reasoning:${top.entityId}`,
+    supportingEvidence: top.evidence.map((e) => e.summary),
+  };
+}
+
+/**
  * Build 3–5 observations from Business Brain sources.
  * Prefer real signals; never pad with fabricated insights.
  */
@@ -213,6 +247,7 @@ export function buildWhatINoticedObservations(input: {
   progressSignals?: GoalProgressSignals;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   smartUploadDocuments?: SmartUploadDocumentRecord[];
+  businessReasoning?: BusinessReasoningResult | null;
 }): GrowthAdvisorObservationV2[] {
   const goals = input.goals ?? [];
   const collected: GrowthAdvisorObservationV2[] = [];
@@ -226,7 +261,10 @@ export function buildWhatINoticedObservations(input: {
     collected.push(obs);
   };
 
-  // Crossover evidence is the strongest available signal (two independent
+  // A fused, multi-source Business Knowledge Graph conclusion is the
+  // strongest available evidence — prioritize it ahead of everything else.
+  push(synthesizedInsightObservation(input.businessReasoning));
+  // Crossover evidence is the next-strongest signal (two independent
   // sources agreeing) — prioritize it ahead of single-source observations.
   push(searchDemandCrossoverObservation(input.smartUploadFacts, input.externalIntelligence));
   push(customerVoiceObservation(input.customerVoice));

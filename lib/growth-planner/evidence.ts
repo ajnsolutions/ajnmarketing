@@ -15,6 +15,7 @@ import { PlanTrustCertaintyLevels } from "@/lib/growth-planner/trust";
 import type { PlanEvidenceItem } from "@/lib/growth-planner/types";
 import { findSearchDemandCrossovers } from "@/lib/smart-uploads/crossover";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
+import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 
 function firstVoiceTheme(cv: CustomerVoiceIntelligence): CustomerVoiceTheme | null {
   return (
@@ -33,6 +34,7 @@ export function synthesizePlanEvidence(input: {
   customerVoice?: CustomerVoiceIntelligence | null;
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
+  businessReasoning?: BusinessReasoningResult | null;
 }): PlanEvidenceItem[] {
   const items: PlanEvidenceItem[] = [];
   const seen = new Set<string>();
@@ -42,6 +44,21 @@ export function synthesizePlanEvidence(input: {
     seen.add(item.id);
     items.push(item);
   };
+
+  // A fused, multi-source Business Knowledge Graph conclusion is the
+  // strongest available evidence — cite it first, ahead of single-source items.
+  const topConclusion = input.businessReasoning?.conclusions[0];
+  if (topConclusion) {
+    push({
+      id: "business_reasoning_conclusion",
+      certainty:
+        topConclusion.confidence === "high"
+          ? PlanTrustCertaintyLevels.OBSERVED
+          : PlanTrustCertaintyLevels.LIKELY,
+      statement: topConclusion.statement,
+      source: "business_reasoning",
+    });
+  }
 
   if (input.briefing.thisWeek.length > 0) {
     push({

@@ -48,9 +48,11 @@ function customerVoiceHealthPresentation(
 export function GrowthAdvisorSupportingContext({
   briefing,
   customerVoiceHealth,
+  knowledgeHealth,
 }: {
   briefing: HeadOfMarketingBriefing;
   customerVoiceHealth?: AdvisorSupporting["customerVoiceHealth"];
+  knowledgeHealth?: AdvisorSupporting["knowledgeHealth"];
 }) {
   const trustSignals = buildTrustSignals([
     { label: "Briefing generated", isoDate: briefing.executiveBrief.generatedAt },
@@ -88,6 +90,32 @@ export function GrowthAdvisorSupportingContext({
           >
             Open Customer Voice →
           </Link>
+        </div>
+      ) : null}
+
+      {knowledgeHealth ? (
+        <div className="rounded-xl bg-[#F8FAFC] px-4 py-3 ring-1 ring-slate-100">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge
+              presentation={{
+                label: `Business understanding · ${knowledgeHealth.overallScore}`,
+                description: "How well we understand your business across every connected source.",
+                tone:
+                  knowledgeHealth.overallScore >= 70
+                    ? "success"
+                    : knowledgeHealth.overallScore >= 35
+                      ? "warning"
+                      : "neutral",
+              }}
+            />
+          </div>
+          {knowledgeHealth.missingKnowledge.length > 0 ? (
+            <ul className="mt-3 space-y-1 text-sm leading-6 text-text-muted">
+              {knowledgeHealth.missingKnowledge.slice(0, 3).map((gap) => (
+                <li key={gap.label}>{gap.detail}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 

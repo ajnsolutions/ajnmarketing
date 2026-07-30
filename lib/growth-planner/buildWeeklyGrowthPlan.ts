@@ -9,6 +9,7 @@ import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
+import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import { resolveExpectedBusinessOutcomes } from "@/lib/growth-advisor/expectedImpact";
 import { buildNextWeekMonitoring } from "@/lib/growth-advisor/nextWeek";
 import { synthesizePlanEvidence } from "@/lib/growth-planner/evidence";
@@ -74,6 +75,7 @@ export type BuildWeeklyGrowthPlanInput = {
   customerVoice?: CustomerVoiceIntelligence | null;
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
+  businessReasoning?: BusinessReasoningResult | null;
   now?: Date;
   /** Optional stable id (e.g. when refreshing the same week). */
   planId?: string;
@@ -102,6 +104,7 @@ export function buildWeeklyGrowthPlan(input: BuildWeeklyGrowthPlanInput): Weekly
     customerVoice: input.customerVoice,
     externalIntelligence: input.externalIntelligence,
     smartUploadFacts: input.smartUploadFacts,
+    businessReasoning: input.businessReasoning,
   });
 
   const whyNow = buildWhyNow({
