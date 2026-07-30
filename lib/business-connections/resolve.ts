@@ -28,6 +28,12 @@ export type LiveConnectionSignals = {
   websiteAnalyzedAt: string | null;
   /** OAuth / storage globally unavailable (platform). */
   gbpPlatformUnavailable?: boolean;
+  /** Search Console connected with valid scopes and a property selected. */
+  searchConsoleConnected: boolean;
+  /** Connected but expired / revoked / missing scopes / error / no property selected. */
+  searchConsoleNeedsAttention: boolean;
+  searchConsoleLastSyncAt: string | null;
+  searchConsolePlatformUnavailable?: boolean;
 };
 
 function actionsFor(
@@ -119,6 +125,45 @@ function resolveGbp(entry: ConnectionCatalogEntry, signals: LiveConnectionSignal
   });
 }
 
+function resolveSearchConsole(
+  entry: ConnectionCatalogEntry,
+  signals: LiveConnectionSignals,
+): BusinessConnection {
+  if (signals.searchConsolePlatformUnavailable) {
+    return finalize(entry, {
+      status: ConnectionStatuses.UNAVAILABLE,
+      health: ConnectionHealthLevels.UNKNOWN,
+      lastSyncAt: null,
+      availableCapabilities: [],
+    });
+  }
+
+  if (signals.searchConsoleConnected) {
+    return finalize(entry, {
+      status: ConnectionStatuses.CONNECTED,
+      health: ConnectionHealthLevels.HEALTHY,
+      lastSyncAt: signals.searchConsoleLastSyncAt,
+      availableCapabilities: entry.capabilities,
+    });
+  }
+
+  if (signals.searchConsoleNeedsAttention) {
+    return finalize(entry, {
+      status: ConnectionStatuses.NEEDS_ATTENTION,
+      health: ConnectionHealthLevels.ATTENTION,
+      lastSyncAt: signals.searchConsoleLastSyncAt,
+      availableCapabilities: [],
+    });
+  }
+
+  return finalize(entry, {
+    status: ConnectionStatuses.NOT_CONNECTED,
+    health: ConnectionHealthLevels.NOT_APPLICABLE,
+    lastSyncAt: null,
+    availableCapabilities: [],
+  });
+}
+
 function resolveWebsite(
   entry: ConnectionCatalogEntry,
   signals: LiveConnectionSignals,
@@ -188,6 +233,9 @@ export function resolveBusinessConnections(
     }
     if (entry.providerId === ConnectionProviderIds.WEBSITE_ANALYSIS) {
       return resolveWebsite(entry, signals);
+    }
+    if (entry.providerId === ConnectionProviderIds.GOOGLE_SEARCH_CONSOLE) {
+      return resolveSearchConsole(entry, signals);
     }
     return resolvePlaceholder(entry);
   });

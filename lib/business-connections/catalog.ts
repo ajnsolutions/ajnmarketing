@@ -65,9 +65,9 @@ export const CONNECTION_CATALOG: readonly ConnectionCatalogEntry[] = [
       intelligenceSources: ["external_intelligence"],
     },
     priority: 2,
-    implementation: "placeholder",
-    connectHref: null,
-    manageHref: null,
+    implementation: "live",
+    connectHref: "/dashboard/search-console/connect",
+    manageHref: "/dashboard/search-console",
   },
   {
     id: "conn_website_analytics",

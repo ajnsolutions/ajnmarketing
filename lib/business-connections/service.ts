@@ -14,6 +14,11 @@ import {
   isGoogleConnectionStorageConfigured,
 } from "@/lib/google-business-profile/service";
 import { isGoogleBusinessOAuthConfigured } from "@/lib/google-business-profile/oauth";
+import {
+  getGoogleSearchConsoleConnectionStatusForCurrentUser,
+  isSearchConsoleConnectionStorageConfigured,
+} from "@/lib/google-search-console/service";
+import { isGoogleSearchConsoleOAuthConfigured } from "@/lib/google-search-console/oauth";
 import { createClient } from "@/lib/supabase/server";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import { hasNoWebsiteConfirmed } from "@/lib/onboarding-storage";
@@ -29,15 +34,19 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
         hasWebsite: false,
         websiteAnalyzed: false,
         websiteAnalyzedAt: null,
+        searchConsoleConnected: false,
+        searchConsoleNeedsAttention: false,
+        searchConsoleLastSyncAt: null,
       },
       { hasProfile: false },
     );
   }
 
   const supabase = await createClient();
-  const [gbpStatus, websiteAnalysis] = await Promise.all([
+  const [gbpStatus, websiteAnalysis, searchConsoleStatus] = await Promise.all([
     getGoogleBusinessProfileConnectionStatusForCurrentUser().catch(() => null),
     getWebsiteAnalysisForUser(supabase, profile.user_id).catch(() => null),
+    getGoogleSearchConsoleConnectionStatusForCurrentUser().catch(() => null),
   ]);
 
   const platformUnavailable =
@@ -57,6 +66,24 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
   const hasWebsite =
     Boolean(profile.website?.trim()) && !hasNoWebsiteConfirmed(profile.voice_notes);
 
+  const searchConsolePlatformUnavailable =
+    !isGoogleSearchConsoleOAuthConfigured() || !isSearchConsoleConnectionStorageConfigured();
+
+  const searchConsoleConnection = searchConsoleStatus?.connection ?? null;
+  const searchConsoleConnected = Boolean(
+    searchConsoleStatus?.connected && searchConsoleStatus.scopesValid && searchConsoleStatus.propertySelected,
+  );
+  const searchConsoleNeedsAttention = Boolean(
+    searchConsoleConnection &&
+      !searchConsoleConnected &&
+      (searchConsoleConnection.connection_status === "expired" ||
+        searchConsoleConnection.connection_status === "revoked" ||
+        searchConsoleConnection.connection_status === "error" ||
+        (searchConsoleConnection.connection_status === "connected" &&
+          searchConsoleStatus &&
+          (!searchConsoleStatus.scopesValid || !searchConsoleStatus.propertySelected))),
+  );
+
   const signals: LiveConnectionSignals = {
     gbpConnected,
     gbpNeedsAttention,
@@ -65,6 +92,11 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
     websiteAnalyzed: Boolean(websiteAnalysis),
     websiteAnalyzedAt: websiteAnalysis?.updated_at ?? websiteAnalysis?.created_at ?? null,
     gbpPlatformUnavailable: platformUnavailable && !gbpConnected && !gbpNeedsAttention,
+    searchConsoleConnected,
+    searchConsoleNeedsAttention,
+    searchConsoleLastSyncAt: searchConsoleConnection?.last_synced_at ?? null,
+    searchConsolePlatformUnavailable:
+      searchConsolePlatformUnavailable && !searchConsoleConnected && !searchConsoleNeedsAttention,
   };
 
   return composeBusinessConnectionsSnapshot(signals, { hasProfile: true });

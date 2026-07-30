@@ -91,7 +91,16 @@ test("designed providers return empty signals and never fabricate", async () => 
       now,
     });
     assert.equal(result.signals.length, 0);
-    assert.ok((result.notes ?? []).some((n) => /not implemented/i.test(n)));
+
+    // Search Console is the first live provider — for an unconnected user it still
+    // returns empty signals (never fabricated), but its note explains *why*
+    // ("not connected") rather than "designed but not implemented" like the
+    // remaining foundation-only stubs.
+    if (provider.id === ExternalIntelligenceProviderIds.SEARCH_CONSOLE) {
+      assert.ok((result.notes ?? []).some((n) => /not connected|unavailable/i.test(n)));
+    } else {
+      assert.ok((result.notes ?? []).some((n) => /not implemented/i.test(n)));
+    }
   }
 });
 

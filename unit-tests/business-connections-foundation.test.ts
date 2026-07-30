@@ -23,6 +23,9 @@ const emptySignals = {
   hasWebsite: false,
   websiteAnalyzed: false,
   websiteAnalyzedAt: null,
+  searchConsoleConnected: false,
+  searchConsoleNeedsAttention: false,
+  searchConsoleLastSyncAt: null,
 };
 
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false", () => {
@@ -106,7 +109,9 @@ test("readiness exposes available vs unavailable intelligence sources", () => {
 
   assert.equal(feedback.state, "unavailable");
   assert.match(feedback.detail, /unavailable/i);
-  assert.equal(search.state, "coming_soon");
+  // Search Console is live (not a placeholder) — disconnected reads as "unavailable",
+  // same as any other live-but-not-yet-connected capability.
+  assert.equal(search.state, "unavailable");
   assert.equal(analytics.state, "coming_soon");
   assert.equal(docs.state, "coming_soon");
 
@@ -126,6 +131,40 @@ test("readiness exposes available vs unavailable intelligence sources", () => {
   );
 });
 
+test("resolve maps live Search Console signals; disconnected/attention/connected all distinct", () => {
+  const searchConsole = CONNECTION_CATALOG.find(
+    (c) => c.providerId === ConnectionProviderIds.GOOGLE_SEARCH_CONSOLE,
+  )!;
+  assert.equal(searchConsole.implementation, "live");
+  assert.equal(searchConsole.connectHref, "/dashboard/search-console/connect");
+  assert.equal(searchConsole.manageHref, "/dashboard/search-console");
+
+  const disconnected = resolveBusinessConnections(emptySignals).find(
+    (c) => c.providerId === ConnectionProviderIds.GOOGLE_SEARCH_CONSOLE,
+  )!;
+  assert.equal(disconnected.status, ConnectionStatuses.NOT_CONNECTED);
+
+  const connected = resolveBusinessConnections({
+    ...emptySignals,
+    searchConsoleConnected: true,
+    searchConsoleLastSyncAt: "2026-07-29T12:00:00.000Z",
+  }).find((c) => c.providerId === ConnectionProviderIds.GOOGLE_SEARCH_CONSOLE)!;
+  assert.equal(connected.status, ConnectionStatuses.CONNECTED);
+  assert.equal(connected.lastSyncAt, "2026-07-29T12:00:00.000Z");
+  assert.ok(connected.availableCapabilities.includes("search_performance"));
+
+  const needsAttention = resolveBusinessConnections({
+    ...emptySignals,
+    searchConsoleNeedsAttention: true,
+  }).find((c) => c.providerId === ConnectionProviderIds.GOOGLE_SEARCH_CONSOLE)!;
+  assert.equal(needsAttention.status, ConnectionStatuses.NEEDS_ATTENTION);
+
+  const readiness = buildBusinessBrainReadiness(
+    resolveBusinessConnections({ ...emptySignals, searchConsoleConnected: true }),
+  );
+  assert.equal(readiness.find((r) => r.id === "readiness_search_performance")!.state, "available");
+});
+
 test("recommendation logic picks one highest-value live gap", () => {
   const none = recommendNextConnection(resolveBusinessConnections(emptySignals));
   assert.ok(none);
@@ -141,11 +180,24 @@ test("recommendation logic picks one highest-value live gap", () => {
   assert.ok(gbpDone);
   assert.equal(gbpDone!.connectionId, "conn_website_analysis");
 
+  // GBP + website done but Search Console (also live now) still unconnected —
+  // it's the next highest-value live gap, not "nothing left to recommend".
+  const searchConsoleNext = recommendNextConnection(
+    resolveBusinessConnections({
+      ...emptySignals,
+      gbpConnected: true,
+      websiteAnalyzed: true,
+    }),
+  );
+  assert.ok(searchConsoleNext);
+  assert.equal(searchConsoleNext!.connectionId, "conn_search_console");
+
   const allLive = recommendNextConnection(
     resolveBusinessConnections({
       ...emptySignals,
       gbpConnected: true,
       websiteAnalyzed: true,
+      searchConsoleConnected: true,
     }),
   );
   assert.equal(allLive, null);
