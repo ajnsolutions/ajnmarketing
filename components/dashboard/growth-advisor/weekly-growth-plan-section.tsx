@@ -114,6 +114,23 @@ export function WeeklyGrowthPlanSection({
               </li>
             ))}
           </ul>
+          {plan.historicalContext.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                From past experience
+              </p>
+              <ul className="mt-2 space-y-2">
+                {plan.historicalContext.map((item) => (
+                  <li key={item.id} className="text-sm leading-6 text-text-muted">
+                    <span className="font-semibold text-slate-600">
+                      {planTrustLabel(item.certainty)}.
+                    </span>{" "}
+                    {item.statement}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       </details>
 

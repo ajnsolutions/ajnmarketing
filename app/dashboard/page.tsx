@@ -17,6 +17,8 @@ import { getActiveSmartUploadKnowledgeForUser } from "@/lib/smart-uploads/servic
 import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence";
 import { createClient } from "@/lib/supabase/server";
 import { getBusinessReasoning, getBusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/service";
+import { reconcileAndGetBusinessLearningPatterns, findPatternForActionType } from "@/lib/business-learning-engine/service";
+import { computeLearningMaturity, summarizeOutcomeBreakdown } from "@/lib/business-learning-engine/learningMaturity";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals, guidedSetup] = await Promise.all([
@@ -78,6 +80,36 @@ export default async function DashboardPage() {
       smartUploadFacts,
     });
 
+    // The Business Learning Engine reconciles/reinforces patterns from real
+    // recommendation outcomes, Marketing Memory learnings, and this same
+    // Business Knowledge Graph reasoning — on-demand, never a cron.
+    const reconciliation = profile
+      ? await createClient()
+          .then((supabase) =>
+            reconcileAndGetBusinessLearningPatterns(supabase, {
+              userId: profile.user_id,
+              businessProfileId: profile.id,
+              businessReasoning,
+            }),
+          )
+          .catch(() => null)
+      : null;
+
+    const topActionType = briefing.topRecommendationDetail?.actionType ?? null;
+    const businessLearningPattern =
+      reconciliation && topActionType
+        ? findPatternForActionType(reconciliation.patterns, topActionType)
+        : null;
+
+    const learningMaturity = reconciliation
+      ? computeLearningMaturity({
+          patterns: reconciliation.patterns,
+          ...summarizeOutcomeBreakdown(reconciliation.outcomeBreakdown),
+          totalRecommendations: reconciliation.totalRecommendations,
+          feedbackCount: reconciliation.feedbackEventCount,
+        })
+      : null;
+
     const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, {
       goals,
       customerVoice,
@@ -87,6 +119,8 @@ export default async function DashboardPage() {
       smartUploadDocuments,
       businessReasoning,
       businessKnowledgeHealth,
+      businessLearningPattern,
+      learningMaturity,
     });
 
     const weeklyPlan = await getWeeklyGrowthPlanForCurrentUser({
@@ -97,6 +131,7 @@ export default async function DashboardPage() {
       externalIntelligence,
       smartUploadFacts,
       businessReasoning,
+      businessLearningPattern,
     }).catch(() => null);
 
     return (

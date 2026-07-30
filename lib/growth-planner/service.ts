@@ -13,6 +13,7 @@ import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import type { BusinessPattern } from "@/lib/business-learning-engine/types";
 import { buildWeeklyGrowthPlan } from "@/lib/growth-planner/buildWeeklyGrowthPlan";
 import {
   applyWeeklyGrowthPlansToMarketingGoals,
@@ -37,6 +38,7 @@ export async function getWeeklyGrowthPlanForCurrentUser(input: {
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   businessReasoning?: BusinessReasoningResult | null;
+  businessLearningPattern?: BusinessPattern | null;
   now?: Date;
 }): Promise<WeeklyGrowthPlanBundle | null> {
   const supabase = await createClient();
@@ -64,6 +66,7 @@ export async function getWeeklyGrowthPlanForCurrentUser(input: {
     externalIntelligence: input.externalIntelligence,
     smartUploadFacts: input.smartUploadFacts,
     businessReasoning: input.businessReasoning,
+    businessLearningPattern: input.businessLearningPattern,
     now,
   });
 

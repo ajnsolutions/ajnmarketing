@@ -12,7 +12,8 @@ import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import { resolveExpectedBusinessOutcomes } from "@/lib/growth-advisor/expectedImpact";
 import { buildNextWeekMonitoring } from "@/lib/growth-advisor/nextWeek";
-import { synthesizePlanEvidence } from "@/lib/growth-planner/evidence";
+import { synthesizePlanEvidence, buildHistoricalContext } from "@/lib/growth-planner/evidence";
+import type { BusinessPattern } from "@/lib/business-learning-engine/types";
 import { resolvePrimaryObjective } from "@/lib/growth-planner/primaryObjective";
 import { buildSupportingActions } from "@/lib/growth-planner/supportingActions";
 import { resolveSuccessMetric } from "@/lib/growth-planner/successMetric";
@@ -76,6 +77,7 @@ export type BuildWeeklyGrowthPlanInput = {
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   businessReasoning?: BusinessReasoningResult | null;
+  businessLearningPattern?: BusinessPattern | null;
   now?: Date;
   /** Optional stable id (e.g. when refreshing the same week). */
   planId?: string;
@@ -161,6 +163,7 @@ export function buildWeeklyGrowthPlan(input: BuildWeeklyGrowthPlanInput): Weekly
     successMetric,
     whatIllWatch,
     evidence,
+    historicalContext: buildHistoricalContext(input.businessLearningPattern),
     explainability,
   };
 }

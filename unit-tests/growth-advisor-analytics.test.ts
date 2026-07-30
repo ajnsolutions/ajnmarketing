@@ -11,6 +11,8 @@ test("event vocabulary matches exactly the sprint's required tracking list", () 
       "recommendation_accepted",
       "recommendation_dismissed",
       "recommendation_expanded",
+      "recommendation_feedback_helped",
+      "recommendation_feedback_not_useful",
       "tell_me_more",
     ].sort(),
   );

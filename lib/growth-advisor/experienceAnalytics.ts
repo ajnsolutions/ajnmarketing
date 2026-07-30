@@ -20,6 +20,10 @@ export const GROWTH_ADVISOR_EVENTS = [
   "recommendation_dismissed",
   "tell_me_more",
   "primary_action_selected",
+  /** Explicit customer feedback on a recommendation's real-world value
+   * (Part 9, Business Learning Engine) — never free text, just direction. */
+  "recommendation_feedback_helped",
+  "recommendation_feedback_not_useful",
 ] as const;
 
 export type GrowthAdvisorEvent = (typeof GROWTH_ADVISOR_EVENTS)[number];
@@ -38,6 +42,8 @@ const EVENT_RESULT: Record<GrowthAdvisorEvent, WorkflowLogResult> = {
   recommendation_dismissed: "success",
   tell_me_more: "success",
   primary_action_selected: "success",
+  recommendation_feedback_helped: "success",
+  recommendation_feedback_not_useful: "success",
 };
 
 export function trackGrowthAdvisorEvent(
