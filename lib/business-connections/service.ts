@@ -22,6 +22,7 @@ import { isGoogleSearchConsoleOAuthConfigured } from "@/lib/google-search-consol
 import { createClient } from "@/lib/supabase/server";
 import { getWebsiteAnalysisForUser } from "@/lib/website-analysis/persistence";
 import { hasNoWebsiteConfirmed } from "@/lib/onboarding-storage";
+import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence";
 
 export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<BusinessConnectionsSnapshot | null> {
   const profile = await getBusinessProfileForUser();
@@ -37,16 +38,20 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
         searchConsoleConnected: false,
         searchConsoleNeedsAttention: false,
         searchConsoleLastSyncAt: null,
+        smartUploadsConnected: false,
+        smartUploadsNeedsAttention: false,
+        smartUploadsLastSyncAt: null,
       },
       { hasProfile: false },
     );
   }
 
   const supabase = await createClient();
-  const [gbpStatus, websiteAnalysis, searchConsoleStatus] = await Promise.all([
+  const [gbpStatus, websiteAnalysis, searchConsoleStatus, smartUploadDocuments] = await Promise.all([
     getGoogleBusinessProfileConnectionStatusForCurrentUser().catch(() => null),
     getWebsiteAnalysisForUser(supabase, profile.user_id).catch(() => null),
     getGoogleSearchConsoleConnectionStatusForCurrentUser().catch(() => null),
+    listSmartUploadDocumentsForUser(supabase, profile.user_id).catch(() => []),
   ]);
 
   const platformUnavailable =
@@ -84,6 +89,16 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
           (!searchConsoleStatus.scopesValid || !searchConsoleStatus.propertySelected))),
   );
 
+  const smartUploadsConnected = smartUploadDocuments.some((doc) => doc.status === "extracted");
+  const smartUploadsNeedsAttention =
+    !smartUploadsConnected && smartUploadDocuments.some((doc) => doc.status === "processing" || doc.status === "failed");
+  const smartUploadsLastSyncAt =
+    smartUploadDocuments
+      .filter((doc) => doc.processed_at)
+      .map((doc) => doc.processed_at as string)
+      .sort()
+      .at(-1) ?? null;
+
   const signals: LiveConnectionSignals = {
     gbpConnected,
     gbpNeedsAttention,
@@ -97,6 +112,9 @@ export async function getBusinessConnectionsSnapshotForCurrentUser(): Promise<Bu
     searchConsoleLastSyncAt: searchConsoleConnection?.last_synced_at ?? null,
     searchConsolePlatformUnavailable:
       searchConsolePlatformUnavailable && !searchConsoleConnected && !searchConsoleNeedsAttention,
+    smartUploadsConnected,
+    smartUploadsNeedsAttention,
+    smartUploadsLastSyncAt,
   };
 
   return composeBusinessConnectionsSnapshot(signals, { hasProfile: true });

@@ -116,6 +116,7 @@ export function buildBusinessIntel(context: ContentGenerationContext): ContentGe
     avoidWords: splitList(businessProfile.avoid_words?.replace(/,/g, "\n")),
     marketingGoals: businessProfile.marketing_goals ?? [],
     customerVoicePromptBlock: context.customerVoicePromptBlock ?? null,
+    smartUploadsPromptBlock: context.smartUploadsPromptBlock ?? null,
   };
 }
 
@@ -170,6 +171,9 @@ export function buildContentGenerationPrompt(
     "",
     ...(intel.customerVoicePromptBlock
       ? [intel.customerVoicePromptBlock, ""]
+      : []),
+    ...(intel.smartUploadsPromptBlock
+      ? [intel.smartUploadsPromptBlock, ""]
       : []),
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]
@@ -279,6 +283,9 @@ export function buildMarketingPlanItemContentPrompt(
     "",
     ...(intel.customerVoicePromptBlock
       ? [intel.customerVoicePromptBlock, ""]
+      : []),
+    ...(intel.smartUploadsPromptBlock
+      ? [intel.smartUploadsPromptBlock, ""]
       : []),
     ...(marketContextBlock
       ? ["MARKET CONTEXT", marketContextBlock, ""]

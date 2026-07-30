@@ -26,6 +26,8 @@ import { getLatestMarketContextBriefForUser } from "@/lib/market-context/marketC
 import { createClient } from "@/lib/supabase/server";
 import { formatCustomerVoiceForContentPrompt } from "@/lib/customer-voice/copySuggestions";
 import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
+import { formatSmartUploadKnowledgeForContentPrompt } from "@/lib/smart-uploads/contentPromptBlock";
+import { getActiveSmartUploadKnowledgeForUser } from "@/lib/smart-uploads/service";
 
 async function loadGenerationContext(userId: string): Promise<ContentGenerationContext | null> {
   const supabase = await createClient();
@@ -40,7 +42,7 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
 
   const businessProfile = profile as BusinessProfile;
 
-  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, customerVoice] =
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, customerVoice, smartUploadFacts] =
     await Promise.all([
     getAiMarketingProfileForUser(supabase, userId),
     getWebsiteAnalysisForUser(supabase, userId),
@@ -51,6 +53,7 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
       businessProfileId: businessProfile.id,
       supabase,
     }).catch(() => null),
+    getActiveSmartUploadKnowledgeForUser(supabase, userId, businessProfile.id).catch(() => []),
   ]);
 
   return {
@@ -60,6 +63,7 @@ async function loadGenerationContext(userId: string): Promise<ContentGenerationC
     marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
     analyticsFeedback,
     customerVoicePromptBlock: formatCustomerVoiceForContentPrompt(customerVoice),
+    smartUploadsPromptBlock: formatSmartUploadKnowledgeForContentPrompt(smartUploadFacts),
   };
 }
 
@@ -167,12 +171,13 @@ export async function getContentGenerationContextForCurrentUser(): Promise<Conte
   const profile = await getBusinessProfileForUser();
   if (!profile) return null;
 
-  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback] =
+  const [aiMarketingProfile, websiteAnalysis, marketContextBrief, analyticsFeedback, smartUploadFacts] =
     await Promise.all([
     getAiMarketingProfileForUser(supabase, user.id),
     getWebsiteAnalysisForUser(supabase, user.id),
     getLatestMarketContextBriefForUser(user.id),
     getAnalyticsFeedbackForUser(user.id),
+    getActiveSmartUploadKnowledgeForUser(supabase, user.id, profile.id).catch(() => []),
   ]);
 
   return {
@@ -181,6 +186,7 @@ export async function getContentGenerationContextForCurrentUser(): Promise<Conte
     websiteAnalysis,
     marketContextSummary: buildMarketContextPromptSummary(marketContextBrief),
     analyticsFeedback,
+    smartUploadsPromptBlock: formatSmartUploadKnowledgeForContentPrompt(smartUploadFacts),
   };
 }
 

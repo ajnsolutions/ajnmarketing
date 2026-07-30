@@ -264,9 +264,9 @@ export const CONNECTION_CATALOG: readonly ConnectionCatalogEntry[] = [
       intelligenceSources: ["business_discovery", "smart_uploads"],
     },
     priority: 1,
-    implementation: "placeholder",
-    connectHref: null,
-    manageHref: null,
+    implementation: "live",
+    connectHref: "/dashboard/smart-uploads",
+    manageHref: "/dashboard/smart-uploads",
   },
 ] as const;
 

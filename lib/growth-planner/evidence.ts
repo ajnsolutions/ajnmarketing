@@ -13,6 +13,8 @@ import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import { PlanTrustCertaintyLevels } from "@/lib/growth-planner/trust";
 import type { PlanEvidenceItem } from "@/lib/growth-planner/types";
+import { findSearchDemandCrossovers } from "@/lib/smart-uploads/crossover";
+import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 
 function firstVoiceTheme(cv: CustomerVoiceIntelligence): CustomerVoiceTheme | null {
   return (
@@ -30,6 +32,7 @@ export function synthesizePlanEvidence(input: {
   goals: BusinessGoal[];
   customerVoice?: CustomerVoiceIntelligence | null;
   externalIntelligence?: ExternalIntelligence | null;
+  smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
 }): PlanEvidenceItem[] {
   const items: PlanEvidenceItem[] = [];
   const seen = new Set<string>();
@@ -104,6 +107,34 @@ export function synthesizePlanEvidence(input: {
         certainty: PlanTrustCertaintyLevels.LIKELY,
         statement: trend.insight,
         source: "external_intelligence",
+      });
+    }
+  }
+
+  const activeFacts = (input.smartUploadFacts ?? []).filter((fact) => !fact.superseded_by);
+  if (activeFacts.length > 0) {
+    const crossover =
+      ei && ei.searchDemandTrends.length > 0
+        ? findSearchDemandCrossovers(activeFacts, ei.searchDemandTrends)[0]
+        : undefined;
+
+    if (crossover) {
+      push({
+        id: "smart_uploads_search_crossover",
+        certainty: PlanTrustCertaintyLevels.LIKELY,
+        statement: `${crossover.insight.insight} Your uploaded documents also mention: "${crossover.fact.fact}".`,
+        source: "smart_uploads",
+      });
+    } else {
+      const confidenceRank: Record<string, number> = { low: 1, medium: 2, high: 3 };
+      const topFact = [...activeFacts].sort(
+        (a, b) => (confidenceRank[b.confidence] ?? 0) - (confidenceRank[a.confidence] ?? 0),
+      )[0]!;
+      push({
+        id: "smart_uploads_fact",
+        certainty: topFact.confidence === "high" ? PlanTrustCertaintyLevels.OBSERVED : PlanTrustCertaintyLevels.LIKELY,
+        statement: topFact.fact,
+        source: "smart_uploads",
       });
     }
   }

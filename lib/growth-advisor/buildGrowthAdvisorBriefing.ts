@@ -37,6 +37,7 @@ import { buildNextWeekMonitoring } from "@/lib/growth-advisor/nextWeek";
 import { TrustCertaintyLevels } from "@/lib/growth-advisor/trust";
 import type { GuidedSetupExperience } from "@/lib/guided-setup/types";
 import { KnowledgeStates } from "@/lib/guided-setup/types";
+import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 
 function buildWhatChanged(briefing: HeadOfMarketingBriefing): GrowthAdvisorBriefing["whatChanged"] {
   const hasMeaningfulChange = briefing.thisWeek.length > 1;
@@ -257,6 +258,9 @@ export type BuildGrowthAdvisorBriefingOptions = {
   externalIntelligence?: ExternalIntelligence | null;
   /** Guided setup / first-wins — presentation only; never re-ranks. */
   guidedSetup?: GuidedSetupExperience | null;
+  /** Smart Upload knowledge — presentation only; never re-ranks. */
+  smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
+  smartUploadDocuments?: SmartUploadDocumentRecord[];
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -283,6 +287,8 @@ export function buildGrowthAdvisorBriefing(
     externalIntelligence: options?.externalIntelligence,
     goals,
     progressSignals,
+    smartUploadFacts: options?.smartUploadFacts,
+    smartUploadDocuments: options?.smartUploadDocuments,
   });
 
   const nextWeek = buildNextWeekMonitoring({

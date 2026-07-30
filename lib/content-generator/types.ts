@@ -67,6 +67,11 @@ export type ContentGenerationContext = {
    * Null when evidence is thin — generators must not invent customer praise.
    */
   customerVoicePromptBlock?: string | null;
+  /**
+   * Pre-formatted Smart Upload knowledge prompt block (grounded facts by
+   * category). Null when no uploaded-document knowledge exists yet.
+   */
+  smartUploadsPromptBlock?: string | null;
 };
 
 export interface ContentGenerator {
@@ -101,6 +106,8 @@ export type ContentGenerationBusinessIntel = {
   marketingGoals: string[];
   /** Optional Customer Voice block for authentic language — never fabricated. */
   customerVoicePromptBlock: string | null;
+  /** Optional Smart Upload knowledge block — grounded facts only, never fabricated. */
+  smartUploadsPromptBlock: string | null;
 };
 
 export type MarketingPlanItemType =
