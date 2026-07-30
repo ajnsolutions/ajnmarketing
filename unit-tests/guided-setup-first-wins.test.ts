@@ -55,6 +55,9 @@ const emptySignals = {
   hasWebsite: false,
   websiteAnalyzed: false,
   websiteAnalyzedAt: null,
+  searchConsoleConnected: false,
+  searchConsoleNeedsAttention: false,
+  searchConsoleLastSyncAt: null,
 };
 
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false", () => {

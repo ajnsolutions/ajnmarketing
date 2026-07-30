@@ -4,6 +4,7 @@ import { generateContentForUser } from "@/lib/content-generator/service";
 import type { ContentGenerationRequest } from "@/lib/content-generator/types";
 import { draftGoogleReviewReplyForUser } from "@/lib/google-business/service";
 import { runGoogleBusinessSyncForUser } from "@/lib/google-business/sync";
+import { runGoogleSearchConsoleSyncForUser } from "@/lib/google-search-console/sync";
 import { executePublishingJobById } from "@/lib/publishing/publishingEngine";
 import { runAnalyticsFeedbackLoopForUser } from "@/lib/analytics/analyticsEngine";
 import { evaluateOpportunitiesForUser } from "@/lib/marketing-opportunities/detectionEngine";
@@ -83,6 +84,29 @@ export async function executeBackgroundJob(job: BackgroundJob): Promise<Record<s
         syncStatus: result.syncLog?.sync_status ?? null,
         locationsSynced: result.syncLog?.locations_synced ?? 0,
         reviewsSynced: result.syncLog?.reviews_synced ?? 0,
+      };
+    }
+
+    case BackgroundJobTypes.GOOGLE_SEARCH_CONSOLE_SYNC: {
+      if (!job.business_profile_id) {
+        throw new Error("Business profile is required for Search Console sync.");
+      }
+
+      const result = await runGoogleSearchConsoleSyncForUser({
+        userId: job.user_id,
+        businessProfileId: job.business_profile_id,
+      });
+
+      if (!result.success && result.syncLog?.sync_status === "failed") {
+        throw new Error(result.error ?? "Search Console sync failed.");
+      }
+
+      return {
+        success: result.success,
+        syncLogId: result.syncLog?.id ?? null,
+        syncStatus: result.syncLog?.sync_status ?? null,
+        queriesSynced: result.syncLog?.queries_synced ?? 0,
+        pagesSynced: result.syncLog?.pages_synced ?? 0,
       };
     }
 

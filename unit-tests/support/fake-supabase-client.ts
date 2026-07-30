@@ -83,6 +83,10 @@ export function createFakeSupabaseClient(tableResponses: Record<string, FakeTabl
         calls.push({ table, op: "update", args });
         return builder;
       },
+      delete(...args: unknown[]) {
+        calls.push({ table, op: "delete", args });
+        return builder;
+      },
       maybeSingle: async () => {
         calls.push({ table, op: "maybeSingle", args: [] });
         return response(table, "maybeSingle");
