@@ -26,6 +26,9 @@ const emptySignals = {
   searchConsoleConnected: false,
   searchConsoleNeedsAttention: false,
   searchConsoleLastSyncAt: null,
+  smartUploadsConnected: false,
+  smartUploadsNeedsAttention: false,
+  smartUploadsLastSyncAt: null,
 };
 
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false", () => {
@@ -113,7 +116,8 @@ test("readiness exposes available vs unavailable intelligence sources", () => {
   // same as any other live-but-not-yet-connected capability.
   assert.equal(search.state, "unavailable");
   assert.equal(analytics.state, "coming_soon");
-  assert.equal(docs.state, "coming_soon");
+  // Smart Uploads is also live now (not a placeholder) — same reasoning as search above.
+  assert.equal(docs.state, "unavailable");
 
   const live = resolveBusinessConnections({
     ...emptySignals,
@@ -192,12 +196,26 @@ test("recommendation logic picks one highest-value live gap", () => {
   assert.ok(searchConsoleNext);
   assert.equal(searchConsoleNext!.connectionId, "conn_search_console");
 
+  // GBP + website + Search Console done but Smart Uploads (also live) still
+  // unconnected — it's next, since Documents is the last category with a live entry.
+  const smartUploadsNext = recommendNextConnection(
+    resolveBusinessConnections({
+      ...emptySignals,
+      gbpConnected: true,
+      websiteAnalyzed: true,
+      searchConsoleConnected: true,
+    }),
+  );
+  assert.ok(smartUploadsNext);
+  assert.equal(smartUploadsNext!.connectionId, "conn_smart_uploads");
+
   const allLive = recommendNextConnection(
     resolveBusinessConnections({
       ...emptySignals,
       gbpConnected: true,
       websiteAnalyzed: true,
       searchConsoleConnected: true,
+      smartUploadsConnected: true,
     }),
   );
   assert.equal(allLive, null);

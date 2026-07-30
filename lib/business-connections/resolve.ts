@@ -34,6 +34,11 @@ export type LiveConnectionSignals = {
   searchConsoleNeedsAttention: boolean;
   searchConsoleLastSyncAt: string | null;
   searchConsolePlatformUnavailable?: boolean;
+  /** At least one Smart Upload document has been successfully extracted. */
+  smartUploadsConnected: boolean;
+  /** At least one document exists but is still processing or failed. */
+  smartUploadsNeedsAttention: boolean;
+  smartUploadsLastSyncAt: string | null;
 };
 
 function actionsFor(
@@ -164,6 +169,36 @@ function resolveSearchConsole(
   });
 }
 
+function resolveSmartUploads(
+  entry: ConnectionCatalogEntry,
+  signals: LiveConnectionSignals,
+): BusinessConnection {
+  if (signals.smartUploadsConnected) {
+    return finalize(entry, {
+      status: ConnectionStatuses.CONNECTED,
+      health: ConnectionHealthLevels.HEALTHY,
+      lastSyncAt: signals.smartUploadsLastSyncAt,
+      availableCapabilities: entry.capabilities,
+    });
+  }
+
+  if (signals.smartUploadsNeedsAttention) {
+    return finalize(entry, {
+      status: ConnectionStatuses.NEEDS_ATTENTION,
+      health: ConnectionHealthLevels.ATTENTION,
+      lastSyncAt: signals.smartUploadsLastSyncAt,
+      availableCapabilities: [],
+    });
+  }
+
+  return finalize(entry, {
+    status: ConnectionStatuses.NOT_CONNECTED,
+    health: ConnectionHealthLevels.NOT_APPLICABLE,
+    lastSyncAt: null,
+    availableCapabilities: [],
+  });
+}
+
 function resolveWebsite(
   entry: ConnectionCatalogEntry,
   signals: LiveConnectionSignals,
@@ -236,6 +271,9 @@ export function resolveBusinessConnections(
     }
     if (entry.providerId === ConnectionProviderIds.GOOGLE_SEARCH_CONSOLE) {
       return resolveSearchConsole(entry, signals);
+    }
+    if (entry.providerId === ConnectionProviderIds.SMART_UPLOADS) {
+      return resolveSmartUploads(entry, signals);
     }
     return resolvePlaceholder(entry);
   });

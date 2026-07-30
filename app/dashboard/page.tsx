@@ -13,6 +13,9 @@ import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 import { getExternalIntelligence } from "@/lib/external-intelligence/service";
 import { getWeeklyGrowthPlanForCurrentUser } from "@/lib/growth-planner/service";
 import { getGuidedSetupExperienceForCurrentUser } from "@/lib/guided-setup/service";
+import { getActiveSmartUploadKnowledgeForUser } from "@/lib/smart-uploads/service";
+import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals, guidedSetup] = await Promise.all([
@@ -36,7 +39,7 @@ export default async function DashboardPage() {
       getBusinessProfileForUser().catch(() => null),
     ]);
 
-    const [customerVoice, externalIntelligence] = profile
+    const [customerVoice, externalIntelligence, smartUploadFacts, smartUploadDocuments] = profile
       ? await Promise.all([
           getCustomerVoiceIntelligence({
             userId: profile.user_id,
@@ -47,14 +50,22 @@ export default async function DashboardPage() {
             businessProfileId: profile.id,
             knownGoalKeys: goals.map((g) => g.key),
           }).catch(() => null),
+          createClient()
+            .then((supabase) => getActiveSmartUploadKnowledgeForUser(supabase, profile.user_id, profile.id))
+            .catch(() => []),
+          createClient()
+            .then((supabase) => listSmartUploadDocumentsForUser(supabase, profile.user_id))
+            .catch(() => []),
         ])
-      : [null, null];
+      : [null, null, [], []];
 
     const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, {
       goals,
       customerVoice,
       externalIntelligence,
       guidedSetup,
+      smartUploadFacts,
+      smartUploadDocuments,
     });
 
     const weeklyPlan = await getWeeklyGrowthPlanForCurrentUser({
@@ -63,6 +74,7 @@ export default async function DashboardPage() {
       goals,
       customerVoice,
       externalIntelligence,
+      smartUploadFacts,
     }).catch(() => null);
 
     return (

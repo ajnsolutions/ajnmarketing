@@ -93,7 +93,7 @@ export type PlanEvidenceItem = {
   /** Short customer-safe statement. */
   statement: string;
   /** Opaque Business Brain source key. */
-  source: "business_discovery" | "goals" | "customer_voice" | "external_intelligence" | "weekly_briefing";
+  source: "business_discovery" | "goals" | "customer_voice" | "external_intelligence" | "weekly_briefing" | "smart_uploads";
 };
 
 export type PlanSupportingAction = {

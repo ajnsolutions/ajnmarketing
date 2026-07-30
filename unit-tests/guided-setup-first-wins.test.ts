@@ -58,6 +58,9 @@ const emptySignals = {
   searchConsoleConnected: false,
   searchConsoleNeedsAttention: false,
   searchConsoleLastSyncAt: null,
+  smartUploadsConnected: false,
+  smartUploadsNeedsAttention: false,
+  smartUploadsLastSyncAt: null,
 };
 
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false", () => {

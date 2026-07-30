@@ -5,6 +5,7 @@ import type { ContentGenerationRequest } from "@/lib/content-generator/types";
 import { draftGoogleReviewReplyForUser } from "@/lib/google-business/service";
 import { runGoogleBusinessSyncForUser } from "@/lib/google-business/sync";
 import { runGoogleSearchConsoleSyncForUser } from "@/lib/google-search-console/sync";
+import { processSmartUploadDocumentForUser } from "@/lib/smart-uploads/service";
 import { executePublishingJobById } from "@/lib/publishing/publishingEngine";
 import { runAnalyticsFeedbackLoopForUser } from "@/lib/analytics/analyticsEngine";
 import { evaluateOpportunitiesForUser } from "@/lib/marketing-opportunities/detectionEngine";
@@ -107,6 +108,23 @@ export async function executeBackgroundJob(job: BackgroundJob): Promise<Record<s
         syncStatus: result.syncLog?.sync_status ?? null,
         queriesSynced: result.syncLog?.queries_synced ?? 0,
         pagesSynced: result.syncLog?.pages_synced ?? 0,
+      };
+    }
+
+    case BackgroundJobTypes.PROCESS_SMART_UPLOAD: {
+      const documentId = typeof job.payload.documentId === "string" ? job.payload.documentId : "";
+      if (!documentId) {
+        throw new Error("Document id is required.");
+      }
+
+      const result = await processSmartUploadDocumentForUser(job.user_id, documentId);
+      if (!result.success) {
+        throw new Error(result.error ?? "Document processing failed.");
+      }
+
+      return {
+        documentId,
+        factCount: result.factCount,
       };
     }
 

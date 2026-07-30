@@ -15,6 +15,8 @@ import {
   TrustCertaintyLevels,
   type TrustCertainty,
 } from "@/lib/growth-advisor/trust";
+import { findSearchDemandCrossovers, findWebsiteContentGaps } from "@/lib/smart-uploads/crossover";
+import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 
 export type GrowthAdvisorObservationV2 = {
   headline: string;
@@ -150,6 +152,55 @@ function externalIntelligenceObservation(
 }
 
 /**
+ * Smart Upload knowledge, cited standalone — e.g. "Your brochure highlights
+ * commercial roofing but your website has very little content targeting that
+ * service." Only fires when the fact's topic is genuinely underrepresented on
+ * the website — never invents a gap.
+ */
+function websiteContentGapObservation(
+  smartUploadFacts: SmartUploadKnowledgeFactRecord[] | undefined,
+  smartUploadDocuments: SmartUploadDocumentRecord[] | undefined,
+  businessDiscovery: BusinessDiscoveryResult | null | undefined,
+): GrowthAdvisorObservationV2 | null {
+  const websiteServices = businessDiscovery?.primaryServices?.value ?? [];
+  if (!smartUploadFacts?.length || websiteServices.length === 0) return null;
+
+  const documentFileNameById = new Map((smartUploadDocuments ?? []).map((doc) => [doc.id, doc.file_name]));
+  const [gap] = findWebsiteContentGaps(smartUploadFacts, documentFileNameById, websiteServices);
+  if (!gap) return null;
+
+  return {
+    headline: `${gap.documentFileName} highlights "${gap.fact.fact}" but your website has very little content targeting that.`,
+    whyItMatters: "Content that matches what you already tell customers directly helps the right people find you.",
+    certainty: TrustCertaintyLevels.OBSERVED,
+    evidenceSource: `smart_uploads:${gap.fact.category}`,
+  };
+}
+
+/**
+ * Cross-provider evidence: a Search Console demand signal and an uploaded
+ * document covering the same topic — e.g. "commercial roofing searches
+ * increasing" + "commercial roofing brochure." Cites both sources explicitly;
+ * never states a conclusion neither source actually supports.
+ */
+function searchDemandCrossoverObservation(
+  smartUploadFacts: SmartUploadKnowledgeFactRecord[] | undefined,
+  externalIntelligence: ExternalIntelligence | null | undefined,
+): GrowthAdvisorObservationV2 | null {
+  if (!smartUploadFacts?.length || !externalIntelligence?.searchDemandTrends.length) return null;
+
+  const [match] = findSearchDemandCrossovers(smartUploadFacts, externalIntelligence.searchDemandTrends);
+  if (!match) return null;
+
+  return {
+    headline: `${match.insight.insight} Your uploaded documents also mention: "${match.fact.fact}".`,
+    whyItMatters: "When search demand and your own materials point the same direction, it's a stronger signal than either alone.",
+    certainty: TrustCertaintyLevels.LIKELY,
+    evidenceSource: `crossover:external_intelligence+smart_uploads`,
+  };
+}
+
+/**
  * Build 3–5 observations from Business Brain sources.
  * Prefer real signals; never pad with fabricated insights.
  */
@@ -160,6 +211,8 @@ export function buildWhatINoticedObservations(input: {
   externalIntelligence?: ExternalIntelligence | null;
   goals?: BusinessGoal[];
   progressSignals?: GoalProgressSignals;
+  smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
+  smartUploadDocuments?: SmartUploadDocumentRecord[];
 }): GrowthAdvisorObservationV2[] {
   const goals = input.goals ?? [];
   const collected: GrowthAdvisorObservationV2[] = [];
@@ -173,6 +226,9 @@ export function buildWhatINoticedObservations(input: {
     collected.push(obs);
   };
 
+  // Crossover evidence is the strongest available signal (two independent
+  // sources agreeing) — prioritize it ahead of single-source observations.
+  push(searchDemandCrossoverObservation(input.smartUploadFacts, input.externalIntelligence));
   push(customerVoiceObservation(input.customerVoice));
 
   if (input.progressSignals) {
@@ -185,6 +241,7 @@ export function buildWhatINoticedObservations(input: {
   }
 
   push(externalIntelligenceObservation(input.externalIntelligence));
+  push(websiteContentGapObservation(input.smartUploadFacts, input.smartUploadDocuments, input.businessDiscovery));
   push(businessDiscoveryObservation(input.businessDiscovery));
 
   return collected.slice(0, 5);
