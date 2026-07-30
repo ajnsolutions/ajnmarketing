@@ -5,6 +5,7 @@ import type { CustomerVoiceHealthState } from "@/lib/customer-voice/health";
 import type { TrustCertainty } from "@/lib/growth-advisor/trust";
 import type { ExpectedBusinessOutcome } from "@/lib/growth-advisor/expectedImpact";
 import type { NextWeekMonitorItem } from "@/lib/growth-advisor/nextWeek";
+import type { BusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/knowledgeHealth";
 
 /**
  * Your Growth Advisor — the conversational shape of the authenticated home
@@ -26,6 +27,13 @@ export type GrowthAdvisorObservation = {
   certainty: TrustCertainty;
   /** Opaque evidence source key for explainability — never chain-of-thought. */
   evidenceSource: string;
+  /**
+   * Present only for a synthesized, multi-source Business Knowledge Graph
+   * conclusion — customer-safe evidence bullets citing each corroborating
+   * source (see lib/business-knowledge-graph/). Null/absent for a
+   * single-source observation.
+   */
+  supportingEvidence?: string[];
 };
 
 export type GrowthAdvisorRecommendation = {
@@ -101,6 +109,12 @@ export type GrowthAdvisorSupportingContext = {
   } | null;
   journalIntro: string;
   hasRecentActivity: boolean;
+  /**
+   * Business Knowledge Graph health (Part 7) — six-dimension score of how
+   * well the Business Brain understands this business and what's missing.
+   * Additive only; never affects the recommendation shown above.
+   */
+  knowledgeHealth: BusinessKnowledgeHealth | null;
 };
 
 export type GrowthAdvisorEmptyStateKind =

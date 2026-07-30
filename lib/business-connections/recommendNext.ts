@@ -5,6 +5,7 @@
 import {
   ConnectionCategories,
   ConnectionStatuses,
+  type BusinessBrainReadinessItem,
   type BusinessConnection,
   type NextConnectionRecommendation,
 } from "@/lib/business-connections/types";
@@ -29,11 +30,29 @@ function categoryRank(category: BusinessConnection["category"]): number {
 }
 
 /**
+ * Evidence-driven "why" — cites the actual missing capability behind this
+ * connection (from the already-computed readiness gaps), e.g. "we understand
+ * your business, but have no customer feedback yet." Never a generic pitch
+ * when a real gap is known.
+ */
+function evidenceDrivenWhy(
+  connection: BusinessConnection,
+  readiness: BusinessBrainReadinessItem[],
+): string | null {
+  const gap = readiness.find(
+    (item) => item.state === "unavailable" && item.relatedConnectionIds.includes(connection.id),
+  );
+  if (!gap) return null;
+  return `We understand your business, but have no ${gap.label.toLowerCase()} yet — connecting ${connection.displayName} would fill that gap.`;
+}
+
+/**
  * Pick exactly one highest-value next connection.
  * Prefers needs_attention (restore value) over new connects; never recommends coming_soon as primary.
  */
 export function recommendNextConnection(
   connections: BusinessConnection[],
+  readiness: BusinessBrainReadinessItem[] = [],
 ): NextConnectionRecommendation | null {
   const attention = connections
     .filter((c) => c.status === ConnectionStatuses.NEEDS_ATTENTION)
@@ -65,7 +84,9 @@ export function recommendNextConnection(
     return {
       connectionId: c.id,
       displayName: c.displayName,
-      why: "This is the highest-value next step for strengthening your Business Brain right now.",
+      why:
+        evidenceDrivenWhy(c, readiness) ??
+        "This is the highest-value next step for strengthening your Business Brain right now.",
       whatYouLearn: c.whatYouLearn,
       href: c.connectHref,
       category: c.category,
