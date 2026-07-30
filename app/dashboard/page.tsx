@@ -20,6 +20,7 @@ import { getBusinessReasoning, getBusinessKnowledgeHealth } from "@/lib/business
 import { reconcileAndGetBusinessLearningPatterns, findPatternForActionType } from "@/lib/business-learning-engine/service";
 import { computeLearningMaturity, summarizeOutcomeBreakdown } from "@/lib/business-learning-engine/learningMaturity";
 import { getActiveTestimonialKnowledgeForUser } from "@/lib/testimonials/persistence";
+import { reconcileAndGetOpportunities } from "@/lib/opportunity-engine/service";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals, guidedSetup] = await Promise.all([
@@ -82,15 +83,6 @@ export default async function DashboardPage() {
       testimonialFacts,
     });
 
-    const businessKnowledgeHealth = getBusinessKnowledgeHealth({
-      businessDiscovery,
-      goals,
-      customerVoice,
-      externalIntelligence,
-      smartUploadFacts,
-      testimonialFacts,
-    });
-
     // The Business Learning Engine reconciles/reinforces patterns from real
     // recommendation outcomes, Marketing Memory learnings, and this same
     // Business Knowledge Graph reasoning — on-demand, never a cron.
@@ -121,6 +113,39 @@ export default async function DashboardPage() {
         })
       : null;
 
+    // The Opportunity Detection Engine reasons across the same
+    // already-fetched Business Brain packages above — no second fetch, no
+    // new decision engine. Reconciled on-demand, same as the Learning Engine.
+    const opportunityReconciliation = profile
+      ? await createClient()
+          .then((supabase) =>
+            reconcileAndGetOpportunities(supabase, {
+              userId: profile.user_id,
+              businessProfileId: profile.id,
+              businessDiscovery,
+              customerVoice,
+              externalIntelligence,
+              smartUploadFacts,
+              smartUploadDocuments,
+              businessReasoning,
+              learningPatterns: reconciliation?.patterns ?? [],
+            }),
+          )
+          .catch(() => null)
+      : null;
+    const topOpportunity = opportunityReconciliation?.opportunities[0] ?? null;
+
+    const businessKnowledgeHealth = getBusinessKnowledgeHealth({
+      businessDiscovery,
+      goals,
+      customerVoice,
+      externalIntelligence,
+      smartUploadFacts,
+      testimonialFacts,
+      activeOpportunityCount: opportunityReconciliation?.opportunities.length ?? 0,
+      expiredOpportunityCount: opportunityReconciliation?.justExpired.length ?? 0,
+    });
+
     const advisor = buildGrowthAdvisorBriefing(briefing, businessDiscovery, {
       goals,
       customerVoice,
@@ -132,6 +157,7 @@ export default async function DashboardPage() {
       businessKnowledgeHealth,
       businessLearningPattern,
       learningMaturity,
+      topOpportunity,
     });
 
     const weeklyPlan = await getWeeklyGrowthPlanForCurrentUser({
@@ -143,6 +169,7 @@ export default async function DashboardPage() {
       smartUploadFacts,
       businessReasoning,
       businessLearningPattern,
+      topOpportunity,
     }).catch(() => null);
 
     return (

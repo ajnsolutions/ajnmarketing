@@ -87,6 +87,12 @@ export function GrowthAdvisorPage({
                   <span className="font-medium text-slate-600">Why it matters. </span>
                   {observation.whyItMatters}
                 </p>
+                {observation.expectedOutcome ? (
+                  <p className="mt-1 text-sm leading-6 text-text-muted">
+                    <span className="font-medium text-slate-600">Expected outcome. </span>
+                    {observation.expectedOutcome}
+                  </p>
+                ) : null}
                 {observation.supportingEvidence && observation.supportingEvidence.length > 0 ? (
                   <ul className="mt-2 space-y-1 pl-4 text-sm leading-6 text-text-muted marker:text-slate-400 list-disc">
                     {observation.supportingEvidence.map((evidence) => (

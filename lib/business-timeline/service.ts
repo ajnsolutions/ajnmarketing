@@ -13,6 +13,8 @@ import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence
 import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { BusinessPattern } from "@/lib/business-learning-engine/types";
+import { getActiveOpportunitiesForUser, getRetiredOpportunitiesForUser } from "@/lib/opportunity-engine/persistence";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 import { buildBusinessTimeline } from "@/lib/business-timeline/build";
 import type { BusinessTimelineEntry } from "@/lib/business-timeline/types";
 
@@ -31,14 +33,21 @@ export async function getBusinessTimeline(
     externalIntelligence?: ExternalIntelligence | null;
     customerVoice?: CustomerVoiceIntelligence | null;
     learningPatterns: BusinessPattern[];
+    /** Callers that already reconciled opportunities this request (e.g. the
+     * dashboard page) should pass both lists through rather than re-querying. */
+    activeOpportunities?: DetectedOpportunity[];
+    retiredOpportunities?: DetectedOpportunity[];
   },
 ): Promise<BusinessTimelineEntry[]> {
-  const [outcomeEvents, recommendations, campaigns, smartUploadDocuments] = await Promise.all([
-    getOutcomeEventsForBusiness(supabase, input.userId, input.businessProfileId),
-    getRecommendationsForBusiness(supabase, input.userId, input.businessProfileId),
-    listMarketingCampaignsForBusiness(supabase, input.userId, input.businessProfileId),
-    listSmartUploadDocumentsForUser(supabase, input.userId),
-  ]);
+  const [outcomeEvents, recommendations, campaigns, smartUploadDocuments, activeOpportunities, retiredOpportunities] =
+    await Promise.all([
+      getOutcomeEventsForBusiness(supabase, input.userId, input.businessProfileId),
+      getRecommendationsForBusiness(supabase, input.userId, input.businessProfileId),
+      listMarketingCampaignsForBusiness(supabase, input.userId, input.businessProfileId),
+      listSmartUploadDocumentsForUser(supabase, input.userId),
+      input.activeOpportunities ?? getActiveOpportunitiesForUser(supabase, input.userId, input.businessProfileId),
+      input.retiredOpportunities ?? getRetiredOpportunitiesForUser(supabase, input.userId, input.businessProfileId),
+    ]);
 
   const actionTypeById = new Map(
     recommendations.map((rec) => [String(rec.id), String(rec.recommended_action_type)]),
@@ -57,6 +66,7 @@ export async function getBusinessTimeline(
     externalIntelligence: input.externalIntelligence,
     customerVoice: input.customerVoice,
     learningPatterns: input.learningPatterns,
+    opportunities: [...activeOpportunities, ...retiredOpportunities],
   });
 }
 

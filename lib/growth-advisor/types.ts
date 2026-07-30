@@ -35,6 +35,9 @@ export type GrowthAdvisorObservation = {
    * single-source observation.
    */
   supportingEvidence?: string[];
+  /** Present only for an Opportunity Detection Engine observation — what
+   * acting on it is expected to achieve. */
+  expectedOutcome?: string;
 };
 
 export type GrowthAdvisorRecommendation = {

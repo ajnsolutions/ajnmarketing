@@ -16,6 +16,8 @@ import type { SmartUploadDocumentRecord } from "@/lib/smart-uploads/types";
 import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { BusinessPattern } from "@/lib/business-learning-engine/types";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
+import { OPPORTUNITY_TYPE_LABELS } from "@/lib/opportunity-engine/types";
 import { BusinessTimelineEntryTypes, type BusinessTimelineEntry } from "@/lib/business-timeline/types";
 
 const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
@@ -126,6 +128,61 @@ function learningMilestoneEntries(patterns: BusinessPattern[]): BusinessTimeline
   }));
 }
 
+/**
+ * Opportunity Detection Engine milestones (Part 7) — detected, completed,
+ * expired, and (for a completed opportunity whose completion was itself
+ * defined by real Learning Engine reinforcement — see reconcile.ts's
+ * hasCompletedViaLearning) learned-from. Every entry's timestamp is the
+ * opportunity's own real lifecycle timestamp, never "now."
+ */
+function opportunityEntries(opportunities: DetectedOpportunity[]): BusinessTimelineEntry[] {
+  const entries: BusinessTimelineEntry[] = [];
+
+  for (const opportunity of opportunities) {
+    const label = OPPORTUNITY_TYPE_LABELS[opportunity.type];
+
+    entries.push({
+      id: `opportunity_detected_${opportunity.id}`,
+      type: BusinessTimelineEntryTypes.OPPORTUNITY_DETECTED,
+      occurredAt: opportunity.firstDetectedAt,
+      whatChanged: `We detected a ${label.toLowerCase()}: ${opportunity.statement}`,
+      whatDidAILearn: null,
+    });
+
+    if (opportunity.status === "completed" && opportunity.retiredAt) {
+      entries.push({
+        id: `opportunity_completed_${opportunity.id}`,
+        type: BusinessTimelineEntryTypes.OPPORTUNITY_COMPLETED,
+        occurredAt: opportunity.retiredAt,
+        whatChanged: `A ${label.toLowerCase()} was completed: ${opportunity.statement}`,
+        whatDidAILearn: null,
+      });
+
+      if (opportunity.relatedActionType) {
+        entries.push({
+          id: `opportunity_learned_${opportunity.id}`,
+          type: BusinessTimelineEntryTypes.OPPORTUNITY_LEARNED_FROM,
+          occurredAt: opportunity.retiredAt,
+          whatChanged: `We learned from acting on this ${label.toLowerCase()}.`,
+          whatDidAILearn: "The Business Learning Engine observed real, reinforced success for this kind of action.",
+        });
+      }
+    }
+
+    if (opportunity.status === "expired" && opportunity.retiredAt) {
+      entries.push({
+        id: `opportunity_expired_${opportunity.id}`,
+        type: BusinessTimelineEntryTypes.OPPORTUNITY_EXPIRED,
+        occurredAt: opportunity.retiredAt,
+        whatChanged: `A ${label.toLowerCase()} is no longer active: ${opportunity.statement}`,
+        whatDidAILearn: null,
+      });
+    }
+  }
+
+  return entries;
+}
+
 const MAX_ENTRIES = 25;
 
 export function buildBusinessTimeline(input: {
@@ -135,6 +192,7 @@ export function buildBusinessTimeline(input: {
   externalIntelligence?: ExternalIntelligence | null;
   customerVoice?: CustomerVoiceIntelligence | null;
   learningPatterns: BusinessPattern[];
+  opportunities?: DetectedOpportunity[];
 }): BusinessTimelineEntry[] {
   const entries = [
     ...recommendationEntries(input.recommendationOutcomeEvents),
@@ -143,6 +201,7 @@ export function buildBusinessTimeline(input: {
     ...searchMilestoneEntries(input.externalIntelligence),
     ...customerVoiceMilestoneEntries(input.customerVoice),
     ...learningMilestoneEntries(input.learningPatterns),
+    ...opportunityEntries(input.opportunities ?? []),
   ];
 
   return entries.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, MAX_ENTRIES);
