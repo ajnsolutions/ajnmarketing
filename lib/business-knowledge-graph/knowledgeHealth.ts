@@ -1,10 +1,12 @@
 /**
- * Business Knowledge Health — six additive dimensions describing how well the
- * Business Brain understands this business, computed purely from the graph
- * and reasoning outputs already built this request (Part 7). This is a new,
- * additive signal — it does not replace or touch the three existing,
- * independent "Marketing Health" implementations (command-center score,
- * Head of Marketing state, Customer Voice health); those are unchanged.
+ * Business Knowledge Health — seven additive dimensions describing how well
+ * the Business Brain understands this business, computed purely from the
+ * graph and reasoning outputs already built this request (Part 7 of the
+ * Business Knowledge Graph sprint; `customerUnderstanding` added by the
+ * Website Testimonials sprint). This is a new, additive signal — it does
+ * not replace or touch the three existing, independent "Marketing Health"
+ * implementations (command-center score, Head of Marketing state, Customer
+ * Voice health); those are unchanged.
  *
  * Never a second decision engine: nothing here re-ranks or recommends —
  * it only describes evidence coverage and confidence for display.
@@ -45,6 +47,7 @@ export type BusinessKnowledgeHealth = {
     recommendationConfidence: KnowledgeHealthDimension;
     dataCompleteness: KnowledgeHealthDimension;
     crossSourceAlignment: KnowledgeHealthDimension;
+    customerUnderstanding: KnowledgeHealthDimension;
   };
   /** What's missing, in priority order — feeds Business Connections. */
   missingKnowledge: KnowledgeHealthGap[];
@@ -60,6 +63,10 @@ export type KnowledgeSourcePresence = {
   customerVoice: boolean;
   externalIntelligence: boolean;
   smartUploads: boolean;
+  /** Website Testimonials specifically — a second, distinct Customer Voice
+   * provider alongside Google Reviews (see customerVoice above, which is
+   * true whenever *any* Customer Voice provider contributed). */
+  testimonials: boolean;
 };
 
 function levelFromScore(score: number): KnowledgeHealthLevel {
@@ -156,6 +163,35 @@ function crossSourceAlignment(reasoning: BusinessReasoningResult): KnowledgeHeal
   return dimension(score, detail);
 }
 
+/**
+ * Customer Understanding — rewards both real evidence volume and, distinctly,
+ * corroboration from more than one Customer Voice provider (Google Reviews
+ * and Website Testimonials reinforcing each other). Never fabricates: a
+ * business with zero customer evidence scores 0, plainly explained.
+ */
+function customerUnderstanding(input: {
+  customerVoiceProviderCount: number;
+  customerVoiceEvidenceCount: number;
+}): KnowledgeHealthDimension {
+  if (input.customerVoiceEvidenceCount === 0) {
+    return dimension(
+      0,
+      "We don't have any customer evidence yet — reviews or testimonials would help us understand your customers.",
+    );
+  }
+
+  const providerScore = Math.min(input.customerVoiceProviderCount, 2) * 50;
+  const volumeScore = Math.min(input.customerVoiceEvidenceCount / 10, 1) * 100;
+  const score = providerScore * 0.5 + volumeScore * 0.5;
+
+  const detail =
+    input.customerVoiceProviderCount >= 2
+      ? `Customer understanding is corroborated by ${input.customerVoiceProviderCount} distinct evidence sources (e.g. reviews and testimonials reinforcing each other).`
+      : "Customer understanding currently comes from a single evidence source — adding testimonials would give it a second, corroborating perspective.";
+
+  return dimension(score, detail);
+}
+
 function buildMissingKnowledge(
   presence: KnowledgeSourcePresence,
   reasoning: BusinessReasoningResult,
@@ -166,6 +202,11 @@ function buildMissingKnowledge(
     gaps.push({
       label: "Customer sentiment",
       detail: "We understand your business, but have no customer sentiment yet.",
+    });
+  } else if (!presence.testimonials) {
+    gaps.push({
+      label: "Website testimonials",
+      detail: "We understand your business, but have no website testimonials yet — they'd add a second perspective alongside reviews.",
     });
   }
   if (!presence.externalIntelligence) {
@@ -203,6 +244,12 @@ export function computeBusinessKnowledgeHealth(input: {
   graph: BusinessKnowledgeGraph;
   reasoning: BusinessReasoningResult;
   sourcePresence: KnowledgeSourcePresence;
+  /** Distinct Customer Voice providers that contributed evidence this run
+   * (e.g. Google Reviews + Website Testimonials = 2) and total evidence
+   * count — primitives only, never the raw CustomerVoiceIntelligence
+   * package, to keep this module decoupled from Customer Voice's shape. */
+  customerVoiceProviderCount?: number;
+  customerVoiceEvidenceCount?: number;
   now?: Date;
 }): BusinessKnowledgeHealth {
   const now = input.now ?? new Date();
@@ -213,6 +260,10 @@ export function computeBusinessKnowledgeHealth(input: {
     recommendationConfidence: recommendationConfidence(input.reasoning),
     dataCompleteness: dataCompleteness(input.sourcePresence),
     crossSourceAlignment: crossSourceAlignment(input.reasoning),
+    customerUnderstanding: customerUnderstanding({
+      customerVoiceProviderCount: input.customerVoiceProviderCount ?? 0,
+      customerVoiceEvidenceCount: input.customerVoiceEvidenceCount ?? 0,
+    }),
   };
 
   const overallScore = Math.round(

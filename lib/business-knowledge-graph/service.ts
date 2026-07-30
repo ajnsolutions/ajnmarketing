@@ -18,11 +18,13 @@ import type { BusinessGoal } from "@/lib/goals/types";
 import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
+import type { TestimonialKnowledgeFactRecord } from "@/lib/testimonials/types";
 import { businessDiscoveryToGraphSignals } from "@/lib/business-knowledge-graph/adapters/businessDiscovery";
 import { goalsToGraphSignals } from "@/lib/business-knowledge-graph/adapters/goals";
 import { customerVoiceToGraphSignals } from "@/lib/business-knowledge-graph/adapters/customerVoice";
 import { externalIntelligenceToGraphSignals } from "@/lib/business-knowledge-graph/adapters/externalIntelligence";
 import { smartUploadsToGraphSignals } from "@/lib/business-knowledge-graph/adapters/smartUploads";
+import { testimonialKnowledgeToGraphSignals } from "@/lib/business-knowledge-graph/adapters/testimonials";
 import { buildBusinessKnowledgeGraph } from "@/lib/business-knowledge-graph/build";
 import { reasonAboutBusinessGraph, type BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import {
@@ -38,6 +40,7 @@ export type BusinessGraphInput = {
   customerVoice?: CustomerVoiceIntelligence | null;
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[] | null;
+  testimonialFacts?: TestimonialKnowledgeFactRecord[] | null;
   now?: Date;
 };
 
@@ -48,6 +51,7 @@ export function gatherGraphSignals(input: BusinessGraphInput): GraphSignalInput[
     ...customerVoiceToGraphSignals(input.customerVoice),
     ...externalIntelligenceToGraphSignals(input.externalIntelligence),
     ...smartUploadsToGraphSignals(input.smartUploadFacts),
+    ...testimonialKnowledgeToGraphSignals(input.testimonialFacts),
   ];
 }
 
@@ -77,6 +81,7 @@ function sourcePresenceFromInput(input: BusinessGraphInput): KnowledgeSourcePres
       input.externalIntelligence && input.externalIntelligence.emptyState !== "no_evidence",
     ),
     smartUploads: Boolean(input.smartUploadFacts?.length),
+    testimonials: Boolean(input.testimonialFacts?.length),
   };
 }
 
@@ -92,6 +97,8 @@ export function getBusinessKnowledgeHealth(input: BusinessGraphInput): BusinessK
     graph,
     reasoning,
     sourcePresence: sourcePresenceFromInput(input),
+    customerVoiceProviderCount: input.customerVoice?.contributingProviders.length ?? 0,
+    customerVoiceEvidenceCount: input.customerVoice?.evidenceCount ?? 0,
     now,
   });
 }

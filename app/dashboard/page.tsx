@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getBusinessReasoning, getBusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/service";
 import { reconcileAndGetBusinessLearningPatterns, findPatternForActionType } from "@/lib/business-learning-engine/service";
 import { computeLearningMaturity, summarizeOutcomeBreakdown } from "@/lib/business-learning-engine/learningMaturity";
+import { getActiveTestimonialKnowledgeForUser } from "@/lib/testimonials/persistence";
 
 export default async function DashboardPage() {
   const [briefing, firstDays, setup, goals, guidedSetup] = await Promise.all([
@@ -42,11 +43,16 @@ export default async function DashboardPage() {
       getBusinessProfileForUser().catch(() => null),
     ]);
 
-    const [customerVoice, externalIntelligence, smartUploadFacts, smartUploadDocuments] = profile
+    const [customerVoice, externalIntelligence, smartUploadFacts, smartUploadDocuments, testimonialFacts] = profile
       ? await Promise.all([
           getCustomerVoiceIntelligence({
             userId: profile.user_id,
             businessProfileId: profile.id,
+            // Lets theme extraction recognize a mentioned service by name (e.g.
+            // "commercial roofing"), which is what lets Customer Voice evidence
+            // reinforce the *same* Business Knowledge Graph entity another
+            // provider already supports, rather than only a generic theme.
+            knownServices: businessDiscovery?.primaryServices?.value ?? undefined,
           }).catch(() => null),
           getExternalIntelligence({
             userId: profile.user_id,
@@ -59,8 +65,11 @@ export default async function DashboardPage() {
           createClient()
             .then((supabase) => listSmartUploadDocumentsForUser(supabase, profile.user_id))
             .catch(() => []),
+          createClient()
+            .then((supabase) => getActiveTestimonialKnowledgeForUser(supabase, profile.user_id, profile.id))
+            .catch(() => []),
         ])
-      : [null, null, [], []];
+      : [null, null, [], [], []];
 
     // The Business Knowledge Graph reasons across the same already-fetched
     // Business Brain packages above — no second fetch, no new data store.
@@ -70,6 +79,7 @@ export default async function DashboardPage() {
       customerVoice,
       externalIntelligence,
       smartUploadFacts,
+      testimonialFacts,
     });
 
     const businessKnowledgeHealth = getBusinessKnowledgeHealth({
@@ -78,6 +88,7 @@ export default async function DashboardPage() {
       customerVoice,
       externalIntelligence,
       smartUploadFacts,
+      testimonialFacts,
     });
 
     // The Business Learning Engine reconciles/reinforces patterns from real

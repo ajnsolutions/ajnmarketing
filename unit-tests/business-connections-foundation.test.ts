@@ -29,6 +29,8 @@ const emptySignals = {
   smartUploadsConnected: false,
   smartUploadsNeedsAttention: false,
   smartUploadsLastSyncAt: null,
+  testimonialsConnected: false,
+  testimonialsLastSyncAt: null,
 };
 
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false", () => {
@@ -174,6 +176,9 @@ test("recommendation logic picks one highest-value live gap", () => {
   assert.ok(none);
   assert.equal(none!.connectionId, "conn_google_business_profile");
 
+  // GBP done but Testimonials (also Customer Feedback, also live) still
+  // unconnected — it outranks Website Analysis since Customer Feedback is
+  // the highest-value category.
   const gbpDone = recommendNextConnection(
     resolveBusinessConnections({
       ...emptySignals,
@@ -182,26 +187,41 @@ test("recommendation logic picks one highest-value live gap", () => {
     }),
   );
   assert.ok(gbpDone);
-  assert.equal(gbpDone!.connectionId, "conn_website_analysis");
+  assert.equal(gbpDone!.connectionId, "conn_website_testimonials");
 
-  // GBP + website done but Search Console (also live now) still unconnected —
-  // it's the next highest-value live gap, not "nothing left to recommend".
+  const testimonialsDone = recommendNextConnection(
+    resolveBusinessConnections({
+      ...emptySignals,
+      gbpConnected: true,
+      hasWebsite: true,
+      testimonialsConnected: true,
+    }),
+  );
+  assert.ok(testimonialsDone);
+  assert.equal(testimonialsDone!.connectionId, "conn_website_analysis");
+
+  // GBP + Testimonials + website done but Search Console (also live now)
+  // still unconnected — it's the next highest-value live gap, not "nothing
+  // left to recommend".
   const searchConsoleNext = recommendNextConnection(
     resolveBusinessConnections({
       ...emptySignals,
       gbpConnected: true,
+      testimonialsConnected: true,
       websiteAnalyzed: true,
     }),
   );
   assert.ok(searchConsoleNext);
   assert.equal(searchConsoleNext!.connectionId, "conn_search_console");
 
-  // GBP + website + Search Console done but Smart Uploads (also live) still
-  // unconnected — it's next, since Documents is the last category with a live entry.
+  // GBP + Testimonials + website + Search Console done but Smart Uploads
+  // (also live) still unconnected — it's next, since Documents is the last
+  // category with a live entry.
   const smartUploadsNext = recommendNextConnection(
     resolveBusinessConnections({
       ...emptySignals,
       gbpConnected: true,
+      testimonialsConnected: true,
       websiteAnalyzed: true,
       searchConsoleConnected: true,
     }),
@@ -213,6 +233,7 @@ test("recommendation logic picks one highest-value live gap", () => {
     resolveBusinessConnections({
       ...emptySignals,
       gbpConnected: true,
+      testimonialsConnected: true,
       websiteAnalyzed: true,
       searchConsoleConnected: true,
       smartUploadsConnected: true,

@@ -208,6 +208,48 @@ function searchDemandCrossoverObservation(
 }
 
 /**
+ * Testimonial evidence vs. website emphasis — e.g. "Customers consistently
+ * mention your rapid response time, but your website rarely emphasizes it."
+ * Only fires once Website Testimonials has actually contributed evidence
+ * (testimonials strengthening Customer Voice, Part 6), and only when the
+ * theme is genuinely well-corroborated (2+ evidence, not low confidence)
+ * and genuinely absent from the website's own primaryServices/uniqueStrengths
+ * — never invents a gap.
+ */
+function testimonialWebsiteGapObservation(
+  customerVoice: CustomerVoiceIntelligence | null | undefined,
+  businessDiscovery: BusinessDiscoveryResult | null | undefined,
+): GrowthAdvisorObservationV2 | null {
+  if (!customerVoice || customerVoice.emptyState === "no_evidence") return null;
+  if (!customerVoice.contributingProviders.includes("website_testimonials")) return null;
+
+  const websiteText = [
+    ...(businessDiscovery?.primaryServices?.value ?? []),
+    ...(businessDiscovery?.uniqueStrengths?.value ?? []),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const candidates = [...customerVoice.strengths, ...customerVoice.frequentlyMentionedServices].filter(
+    (theme) => theme.evidenceCount >= 2 && theme.confidence !== "low",
+  );
+
+  const gap = candidates.find((theme) => {
+    const words = theme.label.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    return words.length > 0 && !words.some((w) => websiteText.includes(w));
+  });
+  if (!gap) return null;
+
+  return {
+    headline: `Customers consistently mention "${gap.label}," but your website rarely emphasizes it.`,
+    whyItMatters:
+      "Matching what customers already say they value helps the right people recognize themselves in your marketing.",
+    certainty: gap.confidence === "high" ? TrustCertaintyLevels.OBSERVED : TrustCertaintyLevels.LIKELY,
+    evidenceSource: `customer_voice:${gap.key}`,
+  };
+}
+
+/**
  * The Business Knowledge Graph's top fused conclusion, synthesized into one
  * observation citing every corroborating source — e.g. "We believe
  * commercial roofing represents your best near-term growth opportunity
@@ -267,6 +309,7 @@ export function buildWhatINoticedObservations(input: {
   // Crossover evidence is the next-strongest signal (two independent
   // sources agreeing) — prioritize it ahead of single-source observations.
   push(searchDemandCrossoverObservation(input.smartUploadFacts, input.externalIntelligence));
+  push(testimonialWebsiteGapObservation(input.customerVoice, input.businessDiscovery));
   push(customerVoiceObservation(input.customerVoice));
 
   if (input.progressSignals) {

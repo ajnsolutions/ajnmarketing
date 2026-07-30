@@ -380,6 +380,8 @@ const emptyConnectionSignals = {
   smartUploadsConnected: false,
   smartUploadsNeedsAttention: false,
   smartUploadsLastSyncAt: null,
+  testimonialsConnected: false,
+  testimonialsLastSyncAt: null,
 };
 
 test("resolveBusinessConnections maps Smart Uploads connected/attention/not-connected distinctly", () => {

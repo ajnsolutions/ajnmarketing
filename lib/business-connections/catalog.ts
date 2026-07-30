@@ -33,6 +33,23 @@ export const CONNECTION_CATALOG: readonly ConnectionCatalogEntry[] = [
     connectHref: "/dashboard/google-business-profile/connect",
     manageHref: "/dashboard/google-business-profile",
   },
+  {
+    id: "conn_website_testimonials",
+    category: ConnectionCategories.CUSTOMER_FEEDBACK,
+    providerId: ConnectionProviderIds.WEBSITE_TESTIMONIALS,
+    displayName: "Website testimonials",
+    whatYouLearn:
+      "What customers say in their own words on your website — reinforcing and adding to what reviews already tell us.",
+    capabilities: [ConnectionCapabilities.REVIEWS],
+    businessBrainContribution: {
+      summary: "A second Customer Voice source that corroborates or adds new customer evidence.",
+      intelligenceSources: ["customer_voice", "business_knowledge_graph"],
+    },
+    priority: 2,
+    implementation: "live",
+    connectHref: "/dashboard/testimonials",
+    manageHref: "/dashboard/testimonials",
+  },
 
   // —— Website & Search ——
   {

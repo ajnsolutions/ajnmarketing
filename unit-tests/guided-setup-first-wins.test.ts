@@ -61,6 +61,8 @@ const emptySignals = {
   smartUploadsConnected: false,
   smartUploadsNeedsAttention: false,
   smartUploadsLastSyncAt: null,
+  testimonialsConnected: false,
+  testimonialsLastSyncAt: null,
 };
 
 test("ATTACH_DECLARATIVE_PRODUCTION_CRONS remains false", () => {
