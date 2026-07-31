@@ -79,6 +79,12 @@ export function AdminOpsDashboard({
           >
             Open Pilot Validation →
           </Link>
+          <Link
+            href="/dashboard/admin/executive-overview"
+            className="hom-focusable inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Open Executive Overview →
+          </Link>
         </p>
       </div>
 
