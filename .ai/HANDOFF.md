@@ -31,7 +31,7 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## PR
 
-Opened against `main` from this branch — see this repository's PR list for the number/URL (`gh pr list --head build-ai-project-memory-and-queue`). Not merged. Not deployed.
+[#97](https://github.com/ajnsolutions/ajnmarketing/pull/97) — `build-ai-project-memory-and-queue` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
