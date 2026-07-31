@@ -186,6 +186,7 @@ export function GrowthAdvisorSupportingContext({
               { href: "/dashboard/decision-intelligence", label: "Why the plan changed" },
               { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
+              { href: "/dashboard/executive-review", label: "Executive Review" },
               { href: "/dashboard/business-brain", label: "Business Brain" },
               { href: "/dashboard/customer-voice", label: "Customer Voice" },
               { href: "/dashboard/testimonials", label: "Website Testimonials" },
