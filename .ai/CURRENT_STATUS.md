@@ -21,7 +21,7 @@ The 1.0 roadmap (`docs/IMPLEMENTATION_ROADMAP.md`, Phases A–H) runs in paralle
 - Head of Marketing Orchestrator — the newest merge (PR #96): a daily Executive Review composing Weekly Growth Plan + Executive Brief + Opportunity Engine into one view, at `/dashboard/executive-review` (customer) and `/dashboard/admin/executive-overview` (admin).
 - Publishing pipeline with atomic job claiming (background_jobs table + Trigger.dev, two systems not yet merged — see `DECISIONS.md`).
 
-**Current active initiative:** None on the product/intelligence track — main is caught up through PR #96 with no open PR or unmerged product branch. See `recommended_next_task` below and `OPEN_ITEMS.md` for what a human should prioritize next.
+**Current active initiative:** `.ai/queue/RUN_QUEUE.yaml` now holds its first two REAL, `status: pending` tasks (prepared on branch `prepare-first-real-ai-queue`, not yet run): "Market Radar: owner-managed competitor & benchmark persistence foundation" (001) and "Market Radar: owner-facing tracked competitors & benchmarks view" (002, depends on 001). These replace the two documentation-only example tasks PR #97 shipped. Selected from `ROADMAP.md`'s "Next" section (Wave III remaining scope), `docs/project-magic/EXISTING_SYSTEM_AUDIT.md`'s Market Radar row, and `docs/project-magic/MARKET_RADAR.md`'s "Owner control" section — not invented. Neither task has actually run yet; per `docs/AI_OVERNIGHT_QUEUE.md`, an attended daytime dry run is required before trusting this for an unattended overnight run (the Claude CLI adapter's live success path is still unverified — see `OPEN_ITEMS.md`). Otherwise, main is caught up through PR #96 with no open product-track PR or unmerged product branch. See `recommended_next_task` below and `OPEN_ITEMS.md` for what a human should prioritize next on the product/intelligence track.
 
 **Known safety gates (must not be silently changed by any agent):**
 - `ATTACH_DECLARATIVE_PRODUCTION_CRONS` — the Trigger.dev production-schedule activation gate. **Must remain `false`.** Canonical source: `lib/trigger/scheduleActivation.ts`. Referenced/enforced across ~10+ tests, most `docs/` files, and this repo's own `RUNBOOKS.md` (which treats an accidentally-`true` gate as a severe production-safety incident).
@@ -33,4 +33,4 @@ The 1.0 roadmap (`docs/IMPLEMENTATION_ROADMAP.md`, Phases A–H) runs in paralle
 
 **Date last verified:** 2026-07-31
 
-**Branch/commit used for verification:** `build-ai-project-memory-and-queue`, based on `origin/main` at `16795b6` (merge of PR #96).
+**Branch/commit used for verification:** `prepare-first-real-ai-queue`, based on `origin/main` at `9e72ff2` (merge of PR #97).

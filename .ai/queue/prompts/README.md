@@ -17,6 +17,8 @@ A prompt file is a plan a human already reviewed and approved by adding it to `R
 
 Prompt files are numbered to match their task `id` in `RUN_QUEUE.yaml` (`001-*.md` ↔ task id `"001"`), purely for human readability while browsing the directory. The queue itself resolves prompts by the `prompt:` path in `RUN_QUEUE.yaml`, not by filename pattern.
 
-## The two example files in this directory
+## Current tasks in this directory
 
-`001-example-safe-task.md` and `002-example-dependent-task.md` are documentation-only examples showing a safe task and a dependent task. They are marked `status: disabled` in `RUN_QUEUE.yaml` and will never run until a human changes that status — see that file's own header comment before doing so.
+`001-market-radar-foundation.md` and `002-market-radar-view.md` are the first real, `status: pending` queue tasks (prepared on branch `prepare-first-real-ai-queue`) — see `RUN_QUEUE.yaml`'s header comment for how they were selected and `.ai/HANDOFF.md` for current status. `002` depends on `001` (`depends_on: ["001"]`, `branch_strategy: stacked`) since it builds its UI directly against the persistence layer `001` adds.
+
+The documentation-only example files that previously lived here (`001-example-safe-task.md`, `002-example-dependent-task.md` — a safe task and a dependent task, shown purely to illustrate the shape of a good prompt) were removed when they were replaced by the real tasks above. Their shape is preserved in Git history (`git log -- .ai/queue/prompts/`) if a future reference example is ever needed again.

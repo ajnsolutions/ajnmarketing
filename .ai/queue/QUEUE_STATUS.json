@@ -1,6 +1,6 @@
 {
   "queue_name": "ajnmarketing-overnight-queue",
-  "generated_at": "2026-07-31T13:46:51.718Z",
+  "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
   "current_task": null,
   "last_run_id": null,
@@ -8,8 +8,8 @@
   "tasks": [
     {
       "id": "001",
-      "name": "Example: add a Terminology section (safe, documentation-only)",
-      "status": "disabled",
+      "name": "Market Radar: owner-managed competitor & benchmark persistence foundation",
+      "status": "pending",
       "branch": null,
       "commit": null,
       "pr": null,
@@ -20,8 +20,8 @@
     },
     {
       "id": "002",
-      "name": "Example: cross-reference task 001's new section (depends on 001)",
-      "status": "disabled",
+      "name": "Market Radar: owner-facing tracked competitors & benchmarks view",
+      "status": "pending",
       "branch": null,
       "commit": null,
       "pr": null,
