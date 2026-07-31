@@ -1,0 +1,73 @@
+# .ai/queue/RUN_QUEUE.yaml
+#
+# The overnight/unattended task queue for this repository. Read
+# docs/AI_OVERNIGHT_QUEUE.md before editing this file or running it.
+#
+# Every task below is executed by scripts/ai/run-queue.ts (npm run ai:queue),
+# strictly in dependency order, one at a time. The queue NEVER merges,
+# deploys, applies a production migration, changes a secret, or activates a
+# production schedule — scripts/ai/validate-queue.ts refuses to run this
+# file at all if any task or the safety block below asks for one of those.
+#
+# The two tasks in this file are documentation-only EXAMPLES. They are
+# status: disabled and will not run until a human deliberately changes that
+# status to "pending" — see prompts/README.md.
+
+queue:
+  name: "ajnmarketing-overnight-queue"
+  project: "ajnmarketing"
+  # sequential is the only supported mode in this first version — tasks run
+  # one at a time, in dependency order, never in parallel.
+  execution_mode: sequential
+  # If a task fails, is ambiguous, or fails validation, the whole queue run
+  # stops. This must stay true for any unattended/overnight run.
+  stop_on_failure: true
+  # independent: every task branches from base_branch, regardless of
+  #   dependencies. Use this when tasks touch disjoint files and should each
+  #   be independently reviewable/mergeable in any order.
+  # stacked: a task with depends_on branches from its dependency's branch tip
+  #   instead of base_branch, so its changes are actually present to build
+  #   on. Use this when a later task genuinely needs an earlier task's files
+  #   (exactly the case for the two example tasks below).
+  branch_strategy: stacked
+  # The branch every task ultimately branches from (directly, or transitively
+  # via branch_strategy: stacked). run-queue.ts refuses to start unless the
+  # local repo is currently an up-to-date, clean checkout of this branch.
+  base_branch: main
+  default_agent: claude
+
+safety:
+  allow_merge: false
+  allow_deploy: false
+  allow_production_migrations: false
+  allow_secret_changes: false
+  allow_production_schedule_activation: false
+
+tasks:
+  - id: "001"
+    name: "Example: add a Terminology section (safe, documentation-only)"
+    prompt: "prompts/001-example-safe-task.md"
+    branch: "ai-queue/001-example-safe-task"
+    agent: claude
+    depends_on: []
+    requires_migration: false
+    requires_deployment: false
+    requires_secret_change: false
+    activates_production_schedule: false
+    stop_if_ambiguous: true
+    # disabled: never selected by run-queue.ts, regardless of dependency
+    # order. Change to "pending" to allow it to run. See prompts/README.md.
+    status: disabled
+
+  - id: "002"
+    name: "Example: cross-reference task 001's new section (depends on 001)"
+    prompt: "prompts/002-example-dependent-task.md"
+    branch: "ai-queue/002-example-dependent-task"
+    agent: claude
+    depends_on: ["001"]
+    requires_migration: false
+    requires_deployment: false
+    requires_secret_change: false
+    activates_production_schedule: false
+    stop_if_ambiguous: true
+    status: disabled

@@ -44,6 +44,10 @@ yarn-error.log*
 # supabase CLI local link state
 /supabase/.temp/
 
+# AI overnight queue: raw per-task agent logs may contain full tool output —
+# keep run summaries (RUN_SUMMARY.md / RUN_STATUS.json) committed, not these.
+/.ai/runs/*/task-*.log
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

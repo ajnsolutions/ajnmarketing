@@ -1,0 +1,33 @@
+---
+description: Shared AI project memory — read before working, update before finishing
+globs:
+alwaysApply: true
+---
+
+This rule applies to every model selectable in Cursor working in this repository — including Grok and Claude — on every request, not just ones that look like "big" tasks.
+
+# Before doing anything else
+
+1. Read `/AGENTS.md` in full. It defines permanent, repository-wide rules that override default behavior, including a hard list of actions no agent may ever take automatically.
+2. Read the shared project memory under `/.ai/`: `CURRENT_STATUS.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `OPEN_ITEMS.md`, `HANDOFF.md`, `STATUS.json`.
+3. **Never assume a prior AI chat — yours or another tool's — contains the current project state.** This repository is worked on by multiple AI tools (Claude Code, ChatGPT, Grok, Cursor) across many separate sessions with no shared chat history. `.ai/` is the only continuity mechanism that actually survives between them. If your own conversation history in this Cursor session suggests something different from what `.ai/` says, trust `.ai/` and the repository, not the conversation.
+4. Verify the memory against the actual repository state before relying on it — run `git log`, read the relevant code, check for open PRs/branches. `.ai/` is written by agents and can go stale. When `.ai/` and the code disagree, the code and Git history win; record the disagreement in `/.ai/OPEN_ITEMS.md` rather than silently trusting either one.
+
+# Before finishing any task
+
+5. Update whichever `/.ai/` files your work affects — at minimum `CURRENT_STATUS.md`, `STATUS.json`, and `HANDOFF.md`. Commit these updates in the same branch/PR as your implementation work, not as a separate follow-up.
+
+# Safety rules (from /AGENTS.md — restated here because this rule is what Cursor actually loads)
+
+- Never merge a pull request automatically.
+- Never deploy, or trigger/configure a deployment, automatically.
+- Never modify secrets, environment values, or credentials automatically.
+- Never apply a production database migration automatically.
+- Never activate a production schedule automatically — `ATTACH_DECLARATIVE_PRODUCTION_CRONS` must remain `false`/disabled absent explicit, separate, human ops sign-off. See `/.ai/ARCHITECTURE.md` and `/.ai/DECISIONS.md` (ADR-0004).
+- Never weaken, skip, bypass, or delete a meaningful test just to make a run pass.
+- Follow this repository's normal branching, testing, and pull-request conventions for any code change — do not push directly to `main`, and do not skip the test suite because a change "looks small."
+- If a requirement is materially ambiguous, stop and record the ambiguity in `/.ai/OPEN_ITEMS.md` and `/.ai/HANDOFF.md` rather than guessing at anything touching the boundaries above.
+
+# The overnight task queue
+
+`/.ai/queue/` runs pre-approved prompts through Claude Code sequentially, unattended, with its own independent safety validator (`scripts/ai/validate-queue.ts`) that rejects any task requesting merge, deploy, a production migration, a secret change, or schedule activation before it can run. A future headless Cursor/Grok adapter is scaffolded at `scripts/ai/adapters/cursor-placeholder.ts` but is **not yet implemented** — it reports itself unavailable and must not be assumed to work. See `docs/AI_OVERNIGHT_QUEUE.md`.
