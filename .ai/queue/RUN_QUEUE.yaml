@@ -9,9 +9,25 @@
 # production schedule — scripts/ai/validate-queue.ts refuses to run this
 # file at all if any task or the safety block below asks for one of those.
 #
-# The two tasks in this file are documentation-only EXAMPLES. They are
-# status: disabled and will not run until a human deliberately changes that
-# status to "pending" — see prompts/README.md.
+# This is the first REAL, controlled queue (prepared on branch
+# prepare-first-real-ai-queue). It replaces the two documentation-only
+# example tasks with two real, low-risk, related AJN Marketing phases:
+#
+#   001 — Market Radar owner-managed persistence foundation (data model only)
+#   002 — Market Radar owner-facing tracked competitors/benchmarks view,
+#          which depends on 001's persistence layer actually existing
+#
+# Selected from .ai/ROADMAP.md's "Next" section (Wave III remaining scope),
+# docs/project-magic/EXISTING_SYSTEM_AUDIT.md's Market Radar row ("Owner-
+# facing competitor add/remove/prioritize control" and "Aspirational-
+# benchmark tracking" are both flagged Needs Expansion / New Functionality),
+# docs/project-magic/MARKET_RADAR.md's "Owner control" section, and
+# docs/project-magic/WIREFRAMES.md's Market Radar wireframe — not invented.
+# Both tasks are still status: pending only in the sense that a human (this
+# preparation task) has reviewed and approved them for the queue; per
+# docs/AI_OVERNIGHT_QUEUE.md, run a daytime dry run (`npm run ai:queue`,
+# attended) before ever trusting this for an unattended overnight run — see
+# .ai/HANDOFF.md for why that verification is still outstanding.
 
 queue:
   name: "ajnmarketing-overnight-queue"
@@ -28,7 +44,12 @@ queue:
   # stacked: a task with depends_on branches from its dependency's branch tip
   #   instead of base_branch, so its changes are actually present to build
   #   on. Use this when a later task genuinely needs an earlier task's files
-  #   (exactly the case for the two example tasks below).
+  #   (exactly the case for the two tasks below — 002's UI is built directly
+  #   against 001's new lib/market-radar/ persistence layer). This branching
+  #   logic (determineBranchBase in scripts/ai/run-queue.ts) is implemented
+  #   and unit-tested (unit-tests/ai-queue-run.test.ts) — see .ai/HANDOFF.md
+  #   for what about this queue is still unverified (the Claude CLI
+  #   adapter's live success path, not this branching mechanism).
   branch_strategy: stacked
   # The branch every task ultimately branches from (directly, or transitively
   # via branch_strategy: stacked). run-queue.ts refuses to start unless the
@@ -45,29 +66,39 @@ safety:
 
 tasks:
   - id: "001"
-    name: "Example: add a Terminology section (safe, documentation-only)"
-    prompt: "prompts/001-example-safe-task.md"
-    branch: "ai-queue/001-example-safe-task"
+    name: "Market Radar: owner-managed competitor & benchmark persistence foundation"
+    prompt: "prompts/001-market-radar-foundation.md"
+    branch: "ai-queue/001-market-radar-foundation"
     agent: claude
     depends_on: []
+    # This task adds a new, reviewable Supabase migration FILE (following
+    # this repo's existing supabase/migrations/ convention) — it does not,
+    # and must not, apply/run that migration against any database. See
+    # AGENTS.md rule 13 and the prompt file's own "Standing rules" section
+    # for why writing a migration is ordinary PR content while applying one
+    # to production is a categorically separate, human-only action.
+    # requires_migration stays false because nothing in this task requires
+    # a migration to be applied for the task itself to complete.
     requires_migration: false
     requires_deployment: false
     requires_secret_change: false
     activates_production_schedule: false
     stop_if_ambiguous: true
-    # disabled: never selected by run-queue.ts, regardless of dependency
-    # order. Change to "pending" to allow it to run. See prompts/README.md.
-    status: disabled
+    status: pending
 
   - id: "002"
-    name: "Example: cross-reference task 001's new section (depends on 001)"
-    prompt: "prompts/002-example-dependent-task.md"
-    branch: "ai-queue/002-example-dependent-task"
+    name: "Market Radar: owner-facing tracked competitors & benchmarks view"
+    prompt: "prompts/002-market-radar-view.md"
+    branch: "ai-queue/002-market-radar-view"
     agent: claude
+    # Depends on 001: this task's UI is built directly against the
+    # lib/market-radar/ persistence layer 001 adds. Under branch_strategy:
+    # stacked (below), this task's branch is created from 001's own branch
+    # tip so those files are actually present to build on.
     depends_on: ["001"]
     requires_migration: false
     requires_deployment: false
     requires_secret_change: false
     activates_production_schedule: false
     stop_if_ambiguous: true
-    status: disabled
+    status: pending
