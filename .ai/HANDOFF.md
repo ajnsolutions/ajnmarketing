@@ -35,7 +35,7 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## PR
 
-Not yet created at the time this file was written — will be `prepare-first-real-ai-queue` → `main`. Not merged. Not deployed. The queue itself was not executed.
+[#98](https://github.com/ajnsolutions/ajnmarketing/pull/98) — `prepare-first-real-ai-queue` → `main`. Not merged. Not deployed. The queue itself was not executed.
 
 ## Blockers
 
