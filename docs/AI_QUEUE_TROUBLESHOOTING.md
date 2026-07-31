@@ -1,0 +1,61 @@
+# AI Queue Troubleshooting
+
+Recovery and troubleshooting for `.ai/queue/`. Start with `npm run ai:queue:status` for any problem — its output (current task, per-task blocker, resume eligibility) is the first thing every section below assumes you've already looked at.
+
+## Troubleshooting index
+
+- [GitHub CLI (`gh`) problems](#troubleshooting-github-cli)
+- [Claude CLI problems](#troubleshooting-claude-cli)
+- [Recovering from a failed task](#recovering-from-a-failed-task)
+- [Reviewing PRs in dependency order](#reviewing-prs-in-dependency-order)
+- [A queue file that won't validate](#a-queue-file-that-wont-validate)
+- [Something looks like it might contain a secret](#something-looks-like-it-might-contain-a-secret)
+
+## Troubleshooting GitHub CLI
+
+The queue shells out to `gh pr create` after each task's commit is pushed. `run-queue.ts` checks `gh --version` succeeds before starting at all, but that only proves the binary exists — it doesn't prove you're authenticated for this repository.
+
+- **`gh --version` fails / command not found** — install: `brew install gh` (macOS) or see https://cli.github.com. This is a real, human, one-time setup step; the queue will not do it for you.
+- **`gh pr create` fails partway through a run** (task committed and pushed, but no PR) — check `gh auth status`. Re-authenticate (`gh auth login`), then re-run `npm run ai:queue`; on resume it will not re-do the already-pushed commit, but you may need to open that one PR by hand (`gh pr create --base <base> --head <branch>`) since the queue's own attempt already failed and won't silently retry an unknown state. Check `npm run ai:queue:status` for the exact branch name.
+- **Wrong GitHub account / org** — `gh auth status` shows which account is active; `gh auth switch` if you have multiple.
+
+## Troubleshooting Claude CLI
+
+- **`claude` command not found** — the queue's own capability probe (`scripts/ai/adapters/claude.ts`) catches this before running anything and prints an actionable message. Install the Claude Code CLI (see https://docs.claude.com/claude-code), confirm `claude --version` works, then re-run.
+- **Installed, but the queue still refuses to start** — the probe also checks that `claude --help` mentions non-interactive mode (`-p`/`--print`). If your installed version's flags differ, that's a real signal the adapter needs updating for your CLI version — see `.ai/OPEN_ITEMS.md`'s note on this adapter not being end-to-end-verified yet, and update `scripts/ai/adapters/claude.ts` to match your actual CLI's documented flags rather than forcing it past the check.
+- **Task runs but produces something clearly wrong** — the queue's quality gates (lint/typecheck/unit tests) and its required-`.ai/`-update check will catch a lot, but not everything. Read the PR like you'd read any PR before merging; the queue opening a PR is not the same as the queue vouching for its correctness.
+
+## Recovering from a failed task
+
+1. `npm run ai:queue:status` — find the failed task and read its `blocker` line.
+2. Common blocker categories and what they mean:
+   - *"a quality gate failed"* — lint/typecheck/unit tests didn't pass. Check out the task's branch locally and reproduce (`npm run lint`, `npm run typecheck`, `npm run test:unit`).
+   - *"did not update any .ai/ memory file"* — the agent completed the task's stated goal but skipped the memory-update step `AGENTS.md` requires. Check out the branch, add the missing `.ai/` update, commit, push by hand, then `gh pr create` by hand — or discard the branch and let a corrected prompt run again.
+   - *"could not create branch" / "could not fetch base branch"* — usually a stale local branch with the same name already exists, or the base branch reference is wrong. Delete the stale local branch (`git branch -D <name>`, only if you're sure it's not someone's in-progress work) and re-run.
+   - *"agent invocation did not succeed"* — see Claude CLI troubleshooting above.
+3. Fix the underlying cause, then `npm run ai:queue` again — it resumes at the next eligible task; it does not re-run tasks already marked `completed`.
+4. If a task is unrecoverable as written, mark it `disabled` in `RUN_QUEUE.yaml` (don't delete it — that loses the record), fix the prompt or dependencies, add a new task with a new id if needed, then `npm run ai:queue:validate` before trying again.
+
+`npm run ai:queue:reset -- --confirm` is the last resort for wiping state — see `docs/AI_OVERNIGHT_QUEUE.md`'s note on exactly what it does and doesn't touch (never branches, PRs, commits, or logs).
+
+## Reviewing PRs in dependency order
+
+`npm run ai:morning-brief` states the merge order explicitly for whatever ran that session, under "Merge order" — read that first. In general: a task with `depends_on: ["001"]` under `branch_strategy: stacked` was built on top of `001`'s branch, so its PR's diff against `main` includes `001`'s changes too until `001` is merged. Review and merge `001` first; after that merges, `002`'s PR (assuming it targets `001`'s branch, or is rebased onto `main`) will show a clean, minimal diff.
+
+## A queue file that won't validate
+
+`npm run ai:queue:validate` prints every problem, not just the first — fix them together rather than one at a time. Two categories worth knowing about specifically:
+
+- **"Production schedule gate appears ENABLED in the repository itself"** — this means `lib/trigger/scheduleActivation.ts`'s `ATTACH_DECLARATIVE_PRODUCTION_CRONS` is `true` right now, independent of anything in the queue file. This is a repository-level production-safety issue, not a queue-config mistake — stop and resolve it directly (see `.ai/ARCHITECTURE.md` and `.ai/DECISIONS.md` ADR-0004) before touching the queue at all.
+- **"could never become eligible"** — a pending task depends on a task marked `disabled`. Either enable the dependency too, or mark the dependent task `disabled` as well until it's ready.
+
+## Something looks like it might contain a secret
+
+`.ai/exports/` files run through `scripts/ai/redact.ts` before being written, which catches common secret shapes (OpenAI-style keys, Supabase tokens, JWTs, GitHub tokens, PEM private keys, bearer tokens) — but it's a safety net, not a guarantee. If you spot something that looks sensitive in an export or a run log:
+
+1. Do not commit or upload it further.
+2. Delete the affected file(s) locally.
+3. Rotate whatever credential it was, treating it as exposed.
+4. Improve the pattern list in `scripts/ai/redact.ts` so the same shape is caught next time, and note what happened in `.ai/OPEN_ITEMS.md`.
+
+Raw per-task logs (`.ai/runs/*/task-*.log`) are gitignored specifically because they're the most likely place for something unexpected to show up — see `.ai/runs/README.md`.
