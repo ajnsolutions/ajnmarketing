@@ -331,6 +331,7 @@ export function buildGrowthAdvisorBriefing(
     smartUploadDocuments: options?.smartUploadDocuments,
     businessReasoning: options?.businessReasoning,
     topOpportunity: options?.topOpportunity,
+    businessKnowledgeHealth: options?.businessKnowledgeHealth,
   });
 
   const nextWeek = buildNextWeekMonitoring({

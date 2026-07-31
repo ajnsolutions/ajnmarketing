@@ -7,6 +7,14 @@ import { getBusinessProfileForUser } from "@/lib/business-profile-server";
 import { getExternalIntelligence } from "@/lib/external-intelligence/service";
 import { getCustomerVoiceIntelligence } from "@/lib/customer-voice/service";
 import { reconcileAndGetBusinessLearningPatterns } from "@/lib/business-learning-engine/service";
+import { computeLearningMaturity, summarizeOutcomeBreakdown } from "@/lib/business-learning-engine/learningMaturity";
+import type { LearningMaturity } from "@/lib/business-learning-engine/learningMaturity";
+import { getBusinessReasoning } from "@/lib/business-knowledge-graph/service";
+import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import { runBusinessDiscoveryForCurrentUser } from "@/lib/business-discovery/service";
+import { getBusinessGoalsForCurrentUser } from "@/lib/goals/service";
+import { getActiveSmartUploadKnowledgeForUser } from "@/lib/smart-uploads/service";
+import { getActiveTestimonialKnowledgeForUser } from "@/lib/testimonials/persistence";
 import { getOutcomeEventsForBusiness, getRecommendationsForBusiness } from "@/lib/recommendation-outcomes/persistence";
 import { listMarketingCampaignsForBusiness } from "@/lib/campaign-intelligence/campaign-persistence";
 import { listSmartUploadDocumentsForUser } from "@/lib/smart-uploads/persistence";
@@ -37,6 +45,8 @@ export async function getBusinessTimeline(
      * dashboard page) should pass both lists through rather than re-querying. */
     activeOpportunities?: DetectedOpportunity[];
     retiredOpportunities?: DetectedOpportunity[];
+    businessReasoning?: BusinessReasoningResult | null;
+    learningMaturity?: LearningMaturity | null;
   },
 ): Promise<BusinessTimelineEntry[]> {
   const [outcomeEvents, recommendations, campaigns, smartUploadDocuments, activeOpportunities, retiredOpportunities] =
@@ -67,6 +77,8 @@ export async function getBusinessTimeline(
     customerVoice: input.customerVoice,
     learningPatterns: input.learningPatterns,
     opportunities: [...activeOpportunities, ...retiredOpportunities],
+    businessReasoning: input.businessReasoning,
+    learningMaturity: input.learningMaturity,
   });
 }
 
@@ -88,15 +100,51 @@ export async function getBusinessTimelineForCurrentUser(): Promise<
   const profile = await getBusinessProfileForUser();
   if (!profile) return null;
 
-  const [externalIntelligence, customerVoice] = await Promise.all([
-    getExternalIntelligence({ userId: user.id, businessProfileId: profile.id }).catch(() => null),
-    getCustomerVoiceIntelligence({ userId: user.id, businessProfileId: profile.id }).catch(() => null),
+  const [businessDiscovery, goals] = await Promise.all([
+    runBusinessDiscoveryForCurrentUser().catch(() => null),
+    getBusinessGoalsForCurrentUser().catch(() => []),
   ]);
+
+  const [externalIntelligence, customerVoice, smartUploadFacts, testimonialFacts] = await Promise.all([
+    getExternalIntelligence({
+      userId: user.id,
+      businessProfileId: profile.id,
+      knownGoalKeys: goals.map((g) => g.key),
+    }).catch(() => null),
+    getCustomerVoiceIntelligence({
+      userId: user.id,
+      businessProfileId: profile.id,
+      knownServices: businessDiscovery?.primaryServices?.value ?? undefined,
+    }).catch(() => null),
+    getActiveSmartUploadKnowledgeForUser(supabase, user.id, profile.id).catch(() => []),
+    getActiveTestimonialKnowledgeForUser(supabase, user.id, profile.id).catch(() => []),
+  ]);
+
+  // The Business Knowledge Graph reasons across the same already-fetched
+  // Business Brain packages above — no second fetch, no new data store.
+  const businessReasoning = getBusinessReasoning({
+    businessDiscovery,
+    goals,
+    customerVoice,
+    externalIntelligence,
+    smartUploadFacts,
+    testimonialFacts,
+  });
 
   const reconciliation = await reconcileAndGetBusinessLearningPatterns(supabase, {
     userId: user.id,
     businessProfileId: profile.id,
+    businessReasoning,
   }).catch(() => null);
+
+  const learningMaturity = reconciliation
+    ? computeLearningMaturity({
+        patterns: reconciliation.patterns,
+        ...summarizeOutcomeBreakdown(reconciliation.outcomeBreakdown),
+        totalRecommendations: reconciliation.totalRecommendations,
+        feedbackCount: reconciliation.feedbackEventCount,
+      })
+    : null;
 
   return getBusinessTimeline(supabase, {
     userId: user.id,
@@ -104,5 +152,7 @@ export async function getBusinessTimelineForCurrentUser(): Promise<
     externalIntelligence,
     customerVoice,
     learningPatterns: reconciliation?.patterns ?? [],
+    businessReasoning,
+    learningMaturity,
   });
 }
