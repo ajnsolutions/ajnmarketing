@@ -19,6 +19,10 @@ export const BusinessTimelineEntryTypes = {
   OPPORTUNITY_COMPLETED: "opportunity_completed",
   OPPORTUNITY_EXPIRED: "opportunity_expired",
   OPPORTUNITY_LEARNED_FROM: "opportunity_learned_from",
+  BUSINESS_UNDERSTANDING_IMPROVED: "business_understanding_improved",
+  CUSTOMER_VOICE_STRENGTHENED: "customer_voice_strengthened",
+  SEARCH_CONFIDENCE_INCREASED: "search_confidence_increased",
+  LEARNING_CONFIDENCE_IMPROVED: "learning_confidence_improved",
 } as const;
 
 export type BusinessTimelineEntryType =

@@ -18,6 +18,7 @@ import {
 import { findSearchDemandCrossovers, findWebsiteContentGaps } from "@/lib/smart-uploads/crossover";
 import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import type { BusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/knowledgeHealth";
 import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 
 export type GrowthAdvisorObservationV2 = {
@@ -308,6 +309,42 @@ function opportunityObservation(
   };
 }
 
+/** Maps a real Business Knowledge Health gap label to the concrete action
+ * that would close it — never a generic "add more data" filler. Gaps with
+ * no clean single action (e.g. conflicting signals) are intentionally
+ * excluded rather than forced into a misleading "connect X" phrasing. */
+const GAP_LABEL_TO_ACTION: Partial<Record<string, string>> = {
+  "Customer sentiment": "connected Google Reviews or added customer testimonials",
+  "Website testimonials": "added a few more testimonials",
+  "Search & market performance": "connected Google Search Console",
+  "Uploaded documents": "uploaded a document about your business",
+  "Business profile": "completed your business profile",
+  "Stated goals": "set your business goals",
+};
+
+/**
+ * Business Brain Inspector (Part 6) — Growth Advisor recognizes its own
+ * real confidence gaps and names the specific action that would close the
+ * single most impactful one, framed around future recommendations (never
+ * "my confidence is low" in the abstract). Reuses the exact same
+ * missingKnowledge list the Business Brain page and Marketing Health
+ * already show — never a second, competing gap analysis.
+ */
+function confidenceGapObservation(
+  knowledgeHealth: BusinessKnowledgeHealth | null | undefined,
+): GrowthAdvisorObservationV2 | null {
+  const gap = knowledgeHealth?.missingKnowledge.find((item) => GAP_LABEL_TO_ACTION[item.label]);
+  if (!gap) return null;
+
+  const action = GAP_LABEL_TO_ACTION[gap.label]!;
+  return {
+    headline: `I'd have higher confidence in future recommendations if you ${action}.`,
+    whyItMatters: gap.detail,
+    certainty: TrustCertaintyLevels.OBSERVED,
+    evidenceSource: `business_knowledge_health:${gap.label}`,
+  };
+}
+
 /**
  * Build 3–5 observations from Business Brain sources.
  * Prefer real signals; never pad with fabricated insights.
@@ -323,6 +360,7 @@ export function buildWhatINoticedObservations(input: {
   smartUploadDocuments?: SmartUploadDocumentRecord[];
   businessReasoning?: BusinessReasoningResult | null;
   topOpportunity?: DetectedOpportunity | null;
+  businessKnowledgeHealth?: BusinessKnowledgeHealth | null;
 }): GrowthAdvisorObservationV2[] {
   const goals = input.goals ?? [];
   const collected: GrowthAdvisorObservationV2[] = [];
@@ -361,6 +399,9 @@ export function buildWhatINoticedObservations(input: {
   push(externalIntelligenceObservation(input.externalIntelligence));
   push(websiteContentGapObservation(input.smartUploadFacts, input.smartUploadDocuments, input.businessDiscovery));
   push(businessDiscoveryObservation(input.businessDiscovery));
+  // A meta-level confidence-gap observation is the lowest priority — only
+  // surfaces when there's room left after every real business insight above.
+  push(confidenceGapObservation(input.businessKnowledgeHealth));
 
   return collected.slice(0, 5);
 }

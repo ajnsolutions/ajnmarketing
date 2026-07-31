@@ -89,6 +89,12 @@ export function GrowthAdvisorSupportingContext({
             {coaching.nextBestAction.label} →
           </Link>
         ) : null}
+        <Link
+          href="/dashboard/business-brain"
+          className="hom-focusable mt-3 block text-sm font-semibold text-brand-600 transition-colors hover:text-brand-700"
+        >
+          See what evidence is missing in your Business Brain →
+        </Link>
 
         {coaching.supportingScores.length > 0 ? (
           <details className="group mt-4">
@@ -180,6 +186,7 @@ export function GrowthAdvisorSupportingContext({
               { href: "/dashboard/decision-intelligence", label: "Why the plan changed" },
               { href: "/dashboard/strategic-marketing-calendar", label: "Strategic calendar" },
               { href: "/dashboard/marketing-recommendations", label: "What I'd recommend next" },
+              { href: "/dashboard/business-brain", label: "Business Brain" },
               { href: "/dashboard/customer-voice", label: "Customer Voice" },
               { href: "/dashboard/testimonials", label: "Website Testimonials" },
               { href: "/dashboard/business-timeline", label: "Business Timeline" },

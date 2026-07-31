@@ -16,6 +16,8 @@ import type { SmartUploadDocumentRecord } from "@/lib/smart-uploads/types";
 import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { BusinessPattern } from "@/lib/business-learning-engine/types";
+import type { LearningMaturity } from "@/lib/business-learning-engine/learningMaturity";
+import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 import { OPPORTUNITY_TYPE_LABELS } from "@/lib/opportunity-engine/types";
 import { BusinessTimelineEntryTypes, type BusinessTimelineEntry } from "@/lib/business-timeline/types";
@@ -183,6 +185,65 @@ function opportunityEntries(opportunities: DetectedOpportunity[]): BusinessTimel
   return entries;
 }
 
+/**
+ * Business Brain Inspector milestones (Part 8) — summary-level "the whole
+ * picture crossed a real bar" entries, distinct from the per-item entries
+ * above (learning/search/customer-voice milestones already cover individual
+ * signals). Each one only fires when the underlying, already-computed
+ * measure genuinely clears its bar — never a fabricated trend, since none
+ * of these subsystems persist historical snapshots to compute a true delta.
+ */
+function businessUnderstandingImprovedEntries(reasoning: BusinessReasoningResult | null | undefined): BusinessTimelineEntry[] {
+  const corroborated = (reasoning?.conclusions ?? []).filter((c) => c.contributingProviderCount >= 2);
+  return corroborated.slice(0, 3).map((conclusion) => ({
+    id: `business_understanding_${conclusion.id}`,
+    type: BusinessTimelineEntryTypes.BUSINESS_UNDERSTANDING_IMPROVED,
+    occurredAt: conclusion.lastUpdated,
+    whatChanged: `Business understanding improved: ${conclusion.statement}`,
+    whatDidAILearn: conclusion.reasoning,
+  }));
+}
+
+function customerVoiceStrengthenedEntries(customerVoice: CustomerVoiceIntelligence | null | undefined): BusinessTimelineEntry[] {
+  if (!customerVoice || customerVoice.emptyState === "no_evidence") return [];
+  const strengthened = customerVoice.frequentlyMentionedServices.filter((theme) => theme.evidenceCount >= 3);
+  return strengthened.slice(0, 3).map((theme) => ({
+    id: `customer_voice_strengthened_${theme.key}`,
+    type: BusinessTimelineEntryTypes.CUSTOMER_VOICE_STRENGTHENED,
+    occurredAt: theme.lastUpdated,
+    whatChanged: `Customer Voice strengthened: "${theme.label}" is now backed by ${theme.evidenceCount} pieces of feedback.`,
+    whatDidAILearn: "Enough recurring evidence has accumulated to treat this as a reliable customer theme, not just an early signal.",
+  }));
+}
+
+function searchConfidenceIncreasedEntry(
+  externalIntelligence: ExternalIntelligence | null | undefined,
+): BusinessTimelineEntry[] {
+  if (!externalIntelligence || externalIntelligence.confidence !== "high") return [];
+  return [
+    {
+      id: "search_confidence_increased",
+      type: BusinessTimelineEntryTypes.SEARCH_CONFIDENCE_INCREASED,
+      occurredAt: externalIntelligence.lastUpdated,
+      whatChanged: "Search confidence increased to High.",
+      whatDidAILearn: `Backed by ${externalIntelligence.evidenceCount} external signal${externalIntelligence.evidenceCount === 1 ? "" : "s"} across ${externalIntelligence.contributingProviders.length} source${externalIntelligence.contributingProviders.length === 1 ? "" : "s"}.`,
+    },
+  ];
+}
+
+function learningConfidenceImprovedEntry(learningMaturity: LearningMaturity | null | undefined): BusinessTimelineEntry[] {
+  if (!learningMaturity || learningMaturity.overallScore < 70) return [];
+  return [
+    {
+      id: "learning_confidence_improved",
+      type: BusinessTimelineEntryTypes.LEARNING_CONFIDENCE_IMPROVED,
+      occurredAt: learningMaturity.generatedAt,
+      whatChanged: "Learning confidence improved.",
+      whatDidAILearn: "The Business Learning Engine now has enough reinforced patterns and tracked outcomes to trust its own learning more.",
+    },
+  ];
+}
+
 const MAX_ENTRIES = 25;
 
 export function buildBusinessTimeline(input: {
@@ -193,6 +254,8 @@ export function buildBusinessTimeline(input: {
   customerVoice?: CustomerVoiceIntelligence | null;
   learningPatterns: BusinessPattern[];
   opportunities?: DetectedOpportunity[];
+  businessReasoning?: BusinessReasoningResult | null;
+  learningMaturity?: LearningMaturity | null;
 }): BusinessTimelineEntry[] {
   const entries = [
     ...recommendationEntries(input.recommendationOutcomeEvents),
@@ -202,6 +265,10 @@ export function buildBusinessTimeline(input: {
     ...customerVoiceMilestoneEntries(input.customerVoice),
     ...learningMilestoneEntries(input.learningPatterns),
     ...opportunityEntries(input.opportunities ?? []),
+    ...businessUnderstandingImprovedEntries(input.businessReasoning),
+    ...customerVoiceStrengthenedEntries(input.customerVoice),
+    ...searchConfidenceIncreasedEntry(input.externalIntelligence),
+    ...learningConfidenceImprovedEntry(input.learningMaturity),
   ];
 
   return entries.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, MAX_ENTRIES);
