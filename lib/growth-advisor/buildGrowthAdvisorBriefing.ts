@@ -42,6 +42,7 @@ import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/rea
 import type { BusinessKnowledgeHealth } from "@/lib/business-knowledge-graph/knowledgeHealth";
 import type { BusinessPattern } from "@/lib/business-learning-engine/types";
 import type { LearningMaturity } from "@/lib/business-learning-engine/learningMaturity";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 
 function buildWhatChanged(briefing: HeadOfMarketingBriefing): GrowthAdvisorBriefing["whatChanged"] {
   const hasMeaningfulChange = briefing.thisWeek.length > 1;
@@ -295,6 +296,10 @@ export type BuildGrowthAdvisorBriefingOptions = {
   businessLearningPattern?: BusinessPattern | null;
   /** Learning Maturity (Part 7) — presentation only; never re-ranks. */
   learningMaturity?: LearningMaturity | null;
+  /** The Opportunity Detection Engine's single highest-scored active
+   * opportunity, if any — presentation only; never re-ranks Marketing
+   * Director's own recommendation. */
+  topOpportunity?: DetectedOpportunity | null;
 };
 
 export function buildGrowthAdvisorBriefing(
@@ -325,6 +330,7 @@ export function buildGrowthAdvisorBriefing(
     smartUploadFacts: options?.smartUploadFacts,
     smartUploadDocuments: options?.smartUploadDocuments,
     businessReasoning: options?.businessReasoning,
+    topOpportunity: options?.topOpportunity,
   });
 
   const nextWeek = buildNextWeekMonitoring({

@@ -14,6 +14,7 @@ import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import type { BusinessPattern } from "@/lib/business-learning-engine/types";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 import { buildWeeklyGrowthPlan } from "@/lib/growth-planner/buildWeeklyGrowthPlan";
 import {
   applyWeeklyGrowthPlansToMarketingGoals,
@@ -39,6 +40,7 @@ export async function getWeeklyGrowthPlanForCurrentUser(input: {
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   businessReasoning?: BusinessReasoningResult | null;
   businessLearningPattern?: BusinessPattern | null;
+  topOpportunity?: DetectedOpportunity | null;
   now?: Date;
 }): Promise<WeeklyGrowthPlanBundle | null> {
   const supabase = await createClient();
@@ -67,6 +69,7 @@ export async function getWeeklyGrowthPlanForCurrentUser(input: {
     smartUploadFacts: input.smartUploadFacts,
     businessReasoning: input.businessReasoning,
     businessLearningPattern: input.businessLearningPattern,
+    topOpportunity: input.topOpportunity,
     now,
   });
 
@@ -81,6 +84,7 @@ export async function getWeeklyGrowthPlanForCurrentUser(input: {
         externalIntelligence: input.externalIntelligence,
         smartUploadFacts: input.smartUploadFacts,
         businessReasoning: input.businessReasoning,
+        topOpportunity: input.topOpportunity,
         now,
         planId: sameWeek.id,
         status: sameWeek.status,

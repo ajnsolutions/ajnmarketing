@@ -9,11 +9,36 @@ import type { CustomerVoiceIntelligence } from "@/lib/customer-voice/types";
 import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import { RecommendedActionTypes } from "@/lib/marketing-decisions/types";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 import {
   PRIMARY_OBJECTIVE_LABELS,
   PrimaryObjectiveKeys,
   type PrimaryObjectiveKey,
 } from "@/lib/growth-planner/types";
+
+/** Every opportunity type maps to exactly one primary objective — lets the
+ * Weekly Growth Plan be generated from an active, evidence-scored
+ * opportunity rather than only a static action-type/goal lookup table. */
+const OPPORTUNITY_TYPE_TO_OBJECTIVE: Record<DetectedOpportunity["type"], PrimaryObjectiveKey> = {
+  seasonal: PrimaryObjectiveKeys.PROMOTE_SEASONAL_SERVICES,
+  trending_search: PrimaryObjectiveKeys.INCREASE_SERVICE_BOOKINGS,
+  reputation: PrimaryObjectiveKeys.IMPROVE_REVIEW_VELOCITY,
+  review_request: PrimaryObjectiveKeys.IMPROVE_REVIEW_VELOCITY,
+  content_gap: PrimaryObjectiveKeys.INCREASE_SERVICE_BOOKINGS,
+  website_improvement: PrimaryObjectiveKeys.GROW_LOCAL_AWARENESS,
+  local_event: PrimaryObjectiveKeys.GROW_LOCAL_AWARENESS,
+  competitive_positioning: PrimaryObjectiveKeys.GROW_LOCAL_AWARENESS,
+  customer_education: PrimaryObjectiveKeys.INCREASE_SERVICE_BOOKINGS,
+  faq: PrimaryObjectiveKeys.INCREASE_SERVICE_BOOKINGS,
+  service_spotlight: PrimaryObjectiveKeys.INCREASE_SERVICE_BOOKINGS,
+  underperforming_content_refresh: PrimaryObjectiveKeys.INCREASE_SERVICE_BOOKINGS,
+  high_performing_content_expansion: PrimaryObjectiveKeys.GROW_LOCAL_AWARENESS,
+};
+
+/** Only a genuinely well-evidenced, high-scoring opportunity drives the
+ * week's objective — a thin or borderline one defers to the existing
+ * action-type/goal-based resolution below. */
+const MIN_OPPORTUNITY_SCORE_TO_DRIVE_OBJECTIVE = 60;
 
 export type PrimaryObjectiveResolution = {
   key: PrimaryObjectiveKey;
@@ -61,7 +86,13 @@ export function resolvePrimaryObjective(input: {
   goals: BusinessGoal[];
   customerVoice?: CustomerVoiceIntelligence | null;
   externalIntelligence?: ExternalIntelligence | null;
+  topOpportunity?: DetectedOpportunity | null;
 }): PrimaryObjectiveResolution {
+  if (input.topOpportunity && input.topOpportunity.score.total >= MIN_OPPORTUNITY_SCORE_TO_DRIVE_OBJECTIVE) {
+    const key = OPPORTUNITY_TYPE_TO_OBJECTIVE[input.topOpportunity.type];
+    return { key, label: PRIMARY_OBJECTIVE_LABELS[key] };
+  }
+
   const actionType = input.briefing.topRecommendationDetail?.actionType ?? null;
   if (actionType && ACTION_TO_OBJECTIVE[actionType]) {
     const key = ACTION_TO_OBJECTIVE[actionType]!;

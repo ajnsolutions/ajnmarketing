@@ -48,6 +48,7 @@ export type BusinessKnowledgeHealth = {
     dataCompleteness: KnowledgeHealthDimension;
     crossSourceAlignment: KnowledgeHealthDimension;
     customerUnderstanding: KnowledgeHealthDimension;
+    opportunityReadiness: KnowledgeHealthDimension;
   };
   /** What's missing, in priority order — feeds Business Connections. */
   missingKnowledge: KnowledgeHealthGap[];
@@ -192,9 +193,38 @@ function customerUnderstanding(input: {
   return dimension(score, detail);
 }
 
+/**
+ * Opportunity Readiness — how many real, active opportunities the
+ * Opportunity Detection Engine currently has evidence for, and whether any
+ * expired before being acted on. Never a second opportunity list: these are
+ * primitive counts over the same engine's own persisted output, kept
+ * decoupled from its shape the same way customerUnderstanding is decoupled
+ * from Customer Voice's shape.
+ */
+function opportunityReadiness(input: {
+  activeOpportunityCount: number;
+  expiredOpportunityCount: number;
+}): KnowledgeHealthDimension {
+  if (input.activeOpportunityCount === 0) {
+    return dimension(
+      0,
+      "We don't have any active opportunities identified yet — more evidence from your connected sources would help.",
+    );
+  }
+
+  const score = Math.min(input.activeOpportunityCount / 3, 1) * 100;
+  const detail =
+    input.expiredOpportunityCount > 0
+      ? `${input.activeOpportunityCount} active opportunit${input.activeOpportunityCount === 1 ? "y" : "ies"} right now — ${input.expiredOpportunityCount} other${input.expiredOpportunityCount === 1 ? "" : "s"} expired before being acted on.`
+      : `${input.activeOpportunityCount} active opportunit${input.activeOpportunityCount === 1 ? "y" : "ies"} identified from real evidence right now.`;
+
+  return dimension(score, detail);
+}
+
 function buildMissingKnowledge(
   presence: KnowledgeSourcePresence,
   reasoning: BusinessReasoningResult,
+  activeOpportunityCount = 0,
 ): KnowledgeHealthGap[] {
   const gaps: KnowledgeHealthGap[] = [];
 
@@ -236,6 +266,12 @@ function buildMissingKnowledge(
   for (const conflict of reasoning.conflicts) {
     gaps.push({ label: "Conflicting signals", detail: conflict.summary });
   }
+  if (activeOpportunityCount === 0) {
+    gaps.push({
+      label: "Active opportunities",
+      detail: "We understand your business, but don't have enough evidence yet to identify an active opportunity worth acting on.",
+    });
+  }
 
   return gaps;
 }
@@ -250,6 +286,11 @@ export function computeBusinessKnowledgeHealth(input: {
    * package, to keep this module decoupled from Customer Voice's shape. */
   customerVoiceProviderCount?: number;
   customerVoiceEvidenceCount?: number;
+  /** Primitive counts over the Opportunity Detection Engine's own persisted
+   * output — never the raw DetectedOpportunity[] list, same decoupling
+   * discipline as customerVoiceProviderCount/customerVoiceEvidenceCount. */
+  activeOpportunityCount?: number;
+  expiredOpportunityCount?: number;
   now?: Date;
 }): BusinessKnowledgeHealth {
   const now = input.now ?? new Date();
@@ -264,6 +305,10 @@ export function computeBusinessKnowledgeHealth(input: {
       customerVoiceProviderCount: input.customerVoiceProviderCount ?? 0,
       customerVoiceEvidenceCount: input.customerVoiceEvidenceCount ?? 0,
     }),
+    opportunityReadiness: opportunityReadiness({
+      activeOpportunityCount: input.activeOpportunityCount ?? 0,
+      expiredOpportunityCount: input.expiredOpportunityCount ?? 0,
+    }),
   };
 
   const overallScore = Math.round(
@@ -274,6 +319,6 @@ export function computeBusinessKnowledgeHealth(input: {
     generatedAt: now.toISOString(),
     overallScore,
     dimensions,
-    missingKnowledge: buildMissingKnowledge(input.sourcePresence, input.reasoning),
+    missingKnowledge: buildMissingKnowledge(input.sourcePresence, input.reasoning, input.activeOpportunityCount ?? 0),
   };
 }

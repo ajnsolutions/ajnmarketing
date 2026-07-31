@@ -17,6 +17,7 @@ import { findSearchDemandCrossovers } from "@/lib/smart-uploads/crossover";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
 import type { BusinessPattern } from "@/lib/business-learning-engine/types";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 
 function firstVoiceTheme(cv: CustomerVoiceIntelligence): CustomerVoiceTheme | null {
   return (
@@ -36,6 +37,7 @@ export function synthesizePlanEvidence(input: {
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   businessReasoning?: BusinessReasoningResult | null;
+  topOpportunity?: DetectedOpportunity | null;
 }): PlanEvidenceItem[] {
   const items: PlanEvidenceItem[] = [];
   const seen = new Set<string>();
@@ -45,6 +47,18 @@ export function synthesizePlanEvidence(input: {
     seen.add(item.id);
     items.push(item);
   };
+
+  // The Opportunity Detection Engine's own top-scored opportunity — already
+  // evidence-linked, deduplicated, and lifecycle-tracked — is the plan's
+  // strongest possible citation when one exists, ahead of everything else.
+  if (input.topOpportunity) {
+    push({
+      id: "opportunity_engine_top",
+      certainty: input.topOpportunity.confidence === "high" ? PlanTrustCertaintyLevels.OBSERVED : PlanTrustCertaintyLevels.LIKELY,
+      statement: input.topOpportunity.statement,
+      source: "opportunity_engine",
+    });
+  }
 
   // A fused, multi-source Business Knowledge Graph conclusion is the
   // strongest available evidence — cite it first, ahead of single-source items.

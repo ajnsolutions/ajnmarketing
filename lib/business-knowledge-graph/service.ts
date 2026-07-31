@@ -41,6 +41,11 @@ export type BusinessGraphInput = {
   externalIntelligence?: ExternalIntelligence | null;
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[] | null;
   testimonialFacts?: TestimonialKnowledgeFactRecord[] | null;
+  /** Opportunity Detection Engine counts (Part 8's Opportunity Readiness
+   * dimension) — primitives only, never the raw opportunity list, to keep
+   * this module decoupled from the engine's own shape. */
+  activeOpportunityCount?: number;
+  expiredOpportunityCount?: number;
   now?: Date;
 };
 
@@ -99,6 +104,8 @@ export function getBusinessKnowledgeHealth(input: BusinessGraphInput): BusinessK
     sourcePresence: sourcePresenceFromInput(input),
     customerVoiceProviderCount: input.customerVoice?.contributingProviders.length ?? 0,
     customerVoiceEvidenceCount: input.customerVoice?.evidenceCount ?? 0,
+    activeOpportunityCount: input.activeOpportunityCount ?? 0,
+    expiredOpportunityCount: input.expiredOpportunityCount ?? 0,
     now,
   });
 }

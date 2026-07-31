@@ -10,6 +10,10 @@ const ENTRY_TYPE_LABELS: Record<BusinessTimelineEntryType, string> = {
   search_milestone: "Search",
   customer_voice_milestone: "Customer Voice",
   learning_milestone: "Learning",
+  opportunity_detected: "Opportunity",
+  opportunity_completed: "Opportunity completed",
+  opportunity_expired: "Opportunity expired",
+  opportunity_learned_from: "Opportunity learned from",
 };
 
 function TimelineEntryCard({ entry }: { entry: BusinessTimelineEntry }) {

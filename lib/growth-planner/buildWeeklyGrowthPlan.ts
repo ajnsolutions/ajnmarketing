@@ -10,6 +10,7 @@ import type { ExternalIntelligence } from "@/lib/external-intelligence/types";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
 import type { SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 import { resolveExpectedBusinessOutcomes } from "@/lib/growth-advisor/expectedImpact";
 import { buildNextWeekMonitoring } from "@/lib/growth-advisor/nextWeek";
 import { synthesizePlanEvidence, buildHistoricalContext } from "@/lib/growth-planner/evidence";
@@ -32,11 +33,21 @@ function estimatedEffort(briefing: HeadOfMarketingBriefing): string {
   return `About ${label} to review and approve.`;
 }
 
+const MIN_OPPORTUNITY_SCORE_TO_DRIVE_OBJECTIVE = 60;
+
 function buildWhyNow(input: {
   briefing: HeadOfMarketingBriefing;
   evidenceCount: number;
   objectiveLabel: string;
+  topOpportunity?: DetectedOpportunity | null;
 }): string {
+  // When an active opportunity is strong enough to have driven this week's
+  // objective (see primaryObjective.ts), its own "why now" is the most
+  // honest answer — it's the actual reason, not a restated label.
+  if (input.topOpportunity && input.topOpportunity.score.total >= MIN_OPPORTUNITY_SCORE_TO_DRIVE_OBJECTIVE) {
+    return input.topOpportunity.whyNow;
+  }
+
   const detailWhy = input.briefing.topRecommendationDetail?.whyNow?.trim();
   if (detailWhy) return detailWhy;
 
@@ -78,6 +89,7 @@ export type BuildWeeklyGrowthPlanInput = {
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   businessReasoning?: BusinessReasoningResult | null;
   businessLearningPattern?: BusinessPattern | null;
+  topOpportunity?: DetectedOpportunity | null;
   now?: Date;
   /** Optional stable id (e.g. when refreshing the same week). */
   planId?: string;
@@ -97,6 +109,7 @@ export function buildWeeklyGrowthPlan(input: BuildWeeklyGrowthPlanInput): Weekly
     goals,
     customerVoice: input.customerVoice,
     externalIntelligence: input.externalIntelligence,
+    topOpportunity: input.topOpportunity,
   });
 
   const evidence = synthesizePlanEvidence({
@@ -107,12 +120,14 @@ export function buildWeeklyGrowthPlan(input: BuildWeeklyGrowthPlanInput): Weekly
     externalIntelligence: input.externalIntelligence,
     smartUploadFacts: input.smartUploadFacts,
     businessReasoning: input.businessReasoning,
+    topOpportunity: input.topOpportunity,
   });
 
   const whyNow = buildWhyNow({
     briefing: input.briefing,
     evidenceCount: evidence.length,
     objectiveLabel: objective.label,
+    topOpportunity: input.topOpportunity,
   });
 
   const impact = resolveExpectedBusinessOutcomes({

@@ -18,6 +18,7 @@ import {
 import { findSearchDemandCrossovers, findWebsiteContentGaps } from "@/lib/smart-uploads/crossover";
 import type { SmartUploadDocumentRecord, SmartUploadKnowledgeFactRecord } from "@/lib/smart-uploads/types";
 import type { BusinessReasoningResult } from "@/lib/business-knowledge-graph/reasoning";
+import type { DetectedOpportunity } from "@/lib/opportunity-engine/types";
 
 export type GrowthAdvisorObservationV2 = {
   headline: string;
@@ -31,6 +32,9 @@ export type GrowthAdvisorObservationV2 = {
    * source. Absent for a single-source observation.
    */
   supportingEvidence?: string[];
+  /** Present only for an Opportunity Detection Engine observation — what
+   * acting on it is expected to achieve. */
+  expectedOutcome?: string;
 };
 
 const WHY_IT_MATTERS: Record<string, string> = {
@@ -276,6 +280,34 @@ function synthesizedInsightObservation(
   };
 }
 
+const OPPORTUNITY_CONFIDENCE_TO_CERTAINTY: Record<string, TrustCertainty> = {
+  high: TrustCertaintyLevels.OBSERVED,
+  medium: TrustCertaintyLevels.LIKELY,
+  low: TrustCertaintyLevels.SUGGESTED,
+};
+
+/**
+ * Opportunity Detection Engine (Part 5) — surfaces only the single
+ * highest-scored active opportunity, never a list, to avoid overwhelming
+ * the customer. Why now, expected outcome, and supporting evidence all come
+ * directly from the engine's own already-scored, evidence-linked output —
+ * never a second take on the same evidence.
+ */
+function opportunityObservation(
+  topOpportunity: DetectedOpportunity | null | undefined,
+): GrowthAdvisorObservationV2 | null {
+  if (!topOpportunity) return null;
+
+  return {
+    headline: topOpportunity.statement,
+    whyItMatters: topOpportunity.whyNow,
+    certainty: OPPORTUNITY_CONFIDENCE_TO_CERTAINTY[topOpportunity.confidence],
+    evidenceSource: `opportunity_engine:${topOpportunity.id}`,
+    supportingEvidence: topOpportunity.evidence.map((e) => e.summary),
+    expectedOutcome: topOpportunity.expectedOutcome,
+  };
+}
+
 /**
  * Build 3–5 observations from Business Brain sources.
  * Prefer real signals; never pad with fabricated insights.
@@ -290,6 +322,7 @@ export function buildWhatINoticedObservations(input: {
   smartUploadFacts?: SmartUploadKnowledgeFactRecord[];
   smartUploadDocuments?: SmartUploadDocumentRecord[];
   businessReasoning?: BusinessReasoningResult | null;
+  topOpportunity?: DetectedOpportunity | null;
 }): GrowthAdvisorObservationV2[] {
   const goals = input.goals ?? [];
   const collected: GrowthAdvisorObservationV2[] = [];
@@ -306,6 +339,10 @@ export function buildWhatINoticedObservations(input: {
   // A fused, multi-source Business Knowledge Graph conclusion is the
   // strongest available evidence — prioritize it ahead of everything else.
   push(synthesizedInsightObservation(input.businessReasoning));
+  // The Opportunity Detection Engine's own top-scored, evidence-linked pick —
+  // already ranked across every provider, so it sits just behind the BKG's
+  // multi-source synthesis.
+  push(opportunityObservation(input.topOpportunity));
   // Crossover evidence is the next-strongest signal (two independent
   // sources agreeing) — prioritize it ahead of single-source observations.
   push(searchDemandCrossoverObservation(input.smartUploadFacts, input.externalIntelligence));
