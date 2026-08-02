@@ -35,7 +35,7 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## PR
 
-Pending creation — will be recorded here in a follow-up commit immediately after `gh pr create`, per this repo's established pattern (see `git log -- .ai/HANDOFF.md` on the prior branch, "Record PR #100 in HANDOFF.md").
+[#101](https://github.com/ajnsolutions/ajnmarketing/pull/101) — `ai-queue/001-market-radar-foundation` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
