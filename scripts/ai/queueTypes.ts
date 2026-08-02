@@ -60,10 +60,23 @@ export interface QueueMeta {
    * absent, so a queue file written before this field existed stays valid.
    */
   max_repair_attempts?: number;
+  /**
+   * Reliability hardening (2026-08-02, after the first live unattended run
+   * ran into a silent-no-op failure and had to be diagnosed by hand). An
+   * overall wall-clock ceiling for a single `npm run ai:queue` invocation,
+   * independent of and in addition to every individual subprocess's own
+   * timeout — the last line of defense against an unattended overnight run
+   * still going at 9am. Optional — DEFAULT_MAX_RUN_DURATION_MINUTES applies
+   * when absent.
+   */
+  max_run_duration_minutes?: number;
 }
 
 /** Applied when queue.max_repair_attempts is absent from RUN_QUEUE.yaml. */
 export const DEFAULT_MAX_REPAIR_ATTEMPTS = 3;
+
+/** Applied when queue.max_run_duration_minutes is absent from RUN_QUEUE.yaml. 6 hours — long enough for a real overnight run with several tasks, short enough to still be "overnight" and not "indefinitely". */
+export const DEFAULT_MAX_RUN_DURATION_MINUTES = 360;
 
 export interface RunQueue {
   queue: QueueMeta;

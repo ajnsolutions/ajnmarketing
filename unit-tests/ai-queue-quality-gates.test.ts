@@ -24,6 +24,7 @@ function snapshot(overrides: Partial<QualitySnapshot> = {}): QualitySnapshot {
     playwrightFailureCount: 0,
     playwrightFailureNames: [],
     buildSucceeded: true,
+    timedOutGates: [],
     ...overrides,
   };
 }
@@ -236,6 +237,43 @@ test("a task with zero changes to any gate passes cleanly with no regressions, n
   assert.deepEqual(result.newRegressions, []);
   assert.deepEqual(result.fixedRegressions, []);
   assert.deepEqual(result.remainingHistoricalDebt, []);
+});
+
+// ---------------------------------------------------------------------------
+// Timeout handling (reliability hardening, 2026-08-02)
+// ---------------------------------------------------------------------------
+
+test("a gate that newly times out is a hard FAIL, even if its own counts look clean", () => {
+  const baseline = snapshot({ timedOutGates: [] });
+  // A killed tsc process might report 0 parsed errors from partial output —
+  // the timeout itself must still fail the gate, not the (untrustworthy) count.
+  const current = snapshot({ typescriptErrorCount: 0, timedOutGates: ["typescript"] });
+  const result = compareQualitySnapshots(baseline, current);
+  assert.equal(result.overallStatus, "fail");
+  assert.ok(result.newRegressions.some((r) => r.includes("typescript") && r.includes("timed out")));
+});
+
+test("a gate that was already timing out in the baseline is historical debt, not a new regression", () => {
+  const baseline = snapshot({ timedOutGates: ["playwright"] });
+  const current = snapshot({ timedOutGates: ["playwright"] });
+  const result = compareQualitySnapshots(baseline, current);
+  assert.equal(result.overallStatus, "pass");
+  assert.deepEqual(result.newRegressions, []);
+  assert.ok(result.remainingHistoricalDebt.some((d) => d.includes("playwright") && d.includes("still timing out")));
+});
+
+test("a gate that stops timing out is recorded as a fixed regression", () => {
+  const baseline = snapshot({ timedOutGates: ["build"] });
+  const current = snapshot({ timedOutGates: [] });
+  const result = compareQualitySnapshots(baseline, current);
+  assert.ok(result.fixedRegressions.some((f) => f.includes("build") && f.includes("no longer timing out")));
+});
+
+test("compareQualitySnapshots tolerates a baseline captured before timedOutGates existed (missing field, not just empty array)", () => {
+  const legacyBaseline = { ...snapshot(), timedOutGates: undefined } as unknown as QualitySnapshot;
+  const current = snapshot({ timedOutGates: [] });
+  assert.doesNotThrow(() => compareQualitySnapshots(legacyBaseline, current));
+  assert.equal(compareQualitySnapshots(legacyBaseline, current).overallStatus, "pass");
 });
 
 // ---------------------------------------------------------------------------

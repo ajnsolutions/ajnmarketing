@@ -20,17 +20,36 @@
  * and compares every task's own after-state against that same baseline:
  * existing debt that's still present and unchanged never fails a task;
  * anything newly broken always does. See scripts/ai/qualityGates.ts.
+ *
+ * Reliability hardening (2026-08-02) — this run-queue.ts's first real
+ * unattended execution (run 2026-08-02T065749882Z, evidence preserved in
+ * .ai/runs/2026-08-02T065749882Z/) surfaced two classes of problem this
+ * version fixes:
+ *   1. The agent adapter itself could report success while having done
+ *      nothing (see scripts/ai/adapters/claude.ts's header comment) — fixed
+ *      there, not here, but it's why every task attempt below is now
+ *      wrapped so a bad adapter result is caught and recorded cleanly
+ *      rather than assumed benign.
+ *   2. Nothing in this file had a timeout. Every git/gh/quality-gate
+ *      subprocess call now goes through scripts/ai/subprocess.ts, which
+ *      requires an explicit timeout at every call site. QUEUE_STATUS.json
+ *      writes are now atomic (queueIO.ts). The whole run now has a
+ *      wall-clock ceiling (queue.max_run_duration_minutes). A crash partway
+ *      through a task's attempt no longer disappears silently — it's caught,
+ *      recorded as that task's failure, and still produces a normal
+ *      RUN_SUMMARY.md/RUN_STATUS.json so a human checking in the morning
+ *      has something to read regardless of how the run ended.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { validateQueue } from "./validate-queue.ts";
 import { loadRunQueue, loadQueueState, saveQueueState, computeResumeEligible, QUEUE_DIR, RUNS_DIR, QueueFileError } from "./queueIO.ts";
 import type { QueueState, QueueTask, RunQueue, TaskState } from "./queueTypes.ts";
-import { DEFAULT_MAX_REPAIR_ATTEMPTS } from "./queueTypes.ts";
+import { DEFAULT_MAX_REPAIR_ATTEMPTS, DEFAULT_MAX_RUN_DURATION_MINUTES } from "./queueTypes.ts";
 import { claudeAdapter } from "./adapters/claude.ts";
 import type { AgentAdapter } from "./adapters/types.ts";
+import { sh, runCommand } from "./subprocess.ts";
 import {
   captureQualitySnapshot,
   compareQualitySnapshots,
@@ -43,6 +62,15 @@ import {
 const ADAPTERS: Record<string, AgentAdapter> = {
   claude: claudeAdapter,
 };
+
+// Per-command timeout budgets. Generous enough for normal operation, bounded
+// enough that a hang can never stall an unattended run indefinitely — see
+// subprocess.ts's header comment.
+const GIT_FETCH_TIMEOUT_MS = 5 * 60 * 1000;
+const GIT_CHECKOUT_TIMEOUT_MS = 2 * 60 * 1000;
+const GIT_QUICK_TIMEOUT_MS = 2 * 60 * 1000;
+const GIT_PUSH_TIMEOUT_MS = 5 * 60 * 1000;
+const GH_PR_CREATE_TIMEOUT_MS = 3 * 60 * 1000;
 
 interface StopCondition {
   reason: string;
@@ -88,25 +116,21 @@ export function determineBranchBase(queue: RunQueue, task: QueueTask, state: Que
   return `origin/${queue.queue.base_branch}`;
 }
 
-function runCommand(command: string, args: string[], opts: { cwd: string }): { ok: boolean; output: string } {
-  const result = spawnSync(command, args, { cwd: opts.cwd, encoding: "utf8" });
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
-  return { ok: result.status === 0, output };
-}
-
-function sh(command: string, cwd: string): { ok: boolean; output: string } {
-  const result = spawnSync(command, { cwd, encoding: "utf8", shell: true });
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
-  return { ok: result.status === 0, output };
+/** Pure — exported for testing. True once `elapsedMs` has reached the configured ceiling. */
+export function runExceedsWallClockBudget(startedAtMs: number, nowMs: number, maxRunDurationMinutes: number): boolean {
+  return nowMs - startedAtMs >= maxRunDurationMinutes * 60 * 1000;
 }
 
 function checkPrerequisites(repoRoot: string): StopCondition | null {
-  const gitStatus = sh("git status --porcelain", repoRoot);
+  const gitStatus = sh("git status --porcelain", repoRoot, GIT_QUICK_TIMEOUT_MS);
+  if (gitStatus.timedOut) {
+    return { reason: "`git status` timed out — the working tree or git itself may be in a bad state. Investigate before running the queue." };
+  }
   if (gitStatus.output.trim().length > 0) {
     return { reason: "Working tree is not clean. Commit or stash local changes before running the queue." };
   }
 
-  const gh = runCommand("gh", ["--version"], { cwd: repoRoot });
+  const gh = runCommand("gh", ["--version"], repoRoot, GIT_QUICK_TIMEOUT_MS);
   if (!gh.ok) {
     return { reason: "GitHub CLI (`gh`) is not available or not authenticated. Install/auth `gh` before running the queue." };
   }
@@ -197,101 +221,178 @@ function writeRunArtifacts(
 async function main(): Promise<void> {
   const repoRoot = process.cwd();
   const runId = nowRunId();
-  const startedAt = new Date().toISOString();
+  const runStartedAtMs = Date.now();
+  const startedAt = new Date(runStartedAtMs).toISOString();
   const attempted: AttemptedTask[] = [];
-
-  let parsed: unknown;
-  try {
-    parsed = loadRunQueue(repoRoot);
-  } catch (error) {
-    if (error instanceof QueueFileError) {
-      console.error(error.message);
-      process.exit(1);
-    }
-    throw error;
-  }
-
-  const validation = validateQueue(parsed, repoRoot);
-  if (!validation.valid) {
-    console.error(`Refusing to run: .ai/queue/RUN_QUEUE.yaml failed validation (${validation.errors.length} problem(s)).`);
-    for (const issue of validation.errors) console.error(`  [${issue.scope}] ${issue.message}`);
-    console.error("Run `npm run ai:queue:validate` for the full report.");
-    process.exit(1);
-  }
-  const queue = parsed as RunQueue;
-  const maxRepairAttempts = queue.queue.max_repair_attempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS;
-
-  const prereqStop = checkPrerequisites(repoRoot);
-  if (prereqStop) {
-    console.error(`Refusing to run: ${prereqStop.reason}`);
-    process.exit(1);
-  }
-
-  const adapter = ADAPTERS[queue.queue.default_agent];
-  const availability = await adapter.checkAvailability();
-  if (!availability.available) {
-    console.error(`Refusing to run: agent "${queue.queue.default_agent}" is not available.\n${availability.reason}`);
-    process.exit(1);
-  }
-
-  let state: QueueState;
-  try {
-    state = loadQueueState(repoRoot);
-  } catch (error) {
-    if (error instanceof QueueFileError) {
-      console.error(error.message);
-      process.exit(1);
-    }
-    throw error;
-  }
-
-  let stopReason = "queue exhausted — no eligible tasks remain";
+  let state: QueueState | null = null;
   let baseline: QualitySnapshot | null = null;
+  let stopReason = "queue exhausted — no eligible tasks remain";
 
-  // Only pay for a baseline capture (a full lint/typecheck/unit/Playwright/
-  // build pass) if a task is actually eligible to run this invocation.
-  if (selectNextEligibleTask(queue, state)) {
-    console.log("Capturing repository quality baseline before this run's first task (Queue v2)...");
-    baseline = captureQualitySnapshot(repoRoot);
-    const runDir = join(repoRoot, RUNS_DIR, runId);
-    mkdirSync(runDir, { recursive: true });
-    writeFileSync(join(runDir, "baseline.json"), JSON.stringify(baseline, null, 2) + "\n", "utf8");
-    console.log(formatSnapshotOneLine("Baseline captured", baseline));
+  // Reliability hardening: if anything below throws unexpectedly (a bug, an
+  // OOM, a truly unforeseen error), this still writes whatever run artifacts
+  // it can from the state captured so far, rather than vanishing with only
+  // an uncaught-exception line in a terminal no one is watching overnight.
+  try {
+    let parsed: unknown;
+    try {
+      parsed = loadRunQueue(repoRoot);
+    } catch (error) {
+      if (error instanceof QueueFileError) {
+        console.error(error.message);
+        process.exit(1);
+      }
+      throw error;
+    }
+
+    const validation = validateQueue(parsed, repoRoot);
+    if (!validation.valid) {
+      console.error(`Refusing to run: .ai/queue/RUN_QUEUE.yaml failed validation (${validation.errors.length} problem(s)).`);
+      for (const issue of validation.errors) console.error(`  [${issue.scope}] ${issue.message}`);
+      console.error("Run `npm run ai:queue:validate` for the full report.");
+      process.exit(1);
+    }
+    const queue = parsed as RunQueue;
+    const maxRepairAttempts = queue.queue.max_repair_attempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS;
+    const maxRunDurationMinutes = queue.queue.max_run_duration_minutes ?? DEFAULT_MAX_RUN_DURATION_MINUTES;
+
+    const prereqStop = checkPrerequisites(repoRoot);
+    if (prereqStop) {
+      console.error(`Refusing to run: ${prereqStop.reason}`);
+      process.exit(1);
+    }
+
+    const adapter = ADAPTERS[queue.queue.default_agent];
+    const availability = await adapter.checkAvailability();
+    if (!availability.available) {
+      console.error(`Refusing to run: agent "${queue.queue.default_agent}" is not available.\n${availability.reason}`);
+      process.exit(1);
+    }
+
+    try {
+      state = loadQueueState(repoRoot);
+    } catch (error) {
+      if (error instanceof QueueFileError) {
+        console.error(error.message);
+        process.exit(1);
+      }
+      throw error;
+    }
+
+    // Only pay for a baseline capture (a full lint/typecheck/unit/Playwright/
+    // build pass) if a task is actually eligible to run this invocation.
+    if (selectNextEligibleTask(queue, state)) {
+      console.log("Capturing repository quality baseline before this run's first task (Queue v2)...");
+      baseline = captureQualitySnapshot(repoRoot);
+      const runDir = join(repoRoot, RUNS_DIR, runId);
+      mkdirSync(runDir, { recursive: true });
+      writeFileSync(join(runDir, "baseline.json"), JSON.stringify(baseline, null, 2) + "\n", "utf8");
+      console.log(formatSnapshotOneLine("Baseline captured", baseline));
+    }
+
+    while (true) {
+      if (runExceedsWallClockBudget(runStartedAtMs, Date.now(), maxRunDurationMinutes)) {
+        stopReason = `run exceeded its maximum wall-clock budget (${maxRunDurationMinutes} minutes) — stopping for safety; remaining tasks are left pending for the next invocation`;
+        break;
+      }
+
+      const next = selectNextEligibleTask(queue, state);
+      if (!next) {
+        stopReason = queueIsExhausted(queue, state)
+          ? "queue exhausted — all tasks reached a terminal state"
+          : "no eligible task — remaining pending tasks are blocked on incomplete dependencies";
+        break;
+      }
+
+      const taskOutcome = await attemptTask({
+        repoRoot,
+        runId,
+        queue,
+        state,
+        task: next,
+        baseline: baseline!,
+        maxRepairAttempts,
+        adapter,
+      });
+      attempted.push(taskOutcome.attempted);
+      saveQueueState(repoRoot, state);
+      if (!taskOutcome.ok) {
+        stopReason = taskOutcome.stopReason;
+        break;
+      }
+      console.log(`Task ${next.id} completed. PR: ${taskOutcome.attempted.state.pr}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+    console.error("run-queue.ts crashed unexpectedly:", message);
+    stopReason = `run crashed unexpectedly: ${message.split("\n")[0]}`;
+    // If a task was mid-flight when this happened, its stateEntry is
+    // already "in_progress" in `state` — attemptTask() catches its own
+    // errors internally and returns a normal failed outcome, so reaching
+    // this outer catch means the crash happened outside any single task's
+    // attempt (e.g. during setup or baseline capture). Nothing further to
+    // reconcile in `attempted` here; state/attempted are used as-is below.
   }
 
-  while (true) {
-    const next = selectNextEligibleTask(queue, state);
-    if (!next) {
-      stopReason = queueIsExhausted(queue, state)
-        ? "queue exhausted — all tasks reached a terminal state"
-        : "no eligible task — remaining pending tasks are blocked on incomplete dependencies";
-      break;
-    }
-
-    const stateEntry = state.tasks.find((t) => t.id === next.id)!;
-    stateEntry.status = "in_progress";
-    stateEntry.started_at = new Date().toISOString();
-    state.current_task = next.id;
-    state.last_run_id = runId;
+  if (state) {
+    state.current_task = null;
+    state.resume_eligible = computeResumeEligible(state);
     saveQueueState(repoRoot, state);
-    console.log(`--- Task ${next.id}: ${next.name} ---`);
+  }
+  const finishedAt = new Date().toISOString();
+  writeRunArtifacts(repoRoot, runId, startedAt, finishedAt, stopReason, baseline, attempted);
+  console.log(`\nRun ${runId} finished: ${stopReason}`);
+  console.log(`Details: .ai/runs/${runId}/RUN_SUMMARY.md`);
 
+  const anyFailed = attempted.some(({ state: s }) => s.status === "failed");
+  process.exit(anyFailed ? 1 : 0);
+}
+
+interface AttemptTaskParams {
+  repoRoot: string;
+  runId: string;
+  queue: RunQueue;
+  state: QueueState;
+  task: QueueTask;
+  baseline: QualitySnapshot;
+  maxRepairAttempts: number;
+  adapter: AgentAdapter;
+}
+
+interface AttemptTaskOutcome {
+  ok: boolean;
+  stopReason: string;
+  attempted: AttemptedTask;
+}
+
+/**
+ * Runs one task end to end (branch, invoke agent, quality gate + repair
+ * loop, memory-update check, commit/push/PR) and always returns a normal
+ * outcome rather than throwing — any exception raised anywhere in this
+ * function is caught and turned into a failed-task outcome, so a single
+ * task's unexpected crash can never take down run-queue.ts's own artifact
+ * writing with it (see main()'s outer try/catch for the remaining, much
+ * narrower class of crash this doesn't cover: one during setup, before any
+ * task has started).
+ */
+async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcome> {
+  const { repoRoot, runId, queue, state, task: next, baseline, maxRepairAttempts, adapter } = params;
+  const stateEntry = state.tasks.find((t) => t.id === next.id)!;
+  stateEntry.status = "in_progress";
+  stateEntry.started_at = new Date().toISOString();
+  state.current_task = next.id;
+  state.last_run_id = runId;
+  saveQueueState(repoRoot, state);
+  console.log(`--- Task ${next.id}: ${next.name} ---`);
+
+  try {
     const branchBase = determineBranchBase(queue, next, state);
-    const fetchBase = sh(`git fetch origin ${queue.queue.base_branch}`, repoRoot);
+    const fetchBase = sh(`git fetch origin ${queue.queue.base_branch}`, repoRoot, GIT_FETCH_TIMEOUT_MS);
     if (!fetchBase.ok) {
-      stateEntry.status = "failed";
-      stateEntry.blocker = `git fetch origin ${queue.queue.base_branch} failed:\n${fetchBase.output}`;
-      attempted.push({ task: next, state: stateEntry, log: fetchBase.output });
-      stopReason = `task ${next.id} failed: could not fetch base branch`;
-      break;
+      return fail(next, stateEntry, `git fetch origin ${queue.queue.base_branch} failed:\n${fetchBase.output}`, fetchBase.output, `task ${next.id} failed: could not fetch base branch`);
     }
-    const checkout = sh(`git checkout -b ${next.branch} ${branchBase}`, repoRoot);
+    const checkout = sh(`git checkout -b ${next.branch} ${branchBase}`, repoRoot, GIT_CHECKOUT_TIMEOUT_MS);
     if (!checkout.ok) {
-      stateEntry.status = "failed";
-      stateEntry.blocker = `git checkout -b ${next.branch} ${branchBase} failed:\n${checkout.output}`;
-      attempted.push({ task: next, state: stateEntry, log: checkout.output });
-      stopReason = `task ${next.id} failed: could not create branch`;
-      break;
+      return fail(next, stateEntry, `git checkout -b ${next.branch} ${branchBase} failed:\n${checkout.output}`, checkout.output, `task ${next.id} failed: could not create branch`);
     }
     stateEntry.branch = next.branch;
 
@@ -306,11 +407,7 @@ async function main(): Promise<void> {
 
     const taskResult = await adapter.runTask({ prompt, cwd: repoRoot });
     if (!taskResult.success) {
-      stateEntry.status = "failed";
-      stateEntry.blocker = taskResult.summary;
-      attempted.push({ task: next, state: stateEntry, log: taskResult.log });
-      stopReason = `task ${next.id} failed: agent invocation did not succeed`;
-      break;
+      return fail(next, stateEntry, taskResult.summary, taskResult.log, `task ${next.id} failed: agent invocation did not succeed`);
     }
 
     // Queue v2: baseline-aware quality gate, with a bounded auto-repair loop
@@ -318,7 +415,7 @@ async function main(): Promise<void> {
     // blocks completion — see scripts/ai/qualityGates.ts.
     let taskLog = taskResult.log;
     let currentSnapshot = captureQualitySnapshot(repoRoot);
-    let comparison = compareQualitySnapshots(baseline!, currentSnapshot);
+    let comparison = compareQualitySnapshots(baseline, currentSnapshot);
     let repairAttempts = 0;
     while (comparison.overallStatus === "fail" && repairAttempts < maxRepairAttempts) {
       repairAttempts++;
@@ -328,7 +425,7 @@ async function main(): Promise<void> {
       taskLog += `\n\n--- Auto-repair attempt ${repairAttempts} ---\n${repairResult.log}`;
       if (!repairResult.success) break;
       currentSnapshot = captureQualitySnapshot(repoRoot);
-      comparison = compareQualitySnapshots(baseline!, currentSnapshot);
+      comparison = compareQualitySnapshots(baseline, currentSnapshot);
     }
 
     const runDir = join(repoRoot, RUNS_DIR, runId);
@@ -340,44 +437,48 @@ async function main(): Promise<void> {
     );
 
     if (comparison.overallStatus === "fail") {
-      stateEntry.status = "failed";
-      stateEntry.blocker = `quality gate failed after ${repairAttempts} auto-repair attempt(s) — new regression(s): ${comparison.newRegressions.join("; ")}`;
       stateEntry.tests = "failed";
-      attempted.push({ task: next, state: stateEntry, log: taskLog, comparison, repairAttempts });
-      stopReason = `task ${next.id} failed: new regressions could not be repaired within ${maxRepairAttempts} attempt(s)`;
-      break;
+      return fail(
+        next,
+        stateEntry,
+        `quality gate failed after ${repairAttempts} auto-repair attempt(s) — new regression(s): ${comparison.newRegressions.join("; ")}`,
+        taskLog,
+        `task ${next.id} failed: new regressions could not be repaired within ${maxRepairAttempts} attempt(s)`,
+        comparison,
+        repairAttempts
+      );
     }
     stateEntry.tests = "passed";
 
-    const memoryDiff = sh("git status --porcelain -- .ai/CURRENT_STATUS.md .ai/STATUS.json .ai/HANDOFF.md .ai/ROADMAP.md .ai/ARCHITECTURE.md .ai/DECISIONS.md .ai/OPEN_ITEMS.md", repoRoot);
+    const memoryDiff = sh(
+      "git status --porcelain -- .ai/CURRENT_STATUS.md .ai/STATUS.json .ai/HANDOFF.md .ai/ROADMAP.md .ai/ARCHITECTURE.md .ai/DECISIONS.md .ai/OPEN_ITEMS.md",
+      repoRoot,
+      GIT_QUICK_TIMEOUT_MS
+    );
     if (memoryDiff.output.trim().length === 0) {
-      stateEntry.status = "failed";
-      stateEntry.blocker = "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.";
-      attempted.push({ task: next, state: stateEntry, log: taskLog, comparison, repairAttempts });
-      stopReason = `task ${next.id} failed: no project-memory update`;
-      break;
+      return fail(
+        next,
+        stateEntry,
+        "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.",
+        taskLog,
+        `task ${next.id} failed: no project-memory update`,
+        comparison,
+        repairAttempts
+      );
     }
 
-    sh("git add -A", repoRoot);
+    sh("git add -A", repoRoot, GIT_QUICK_TIMEOUT_MS);
     const commitMessage = `${next.name}\n\nQueue task ${next.id} from .ai/queue/RUN_QUEUE.yaml.\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
-    const commit = sh(`git commit -m ${JSON.stringify(commitMessage)}`, repoRoot);
+    const commit = sh(`git commit -m ${JSON.stringify(commitMessage)}`, repoRoot, GIT_QUICK_TIMEOUT_MS);
     if (!commit.ok) {
-      stateEntry.status = "failed";
-      stateEntry.blocker = `git commit failed:\n${commit.output}`;
-      attempted.push({ task: next, state: stateEntry, log: taskLog + "\n\n" + commit.output, comparison, repairAttempts });
-      stopReason = `task ${next.id} failed: commit failed (nothing to commit, or a git error)`;
-      break;
+      return fail(next, stateEntry, `git commit failed:\n${commit.output}`, taskLog + "\n\n" + commit.output, `task ${next.id} failed: commit failed (nothing to commit, or a git error)`, comparison, repairAttempts);
     }
-    const commitSha = sh("git rev-parse HEAD", repoRoot).output.trim();
+    const commitSha = sh("git rev-parse HEAD", repoRoot, GIT_QUICK_TIMEOUT_MS).output.trim();
     stateEntry.commit = commitSha;
 
-    const push = sh(`git push -u origin ${next.branch}`, repoRoot);
+    const push = sh(`git push -u origin ${next.branch}`, repoRoot, GIT_PUSH_TIMEOUT_MS);
     if (!push.ok) {
-      stateEntry.status = "failed";
-      stateEntry.blocker = `git push failed:\n${push.output}`;
-      attempted.push({ task: next, state: stateEntry, log: taskLog + "\n\n" + push.output, comparison, repairAttempts });
-      stopReason = `task ${next.id} failed: push failed`;
-      break;
+      return fail(next, stateEntry, `git push failed:\n${push.output}`, taskLog + "\n\n" + push.output, `task ${next.id} failed: push failed`, comparison, repairAttempts);
     }
 
     const prBaseBranch = branchBase.startsWith("origin/") ? branchBase.slice("origin/".length) : branchBase;
@@ -396,37 +497,40 @@ async function main(): Promise<void> {
     ]
       .filter((line) => line !== "")
       .join("\n");
-    const prResult = execFileSync(
-      "gh",
-      ["pr", "create", "--base", prBaseBranch, "--head", next.branch, "--title", next.name, "--body", prBody],
-      { cwd: repoRoot, encoding: "utf8" }
-    ).trim();
-    stateEntry.pr = prResult;
+    const prCreate = runCommand("gh", ["pr", "create", "--base", prBaseBranch, "--head", next.branch, "--title", next.name, "--body", prBody], repoRoot, GH_PR_CREATE_TIMEOUT_MS);
+    if (!prCreate.ok) {
+      return fail(next, stateEntry, `gh pr create failed:\n${prCreate.output}`, taskLog + "\n\n" + prCreate.output, `task ${next.id} failed: PR creation failed (commit and push already succeeded — the branch exists on origin)`, comparison, repairAttempts);
+    }
+
+    stateEntry.pr = prCreate.stdout.trim();
     stateEntry.status = "completed";
     stateEntry.completed_at = new Date().toISOString();
     state.current_task = null;
-    saveQueueState(repoRoot, state);
-    attempted.push({ task: next, state: stateEntry, log: taskLog, comparison, repairAttempts });
-
-    console.log(`Task ${next.id} completed. PR: ${prResult}`);
+    return { ok: true, stopReason: "", attempted: { task: next, state: stateEntry, log: taskLog, comparison, repairAttempts } };
+  } catch (error) {
+    const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+    return fail(next, stateEntry, `task crashed unexpectedly: ${message}`, message, `task ${next.id} failed: unexpected crash during execution`);
   }
+}
 
-  state.current_task = null;
-  state.resume_eligible = computeResumeEligible(state);
-  saveQueueState(repoRoot, state);
-  const finishedAt = new Date().toISOString();
-  writeRunArtifacts(repoRoot, runId, startedAt, finishedAt, stopReason, baseline, attempted);
-  console.log(`\nRun ${runId} finished: ${stopReason}`);
-  console.log(`Details: .ai/runs/${runId}/RUN_SUMMARY.md`);
-
-  const anyFailed = attempted.some(({ state: s }) => s.status === "failed");
-  process.exit(anyFailed ? 1 : 0);
+function fail(
+  task: QueueTask,
+  stateEntry: TaskState,
+  blocker: string,
+  log: string,
+  stopReason: string,
+  comparison?: QualityComparisonResult,
+  repairAttempts?: number
+): AttemptTaskOutcome {
+  stateEntry.status = "failed";
+  stateEntry.blocker = blocker;
+  return { ok: false, stopReason, attempted: { task, state: stateEntry, log, comparison, repairAttempts } };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   main().catch((error) => {
-    console.error("run-queue.ts crashed unexpectedly:", error);
+    console.error("run-queue.ts crashed unexpectedly outside main()'s own recovery path:", error);
     process.exit(1);
   });
 }

@@ -116,6 +116,13 @@ function validateQueueMeta(queue: Partial<RunQueue["queue"]> | undefined, errors
       pushError(errors, "queue", "queue.max_repair_attempts must not exceed 10 — an unattended queue should not be able to loop indefinitely on a single task.");
     }
   }
+  if (queue.max_run_duration_minutes !== undefined) {
+    if (typeof queue.max_run_duration_minutes !== "number" || !Number.isInteger(queue.max_run_duration_minutes) || queue.max_run_duration_minutes <= 0) {
+      pushError(errors, "queue", "queue.max_run_duration_minutes, if present, must be a positive integer.");
+    } else if (queue.max_run_duration_minutes > 1440) {
+      pushError(errors, "queue", "queue.max_run_duration_minutes must not exceed 1440 (24 hours) — an unattended run needs a real ceiling, not just a very large one.");
+    }
+  }
 }
 
 function validateSafety(safety: Partial<RunQueue["safety"]> | undefined, errors: ValidationIssue[]): void {
