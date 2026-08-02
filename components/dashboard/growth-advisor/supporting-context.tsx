@@ -191,6 +191,7 @@ export function GrowthAdvisorSupportingContext({
               { href: "/dashboard/customer-voice", label: "Customer Voice" },
               { href: "/dashboard/testimonials", label: "Website Testimonials" },
               { href: "/dashboard/business-timeline", label: "Business Timeline" },
+              { href: "/dashboard/market-radar", label: "Market Radar" },
               { href: "/dashboard/tasks", label: "What I'm working on" },
               { href: "/dashboard/google-business-profile", label: "Google Profile" },
               { href: "/dashboard/command-center", label: "Detailed workspace (advanced)" },
