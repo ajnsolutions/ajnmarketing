@@ -47,7 +47,7 @@ Found by direct `git show`/`git log` archaeology, not speculation: `git show 4db
 
 ## PR
 
-Opened against `main` from this branch — see this repository's PR list for the number/URL (`gh pr list --head fix/queue-completion-state-reconciliation`). Not merged. Not deployed.
+[#102](https://github.com/ajnsolutions/ajnmarketing/pull/102) — `fix/queue-completion-state-reconciliation` → `main`. Not merged. Not deployed.
 
 ## Blockers
 

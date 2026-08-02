@@ -1,6 +1,6 @@
 # Project Memory — AJN Marketing
 
-Generated 2026-08-02T14:52:04.187Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
+Generated 2026-08-02T14:54:34.744Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
 
 
 ---
@@ -382,7 +382,7 @@ Found by direct `git show`/`git log` archaeology, not speculation: `git show 4db
 
 ## PR
 
-Opened against `main` from this branch — see this repository's PR list for the number/URL (`gh pr list --head fix/queue-completion-state-reconciliation`). Not merged. Not deployed.
+[#102](https://github.com/ajnsolutions/ajnmarketing/pull/102) — `fix/queue-completion-state-reconciliation` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
