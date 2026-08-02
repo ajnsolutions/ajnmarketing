@@ -28,6 +28,21 @@
 # docs/AI_OVERNIGHT_QUEUE.md, run a daytime dry run (`npm run ai:queue`,
 # attended) before ever trusting this for an unattended overnight run — see
 # .ai/HANDOFF.md for why that verification is still outstanding.
+#
+# Queue v2 (baseline-aware quality gates): the first daytime run of this
+# queue surfaced a design flaw in v1's quality gate — it compared each
+# task's lint/typecheck/unit-test run against a hard "must be perfectly
+# clean" bar, so this repository's own documented, pre-existing baseline
+# issues (.ai/OPEN_ITEMS.md) stopped the queue even when a task introduced
+# zero regressions of its own. run-queue.ts now captures a QualitySnapshot
+# of the repository once, before this run's first task begins, persists it
+# to .ai/runs/<run>/baseline.json, and compares every task's own after-state
+# against that SAME baseline — existing debt that's still present and
+# unchanged never fails a task; anything newly broken always does, and gets
+# a bounded number of automatic repair attempts (max_repair_attempts below)
+# before the task is failed and the queue stops. See
+# scripts/ai/qualityGates.ts and docs/AI_OVERNIGHT_QUEUE.md's "Queue v2"
+# section for the full design.
 
 queue:
   name: "ajnmarketing-overnight-queue"
@@ -56,6 +71,11 @@ queue:
   # local repo is currently an up-to-date, clean checkout of this branch.
   base_branch: main
   default_agent: claude
+  # Queue v2: how many times run-queue.ts will re-invoke the agent with a
+  # narrow repair prompt when a task's quality-gate comparison finds new
+  # regressions, before giving up and failing the task. Optional — defaults
+  # to 3 (DEFAULT_MAX_REPAIR_ATTEMPTS in scripts/ai/queueTypes.ts) if unset.
+  max_repair_attempts: 3
 
 safety:
   allow_merge: false

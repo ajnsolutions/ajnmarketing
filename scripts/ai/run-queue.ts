@@ -9,6 +9,17 @@
  * changes a secret, never activates a production schedule — none of those
  * actions appear anywhere in this file's code path. The safety validator
  * (validate-queue.ts) also refuses to run a queue that asks for any of them.
+ *
+ * Queue v2 — baseline-aware quality gates. v1 required every task's
+ * lint/typecheck/unit-test run to be perfectly clean, which meant this
+ * repository's own small set of documented, pre-existing baseline issues
+ * (see .ai/OPEN_ITEMS.md) stopped the queue even on a task that introduced
+ * zero regressions of its own — a design flaw, not a task failure. v2
+ * captures one QualitySnapshot of the repository before this run's first
+ * task begins (the "baseline", persisted to .ai/runs/<run>/baseline.json)
+ * and compares every task's own after-state against that same baseline:
+ * existing debt that's still present and unchanged never fails a task;
+ * anything newly broken always does. See scripts/ai/qualityGates.ts.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,17 +28,32 @@ import { pathToFileURL } from "node:url";
 import { validateQueue } from "./validate-queue.ts";
 import { loadRunQueue, loadQueueState, saveQueueState, computeResumeEligible, QUEUE_DIR, RUNS_DIR, QueueFileError } from "./queueIO.ts";
 import type { QueueState, QueueTask, RunQueue, TaskState } from "./queueTypes.ts";
+import { DEFAULT_MAX_REPAIR_ATTEMPTS } from "./queueTypes.ts";
 import { claudeAdapter } from "./adapters/claude.ts";
 import type { AgentAdapter } from "./adapters/types.ts";
+import {
+  captureQualitySnapshot,
+  compareQualitySnapshots,
+  buildRepairPrompt,
+  formatQualityComparisonMarkdown,
+  type QualitySnapshot,
+  type QualityComparisonResult,
+} from "./qualityGates.ts";
 
 const ADAPTERS: Record<string, AgentAdapter> = {
   claude: claudeAdapter,
 };
 
-const QUALITY_GATE_COMMANDS = ["npm run lint", "npm run typecheck", "npm run test:unit"];
-
 interface StopCondition {
   reason: string;
+}
+
+interface AttemptedTask {
+  task: QueueTask;
+  state: TaskState;
+  log: string;
+  comparison?: QualityComparisonResult;
+  repairAttempts?: number;
 }
 
 /** Picks the next task eligible to run: status pending in both the queue file and live state, not disabled, all dependencies completed. Returns null when nothing is currently eligible (queue finished or blocked). */
@@ -92,13 +118,18 @@ function nowRunId(): string {
   return new Date().toISOString().replace(/[:.]/g, "").replace("Z", "Z");
 }
 
+function formatSnapshotOneLine(label: string, snapshot: QualitySnapshot): string {
+  return `${label}: TypeScript ${snapshot.typescriptErrorCount} error(s), ESLint ${snapshot.eslintErrorCount} error(s)/${snapshot.eslintWarningCount} warning(s), unit tests ${snapshot.unitTestFailureCount} failure(s), Playwright ${snapshot.playwrightFailureCount} failure(s), build ${snapshot.buildSucceeded ? "succeeded" : "FAILED"}.`;
+}
+
 function writeRunArtifacts(
   repoRoot: string,
   runId: string,
   startedAt: string,
   finishedAt: string,
   stopReason: string,
-  attempted: { task: QueueTask; state: TaskState; log: string }[]
+  baseline: QualitySnapshot | null,
+  attempted: AttemptedTask[]
 ): void {
   const runDir = join(repoRoot, RUNS_DIR, runId);
   mkdirSync(runDir, { recursive: true });
@@ -114,12 +145,25 @@ function writeRunArtifacts(
     `Finished: ${finishedAt}`,
     `Stop reason: ${stopReason}`,
     "",
-    "## Tasks attempted this run",
-    "",
   ];
+
+  if (baseline) {
+    summaryLines.push("## Repository baseline (captured before this run's first task)", "", formatSnapshotOneLine("Baseline", baseline), "");
+  } else {
+    summaryLines.push("## Repository baseline", "", "No baseline captured this run — no task was eligible to run.", "");
+  }
+
+  summaryLines.push("## Tasks attempted this run", "");
   for (const { task, state } of attempted) {
     summaryLines.push(`- **${task.id} — ${task.name}**: ${state.status}${state.pr ? ` (PR: ${state.pr})` : ""}${state.blocker ? ` — blocker: ${state.blocker}` : ""}`);
   }
+  summaryLines.push("");
+
+  for (const { task, comparison, repairAttempts } of attempted) {
+    if (!comparison) continue;
+    summaryLines.push(formatQualityComparisonMarkdown(`${task.id} — ${task.name}`, comparison, repairAttempts ?? 0), "");
+  }
+
   writeFileSync(join(runDir, "RUN_SUMMARY.md"), summaryLines.join("\n") + "\n", "utf8");
 
   const statusJson = {
@@ -127,7 +171,25 @@ function writeRunArtifacts(
     started_at: startedAt,
     finished_at: finishedAt,
     stop_reason: stopReason,
-    tasks: attempted.map(({ task, state }) => ({ id: task.id, name: task.name, status: state.status, branch: state.branch, commit: state.commit, pr: state.pr, blocker: state.blocker })),
+    baseline,
+    tasks: attempted.map(({ task, state, comparison, repairAttempts }) => ({
+      id: task.id,
+      name: task.name,
+      status: state.status,
+      branch: state.branch,
+      commit: state.commit,
+      pr: state.pr,
+      blocker: state.blocker,
+      quality_gate: comparison
+        ? {
+            overall_status: comparison.overallStatus,
+            new_regressions: comparison.newRegressions,
+            fixed_regressions: comparison.fixedRegressions,
+            remaining_historical_debt: comparison.remainingHistoricalDebt,
+            repair_attempts: repairAttempts ?? 0,
+          }
+        : null,
+    })),
   };
   writeFileSync(join(runDir, "RUN_STATUS.json"), JSON.stringify(statusJson, null, 2) + "\n", "utf8");
 }
@@ -136,7 +198,7 @@ async function main(): Promise<void> {
   const repoRoot = process.cwd();
   const runId = nowRunId();
   const startedAt = new Date().toISOString();
-  const attempted: { task: QueueTask; state: TaskState; log: string }[] = [];
+  const attempted: AttemptedTask[] = [];
 
   let parsed: unknown;
   try {
@@ -157,6 +219,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const queue = parsed as RunQueue;
+  const maxRepairAttempts = queue.queue.max_repair_attempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS;
 
   const prereqStop = checkPrerequisites(repoRoot);
   if (prereqStop) {
@@ -183,6 +246,18 @@ async function main(): Promise<void> {
   }
 
   let stopReason = "queue exhausted — no eligible tasks remain";
+  let baseline: QualitySnapshot | null = null;
+
+  // Only pay for a baseline capture (a full lint/typecheck/unit/Playwright/
+  // build pass) if a task is actually eligible to run this invocation.
+  if (selectNextEligibleTask(queue, state)) {
+    console.log("Capturing repository quality baseline before this run's first task (Queue v2)...");
+    baseline = captureQualitySnapshot(repoRoot);
+    const runDir = join(repoRoot, RUNS_DIR, runId);
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(join(runDir, "baseline.json"), JSON.stringify(baseline, null, 2) + "\n", "utf8");
+    console.log(formatSnapshotOneLine("Baseline captured", baseline));
+  }
 
   while (true) {
     const next = selectNextEligibleTask(queue, state);
@@ -238,22 +313,38 @@ async function main(): Promise<void> {
       break;
     }
 
-    let gateFailed = false;
-    let gateLog = "";
-    for (const gate of QUALITY_GATE_COMMANDS) {
-      const gateResult = sh(gate, repoRoot);
-      gateLog += `$ ${gate}\n${gateResult.output}\n\n`;
-      if (!gateResult.ok) {
-        gateFailed = true;
-        break;
-      }
+    // Queue v2: baseline-aware quality gate, with a bounded auto-repair loop
+    // for genuinely new regressions only. Pre-existing baseline debt never
+    // blocks completion — see scripts/ai/qualityGates.ts.
+    let taskLog = taskResult.log;
+    let currentSnapshot = captureQualitySnapshot(repoRoot);
+    let comparison = compareQualitySnapshots(baseline!, currentSnapshot);
+    let repairAttempts = 0;
+    while (comparison.overallStatus === "fail" && repairAttempts < maxRepairAttempts) {
+      repairAttempts++;
+      console.log(`Task ${next.id}: new regression(s) found, attempting auto-repair ${repairAttempts}/${maxRepairAttempts}...`);
+      const repairPrompt = buildRepairPrompt(comparison, repairAttempts, maxRepairAttempts);
+      const repairResult = await adapter.runTask({ prompt: repairPrompt, cwd: repoRoot });
+      taskLog += `\n\n--- Auto-repair attempt ${repairAttempts} ---\n${repairResult.log}`;
+      if (!repairResult.success) break;
+      currentSnapshot = captureQualitySnapshot(repoRoot);
+      comparison = compareQualitySnapshots(baseline!, currentSnapshot);
     }
-    if (gateFailed) {
+
+    const runDir = join(repoRoot, RUNS_DIR, runId);
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(
+      join(runDir, `task-${next.id}-quality.json`),
+      JSON.stringify({ baseline, current: currentSnapshot, comparison, repairAttempts }, null, 2) + "\n",
+      "utf8"
+    );
+
+    if (comparison.overallStatus === "fail") {
       stateEntry.status = "failed";
-      stateEntry.blocker = "a quality gate failed — see task log";
+      stateEntry.blocker = `quality gate failed after ${repairAttempts} auto-repair attempt(s) — new regression(s): ${comparison.newRegressions.join("; ")}`;
       stateEntry.tests = "failed";
-      attempted.push({ task: next, state: stateEntry, log: taskResult.log + "\n\n" + gateLog });
-      stopReason = `task ${next.id} failed: quality gate did not pass`;
+      attempted.push({ task: next, state: stateEntry, log: taskLog, comparison, repairAttempts });
+      stopReason = `task ${next.id} failed: new regressions could not be repaired within ${maxRepairAttempts} attempt(s)`;
       break;
     }
     stateEntry.tests = "passed";
@@ -262,7 +353,7 @@ async function main(): Promise<void> {
     if (memoryDiff.output.trim().length === 0) {
       stateEntry.status = "failed";
       stateEntry.blocker = "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.";
-      attempted.push({ task: next, state: stateEntry, log: taskResult.log + "\n\n" + gateLog });
+      attempted.push({ task: next, state: stateEntry, log: taskLog, comparison, repairAttempts });
       stopReason = `task ${next.id} failed: no project-memory update`;
       break;
     }
@@ -273,7 +364,7 @@ async function main(): Promise<void> {
     if (!commit.ok) {
       stateEntry.status = "failed";
       stateEntry.blocker = `git commit failed:\n${commit.output}`;
-      attempted.push({ task: next, state: stateEntry, log: taskResult.log + "\n\n" + gateLog + "\n\n" + commit.output });
+      attempted.push({ task: next, state: stateEntry, log: taskLog + "\n\n" + commit.output, comparison, repairAttempts });
       stopReason = `task ${next.id} failed: commit failed (nothing to commit, or a git error)`;
       break;
     }
@@ -284,13 +375,27 @@ async function main(): Promise<void> {
     if (!push.ok) {
       stateEntry.status = "failed";
       stateEntry.blocker = `git push failed:\n${push.output}`;
-      attempted.push({ task: next, state: stateEntry, log: taskResult.log + "\n\n" + gateLog + "\n\n" + push.output });
+      attempted.push({ task: next, state: stateEntry, log: taskLog + "\n\n" + push.output, comparison, repairAttempts });
       stopReason = `task ${next.id} failed: push failed`;
       break;
     }
 
     const prBaseBranch = branchBase.startsWith("origin/") ? branchBase.slice("origin/".length) : branchBase;
-    const prBody = `Queue task \`${next.id}\` from \`.ai/queue/RUN_QUEUE.yaml\`.\n\nPrompt: \`.ai/queue/${next.prompt}\`\n\nQuality gates run: ${QUALITY_GATE_COMMANDS.join(", ")} — all passed.\n\nThis PR was opened by the unattended overnight queue (\`npm run ai:queue\`). It has not been merged, deployed, or otherwise activated automatically — see AGENTS.md.`;
+    const prBody = [
+      `Queue task \`${next.id}\` from \`.ai/queue/RUN_QUEUE.yaml\`.`,
+      "",
+      `Prompt: \`.ai/queue/${next.prompt}\``,
+      "",
+      "Quality gate (Queue v2, baseline-aware): PASS.",
+      comparison.remainingHistoricalDebt.length > 0
+        ? `Remaining historical debt (pre-existing, unrelated to this task): ${comparison.remainingHistoricalDebt.join("; ")}`
+        : "No historical debt remains.",
+      repairAttempts > 0 ? `Auto-repair attempts used: ${repairAttempts}.` : "",
+      "",
+      "This PR was opened by the unattended overnight queue (`npm run ai:queue`). It has not been merged, deployed, or otherwise activated automatically — see AGENTS.md.",
+    ]
+      .filter((line) => line !== "")
+      .join("\n");
     const prResult = execFileSync(
       "gh",
       ["pr", "create", "--base", prBaseBranch, "--head", next.branch, "--title", next.name, "--body", prBody],
@@ -301,7 +406,7 @@ async function main(): Promise<void> {
     stateEntry.completed_at = new Date().toISOString();
     state.current_task = null;
     saveQueueState(repoRoot, state);
-    attempted.push({ task: next, state: stateEntry, log: taskResult.log + "\n\n" + gateLog });
+    attempted.push({ task: next, state: stateEntry, log: taskLog, comparison, repairAttempts });
 
     console.log(`Task ${next.id} completed. PR: ${prResult}`);
   }
@@ -310,7 +415,7 @@ async function main(): Promise<void> {
   state.resume_eligible = computeResumeEligible(state);
   saveQueueState(repoRoot, state);
   const finishedAt = new Date().toISOString();
-  writeRunArtifacts(repoRoot, runId, startedAt, finishedAt, stopReason, attempted);
+  writeRunArtifacts(repoRoot, runId, startedAt, finishedAt, stopReason, baseline, attempted);
   console.log(`\nRun ${runId} finished: ${stopReason}`);
   console.log(`Details: .ai/runs/${runId}/RUN_SUMMARY.md`);
 

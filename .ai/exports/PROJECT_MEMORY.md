@@ -1,6 +1,6 @@
 # Project Memory — AJN Marketing
 
-Generated 2026-07-31T14:55:49.360Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
+Generated 2026-08-02T06:01:47.015Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
 
 
 ---
@@ -30,7 +30,7 @@ The 1.0 roadmap (`docs/IMPLEMENTATION_ROADMAP.md`, Phases A–H) runs in paralle
 - Head of Marketing Orchestrator — the newest merge (PR #96): a daily Executive Review composing Weekly Growth Plan + Executive Brief + Opportunity Engine into one view, at `/dashboard/executive-review` (customer) and `/dashboard/admin/executive-overview` (admin).
 - Publishing pipeline with atomic job claiming (background_jobs table + Trigger.dev, two systems not yet merged — see `DECISIONS.md`).
 
-**Current active initiative:** `.ai/queue/RUN_QUEUE.yaml` now holds its first two REAL, `status: pending` tasks (prepared on branch `prepare-first-real-ai-queue`, not yet run): "Market Radar: owner-managed competitor & benchmark persistence foundation" (001) and "Market Radar: owner-facing tracked competitors & benchmarks view" (002, depends on 001). These replace the two documentation-only example tasks PR #97 shipped. Selected from `ROADMAP.md`'s "Next" section (Wave III remaining scope), `docs/project-magic/EXISTING_SYSTEM_AUDIT.md`'s Market Radar row, and `docs/project-magic/MARKET_RADAR.md`'s "Owner control" section — not invented. Neither task has actually run yet; per `docs/AI_OVERNIGHT_QUEUE.md`, an attended daytime dry run is required before trusting this for an unattended overnight run (the Claude CLI adapter's live success path is still unverified — see `OPEN_ITEMS.md`). Otherwise, main is caught up through PR #96 with no open product-track PR or unmerged product branch. See `recommended_next_task` below and `OPEN_ITEMS.md` for what a human should prioritize next on the product/intelligence track.
+**Current active initiative:** Queue v2 — baseline-aware quality gates (branch `ai-queue-v2-baseline-aware`). The first real daytime dry run of `.ai/queue/RUN_QUEUE.yaml`'s two real tasks (Market Radar persistence foundation, id `001`; Market Radar owner-facing view, id `002`, depends on `001`) surfaced a design flaw: v1's quality gate required a perfectly clean lint/typecheck/unit-test run, so this repository's own documented, pre-existing baseline issues stopped the queue even when a task introduced zero regressions. `scripts/ai/qualityGates.ts` now captures one `QualitySnapshot` (TypeScript, ESLint errors/warnings, unit tests, Playwright, build) before a run's first task begins, persists it to `.ai/runs/<run-id>/baseline.json`, and compares every task's after-state against that same baseline — pre-existing debt that stays unchanged never fails a task; a genuine new regression always does, and gets up to `max_repair_attempts` (default 3) automatic repair tries before the task fails and the queue stops. See `DECISIONS.md` ADR-0012 and `docs/AI_OVERNIGHT_QUEUE.md`'s "Queue v2" section. Both Market Radar tasks in `RUN_QUEUE.yaml` are unaffected in content — still `status: pending`, not yet actually run to completion end-to-end. Otherwise, main is caught up through PR #98 with no other open product-track PR or unmerged product branch. See `recommended_next_task` below and `OPEN_ITEMS.md` for what a human should prioritize next on the product/intelligence track.
 
 **Known safety gates (must not be silently changed by any agent):**
 - `ATTACH_DECLARATIVE_PRODUCTION_CRONS` — the Trigger.dev production-schedule activation gate. **Must remain `false`.** Canonical source: `lib/trigger/scheduleActivation.ts`. Referenced/enforced across ~10+ tests, most `docs/` files, and this repo's own `RUNBOOKS.md` (which treats an accidentally-`true` gate as a severe production-safety incident).
@@ -40,9 +40,9 @@ The 1.0 roadmap (`docs/IMPLEMENTATION_ROADMAP.md`, Phases A–H) runs in paralle
 
 **Recommended next step:** Resolve the three-competing-"what should this business do"-systems architecture question (`docs/ARCHITECTURE_REVIEW_2026.md`) before adding further recommendation/decision surface area. In parallel, patch the spoofable `x-forwarded-for` rate-limit key on the public interactive-demo endpoint (§3.9 of that same review) — it is an active, unbounded-cost-abuse security gap, not a hypothetical one.
 
-**Date last verified:** 2026-07-31
+**Date last verified:** 2026-08-01
 
-**Branch/commit used for verification:** `prepare-first-real-ai-queue`, based on `origin/main` at `9e72ff2` (merge of PR #97).
+**Branch/commit used for verification:** `ai-queue-v2-baseline-aware`, based on `origin/main` at `44d6db1` (merge of PR #98).
 
 
 ---
@@ -151,7 +151,7 @@ Business Brain intelligence layer: `lib/business-brain/`, `lib/business-brain-in
 
 - **Unit**: Node's built-in test runner, `unit-tests/*.test.ts`, invoked via `node --import ./unit-tests/support/register.mjs --test unit-tests/*.test.ts` (`npm run test:unit`). `register.mjs` resolves the `@/*` path alias and stubs `server-only`/`next/headers`/`next/server` for plain-Node execution outside the Next.js runtime.
 - **E2E**: Playwright, `tests/*.spec.ts` (`npm run test:e2e`). CI (`.github/workflows/e2e.yml`) runs Playwright only, on `pull_request`, against Chromium. CI does **not** currently run lint, typecheck, or unit tests — those are run manually/locally as quality gates (see `docs/AI_QUEUE_TROUBLESHOOTING.md` for the full gate list this repo's AI tooling now enforces before opening a PR).
-- **One-off audit scripts**: `scripts/audit/*.ts`, run via `node --experimental-strip-types scripts/audit/<name>.ts`, excluded from the main `tsconfig.json`'s type-checking (`scripts/**/*` is in `exclude`) and from `test:unit`/`test:e2e` — standalone verification tools, not part of the committed test suite. The `.ai/queue/` tooling (`scripts/ai/`) follows this same run convention.
+- **One-off audit scripts**: `scripts/audit/*.ts`, run via `node --experimental-strip-types scripts/audit/<name>.ts`, excluded from the main `tsconfig.json`'s type-checking (`scripts/**/*` is in `exclude`) and from `test:unit`/`test:e2e` — standalone verification tools, not part of the committed test suite. The `.ai/queue/` tooling (`scripts/ai/`) follows this same run convention. The queue's own per-task quality gate (`scripts/ai/qualityGates.ts`, "Queue v2") is baseline-aware — see `DECISIONS.md` ADR-0012 and `docs/AI_OVERNIGHT_QUEUE.md` — so it never blocks on this repository's own pre-existing debt, only on regressions a queue task itself introduces.
 
 ## Deployment
 
@@ -220,6 +220,17 @@ Assisted Pilot exists to build trust toward more autonomous execution — it com
 
 **Consequences:** Every agent (per `AGENTS.md`) must now read `.ai/` before starting work and update it before finishing, in the same branch/PR as the implementation. The queue's Claude adapter (`scripts/ai/adapters/claude.ts`) is implemented against documented Claude Code CLI conventions but has **not been end-to-end verified in this build's sandbox**, because no `claude` CLI binary was present on `PATH` here — see `OPEN_ITEMS.md` and `docs/AI_OVERNIGHT_QUEUE.md` for the required first daytime dry run before any unattended overnight use. The Cursor/Grok adapter is an explicit placeholder (`scripts/ai/adapters/cursor-placeholder.ts`) that reports itself unavailable — it makes no functionality claim.
 
+## ADR-0012 — Queue v2: baseline-aware quality gates (2026-08-01)
+**Status:** Implemented, this build.
+
+**Decision:** `scripts/ai/run-queue.ts` no longer requires a task's post-change quality-gate run to be perfectly clean. It captures one `QualitySnapshot` of the repository (TypeScript, ESLint errors/warnings, unit tests, Playwright, build) before a run's first eligible task begins, persists it to `.ai/runs/<run-id>/baseline.json`, and compares every task's own after-state against that same baseline (`scripts/ai/qualityGates.ts`). A task passes if it introduces no new regressions relative to the baseline, regardless of how much pre-existing debt the baseline already carried. Unit-test and Playwright comparisons are identity-aware (by failing-test name), not just count-based, so a coincidentally-fixed old failure can't mask a genuinely new one. A task whose comparison fails gets up to `queue.max_repair_attempts` (default 3) automatic repair invocations, each scoped narrowly to the specific new regressions found, before the task is marked failed and the queue stops.
+
+**Why:** ADR-0011's v1 queue ran a fixed lint/typecheck/unit-test command list and required it to pass cleanly. This repository intentionally carries a small number of documented, pre-existing baseline issues (`OPEN_ITEMS.md`'s "Pre-existing type-check debt"), so v1's gate evaluated repository-wide quality rather than task-specific quality — it stopped the queue's first real daytime run even on a task that introduced zero regressions of its own. That made unattended execution practically impossible, since almost any real task would otherwise be judged against a bar the repository itself doesn't currently clear.
+
+**Alternatives considered:** Fix the pre-existing debt first, then keep v1's "must be clean" gate. Rejected — conflates two unrelated concerns (this queue's job is to judge a task's own diff, not to opportunistically fix unrelated debt as a side effect of unblocking automation) and doesn't generalize: new debt could appear from work outside the queue at any time. Compare only raw counts (baseline count vs. current count). Rejected as the sole mechanism — a naive count comparison can't distinguish "the same historical failure" from "a different, new one that happens to net out to the same total," so identity-aware (by test name) comparison is used for unit tests and Playwright specifically, with counts kept only as a human-readable summary alongside it.
+
+**Consequences:** A queue run now costs one extra full quality-suite invocation up front (the baseline capture) plus one per ta[REDACTED] (and one more per repair attempt) — meaningfully slower than v1's single gate pass, accepted as the cost of correctness. `.ai/runs/<run-id>/` now also contains `baseline.json` and one `task-<id>-quality.json` per attempted task (both committed; raw logs remain gitignored). See `docs/AI_OVERNIGHT_QUEUE.md`'s "Queue v2" section for the full walkthrough and `scripts/ai/qualityGates.ts` for the implementation.
+
 
 ---
 
@@ -227,7 +238,7 @@ Assisted Pilot exists to build trust toward more autonomous execution — it com
 
 # Open Items
 
-Verified 2026-07-31 against `origin/main` @ `16795b6`. Update this file whenever an item is resolved, deferred further, or a new one is discovered — do not let it silently go stale (see `ADR-0010`'s caveat in `DECISIONS.md` for why that matters).
+Verified 2026-08-01 against `origin/main` @ `44d6db1` (merge of PR #98). Update this file whenever an item is resolved, deferred further, or a new one is discovered — do not let it silently go stale (see `ADR-0010`'s caveat in `DECISIONS.md` for why that matters).
 
 ## Active blockers
 
@@ -267,6 +278,12 @@ See `ROADMAP.md`'s "Pre-launch requirements" section and `docs/LAUNCH_CHECKLIST.
 
 This build added the first `typecheck` script (`tsc --noEmit`) this repository has ever had — none existed before, since `test:unit` runs `unit-tests/*.test.ts` through Node's type-*stripping* (which discards type annotations without checking them), not real type-checking. Running it for the first time surfaces **18 pre-existing type errors across 10 unrelated unit-test files**, none touched by this build: `ai-marketing-profile-errors.test.ts`, `campaign-intelligence-engine.test.ts`, `decision-intelligence-core.test.ts`, `decision-intelligence-persistence.test.ts`, `executive-briefing-engine.test.ts`, `marketing-decisions-ui.test.ts`, `project-magic-proactive-head-of-marketing.test.ts`, `recommendation-outcomes.test.ts`, `recommendation-pipeline-orchestrator.test.ts`, `recommendation-presentation-service.test.ts`. All of `scripts/ai/*` and the new `unit-tests/ai-queue-*.test.ts` files typecheck cleanly. Recommend a human triage and fix these in a dedicated follow-up — fixing 10 unrelated feature test files was out of scope for this build.
 
+**Update (2026-08-01, Queue v2):** this debt no longer blocks the AI overnight queue — `scripts/ai/qualityGates.ts`'s baseline-aware comparison treats an unchanged pre-existing count as a PASS (see `DECISIONS.md` ADR-0012). It's still real debt worth fixing eventually; it's just no longer conflated with "did this queue task introduce a regression."
+
+## Known limitation of Queue v2's identity-aware test comparison (2026-08-01)
+
+`compareQualitySnapshots` (`scripts/ai/qualityGates.ts`) distinguishes a historical unit-test/Playwright failure from a new one by matching failing-test **name** between baseline and current. If a task legitimately renames or restructures a test (even without changing its underlying behavior), the comparator has no way to know the "new-named" failure is the same one — it would be classified as a new regression and could trigger an unnecessary auto-repair attempt or task failure. This is a known, accepted trade-off (matching by name is far more correct than matching by raw count alone — see ADR-0012's "alternatives considered") rather than a bug; a human resolving such a failure should recognize this pattern (a renamed test showing up as "new") rather than assume the repair loop's diagnosis is always literal.
+
 ## This build's own limitation (self-reported)
 
 The Claude Code CLI adapter (`scripts/ai/adapters/claude.ts`) is implemented against documented Claude Code CLI non-interactive conventions but **could not be end-to-end tested in this build's sandbox** — no `claude` binary was present on `PATH` here. The adapter's capability probe (`isAvailable()`) correctly detects this and fails with an actionable message; that specific failure path *was* verified live in this sandbox. The success path (an actual non-interactive `claude` invocation completing a real task) has not been. See `docs/AI_OVERNIGHT_QUEUE.md` for the required first daytime dry run before trusting this for unattended overnight runs.
@@ -282,52 +299,61 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## Branch
 
-`prepare-first-real-ai-queue` (based on `origin/main` @ `9e72ff2`, the merge of PR #97)
+`ai-queue-v2-baseline-aware` (based on `origin/main` @ `44d6db1`, the merge of PR #98)
 
 ## Task status
 
-**Complete.** This task only *prepares* the overnight queue's first real run — it does not execute it. Replaced `.ai/queue/RUN_QUEUE.yaml`'s two `status: disabled` documentation-only example tasks with two real, `status: pending` tasks, and wrote their full prompt files. No queue task has been run (`npm run ai:queue` was never invoked).
+**Complete.** Fixed the design flaw the first real daytime dry run of the queue surfaced: v1's quality gate compared each task's lint/typecheck/unit-test run against a hard "must be perfectly clean" bar, so this repository's own documented, pre-existing baseline issues stopped the queue even when a task introduced zero regressions of its own. Queue v2 makes the gate baseline-aware.
 
 ## What was built
 
-- **Task 001** — "Market Radar: owner-managed competitor & benchmark persistence foundation" (`.ai/queue/prompts/001-market-radar-foundation.md`, branch `ai-queue/001-market-radar-foundation`, `depends_on: []`). Scope: a new Supabase migration (`supabase/migrations/037_market_radar.sql`, table `market_radar_entries`, RLS scoped to `auth.uid() = user_id`), `lib/market-radar/types.ts`, `lib/market-radar/persistence.ts` (`*ForUser` convention), and unit tests for the pure sort/ordering logic. Persistence and types only — no UI, no wiring into the existing `lib/market-context/` signal pipeline, no monitoring/scraping logic (explicitly out of scope and called out as such in the prompt).
-- **Task 002** — "Market Radar: owner-facing tracked competitors & benchmarks view" (`.ai/queue/prompts/002-market-radar-view.md`, branch `ai-queue/002-market-radar-view`, `depends_on: ["001"]`). Scope: `/dashboard/market-radar` route + component, add/remove UI following this repo's existing testimonials/smart-uploads convention, a "More tools" nav link, and a Playwright spec. Depends on 001's persistence layer actually existing in its checkout — `branch_strategy: stacked` in `RUN_QUEUE.yaml` makes this task's branch build from 001's branch tip, not `main`, so this is genuinely satisfied rather than aspirational.
-- Both tasks selected from repository facts, not invented: `.ai/ROADMAP.md`'s "Next" section (Wave III remaining scope), `docs/project-magic/EXISTING_SYSTEM_AUDIT.md`'s Market Radar row ("Owner-facing competitor add/remove/prioritize control" and "Aspirational-benchmark tracking" both flagged Needs Expansion / New Functionality), `docs/project-magic/MARKET_RADAR.md`'s "Owner control" section, and `docs/project-magic/WIREFRAMES.md`'s Market Radar wireframe.
-- Removed the now-superseded example prompt files (`.ai/queue/prompts/001-example-safe-task.md`, `002-example-dependent-task.md`) and updated `.ai/queue/prompts/README.md` and `docs/AI_OVERNIGHT_QUEUE.md`'s daytime-dry-run instructions to describe the current real tasks instead of the removed examples.
-- Regenerated `.ai/queue/QUEUE_STATUS.json` (via `npm run ai:queue:reset -- --confirm`) and `.ai/exports/PROJECT_MEMORY.md` (via `npm run ai:memory:export`) so both reflect the new task set.
+- **`scripts/ai/qualityGates.ts`** (new) — the core of Queue v2:
+  - `QualitySnapshot` type + `captureQualitySnapshot(repoRoot)`: runs TypeScript (`tsc --noEmit`), ESLint (`eslint . --format json`, errors and warnings tracked separately), unit tests (`test:unit`, TAP output), Playwright (`test:e2e --reporter=json`), and the production build, returning one structured snapshot.
+  - Pure parsing functions (unit-tested with canned sample output): `parseTypescriptErrorCount`, `parseEslintJson`, `parseNodeTestFailures` (count + failing-test **names**, not just count), `parsePlaywrightJson` (same, recursively walking suites).
+  - `compareQualitySnapshots(baseline, current)`: TypeScript/ESLint errors/ESLint warnings pass if the count didn't increase (existing debt is never a failure); unit tests/Playwright are **identity-aware** — a currently-failing test only passes if the *same test by name* was already failing in the baseline, which catches a regression a naive count comparison would miss (an old failure gets fixed while a different new one appears, netting to the same count); build must succeed unless the baseline build was itself already broken. Returns `overallStatus`, per-gate `gates[]`, and `newRegressions`/`fixedRegressions`/`remainingHistoricalDebt` lists.
+  - `buildRepairPrompt(comparison, attempt, maxAttempts)`: a narrow follow-up prompt naming exactly the new regressions and explicitly forbidding scope expansion or "fixing" historical debt.
+  - `formatQualityComparisonMarkdown(...)`: renders a comparison as a Markdown table for `RUN_SUMMARY.md`.
+- **`scripts/ai/run-queue.ts`** (modified):
+  - Captures one baseline via `captureQualitySnapshot` before this run's first eligible task begins (skipped entirely if no task is eligible — nothing to compare against), persisted to `.ai/runs/<run-id>/baseline.json`.
+  - Replaced the old fixed `["npm run lint", "npm run typecheck", "npm run test:unit"]` gate loop with: capture current snapshot → `compareQualitySnapshots` against the baseline → if it fails, invoke the agent again with `buildRepairPrompt` (up to `queue.max_repair_attempts`, default 3) → re-capture → re-compare, repeating until it passes or attempts are exhausted. Only then does the task fail and the queue stop.
+  - Persists `.ai/runs/<run-id>/task-<id>-quality.json` (baseline, current, comparison, repair attempt count) per attempted task, and `RUN_SUMMARY.md`/`RUN_STATUS.json` now include the repository baseline plus a per-task quality-gate table (baseline/current/result per gate, new regressions, fixed regressions, remaining historical debt).
+  - The PR body `run-queue.ts` writes now states the Queue v2 result (pass + any remaining historical debt + repair attempts used) instead of the old fixed gate-command list.
+- **`scripts/ai/queueTypes.ts`** — added optional `queue.max_repair_attempts` (defaults to `DEFAULT_MAX_REPAIR_ATTEMPTS = 3` when absent, so an older queue file without this field stays valid).
+- **`scripts/ai/validate-queue.ts`** — validates `max_repair_attempts` if present (non-negative integer, capped at 10 so an unattended queue can't loop indefinitely on one task).
+- **`.ai/queue/RUN_QUEUE.yaml`** — sets `max_repair_attempts: 3` explicitly; header comments explain Queue v2. The two Market Radar tasks (`001`, `002`) are otherwise unchanged in content.
+- **Docs**: `docs/AI_OVERNIGHT_QUEUE.md` gained a full "Queue v2 — baseline-aware quality gates" section; `docs/AI_QUEUE_TROUBLESHOOTING.md`'s failed-task guidance updated to describe the new blocker message and where to find the comparison; `.ai/queue/README.md` and `.ai/runs/README.md` updated to mention `baseline.json`/`task-<id>-quality.json`; `scripts/ai/generate-morning-brief.ts`'s "Quality gates" section text updated for accuracy.
+- **`.ai/DECISIONS.md`** — added ADR-0012 documenting this decision (what changed, why, alternatives considered, consequences). **`.ai/ARCHITECTURE.md`** and **`.ai/OPEN_ITEMS.md`** cross-reference it; `OPEN_ITEMS.md`'s pre-existing type-check debt entry now notes the queue no longer blocks on it, and a new "Known limitation of Queue v2's identity-aware test comparison" entry documents the test-rename edge case honestly.
 
 ## Tests
 
-- `npm run ai:queue:validate`: **valid** — `.ai/queue/RUN_QUEUE.yaml is valid.`
-- `npm run ai:queue:status`: reports both tasks `pending`, in the correct order (002 depends on 001), resume-eligible.
-- `npm run ai:memory:export`: succeeded, wrote `.ai/exports/PROJECT_MEMORY.md`.
-- Focused: `unit-tests/ai-queue-*.test.ts` (39 tests, including a self-check that validates the real `.ai/queue/RUN_QUEUE.yaml` in this repository) — **all pass**.
-- Full unit suite (`npm run test:unit`): **1694/1694 passing.**
-- Lint (`npm run lint`): **clean** — 0 errors, 7 pre-existing warnings in files this branch never touched.
-- Typecheck (`npm run typecheck`): **18 pre-existing errors**, same baseline as PR #97's own `HANDOFF.md`/`OPEN_ITEMS.md` note — none touched by this branch.
-- The queue itself was **not run** (`npm run ai:queue` was never invoked) — this task explicitly prepares the run only, per its own instructions.
-
-## Environment note (not part of this branch's diff)
-
-`npm run ai:queue:validate` initially failed in this sandbox with `Cannot find package 'yaml'` — the `yaml` dependency was already declared in `package.json` but not present in `node_modules`. Ran `npm install` to sync; this produced a one-line, unrelated `package-lock.json` diff (`fsevents` gained a `"dev": true` marker) which was **not** committed on this branch, since it's an environment-sync artifact, not part of this task's actual change. A future session may see this same `npm install` need again if its own `node_modules` is similarly out of sync with `package-lock.json`.
+- New: `unit-tests/ai-queue-quality-gates.test.ts` (24 tests) — every parsing function with canned sample output, every `compareQualitySnapshots` rule (including this task's own worked example: 0→2 unit failures is a hard FAIL, and 18→18 TypeScript errors is a PASS), the identity-vs-count distinction specifically, `buildRepairPrompt`, `formatQualityComparisonMarkdown`. **All pass.**
+- `unit-tests/ai-queue-*.test.ts` (all four files together, 63 tests total) — **all pass**, including the pre-existing `ai-queue-run.test.ts` (`selectNextEligibleTask`/`determineBranchBase`, unaffected by this change) and the self-check that validates the real `.ai/queue/RUN_QUEUE.yaml`.
+- Full unit suite (`npm run test:unit`): **1718/1718 passing** (1694 prior + 24 new).
+- Lint (`npm run lint`): clean — 0 errors, 7 pre-existing warnings in files this branch never touched.
+- Typecheck (`npm run typecheck`): 18 pre-existing errors, same baseline as before — none touched by this branch (see `OPEN_ITEMS.md`).
+- `npm run ai:queue:validate`: valid.
+- Build (`npm run build`): succeeds.
+- Playwright (`npx playwright test`): full suite run — see this PR's own quality-gate results for the exact count at merge time.
+- **The queue itself was not run** (`npm run ai:queue`) — this is a code change to the queue's own quality-gate mechanism, not a queue execution. The next real daytime dry run (per `docs/AI_OVERNIGHT_QUEUE.md`) is the actual end-to-end verification that Queue v2 behaves as designed against a live agent invocation.
 
 ## PR
 
-Not yet created at the time this file was written — will be `prepare-first-real-ai-queue` → `main`. Not merged. Not deployed. The queue itself was not executed.
+Not yet created at the time this file was written — will be `ai-queue-v2-baseline-aware` → `main`. Not merged. Not deployed. The queue itself was not executed.
 
 ## Blockers
 
-None blocking this preparation task. Two things intentionally deferred, both already tracked:
+None blocking this task's own completion. Two things carried forward, unchanged by this work:
 
-1. **The Claude CLI adapter's live success path is still unverified** (unchanged from PR #97 — see `OPEN_ITEMS.md`'s "This build's own limitation"). This queue's two real tasks cannot be trusted for an unattended overnight run until a human runs the attended daytime dry run described below.
-2. **Actual competitor/market monitoring is out of scope for both queued tasks**, by design — both prompts explicitly call this out as a separate, larger, unscoped future phase. Neither task attempts it.
+1. **The Claude CLI adapter's live success path is still unverified** (unchanged since PR #97/#98 — see `OPEN_ITEMS.md`). Queue v2 changes what happens *after* the agent invocation (the quality gate), not the invocation itself — that verification gap is orthogonal to this fix and still open.
+2. **Queue v2's identity-aware test comparison has a known, accepted limitation** around test renames — see the new `OPEN_ITEMS.md` entry. Not a bug, but worth a human's awareness when reading a repair-loop diagnosis.
 
 ## Recommended next step
 
-1. Review this PR like any other (branch, migration file, persistence layer design, prompt files) before doing anything else.
-2. Run the attended daytime dry run per `docs/AI_OVERNIGHT_QUEUE.md`: confirm `gh --version` and `claude --version` are both available and authenticated in the actual runner environment, confirm `git status` is clean on `main`, then run `npm run ai:queue` **attended, in the foreground** and watch it complete both tasks — confirm two real PRs open in the right order (002 based on 001's branch), each with `.ai/` memory updates present, each passing quality gates.
-3. Only after that attended run succeeds should an unattended/overnight run (`caffeinate -dimsu npm run ai:queue`) be trusted.
-4. Separately, unrelated to this queue-preparation task: the product-track recommendations in `OPEN_ITEMS.md` (the three-competing-decision-systems architecture question, the spoofable rate-limit key) remain the highest-priority carried-forward items.
+1. Review this PR (the new `scripts/ai/qualityGates.ts` module, the `run-queue.ts` integration, the schema addition, the docs, and ADR-0012).
+2. Retry the attended daytime dry run per `docs/AI_OVERNIGHT_QUEUE.md`: confirm `gh --version`/`claude --version` are ready, confirm `git status` is clean on `main`, then run `npm run ai:queue` attended and watch it — this time, confirm Task 001 (which should introduce zero regressions if implemented as scoped) actually completes instead of being blocked by this repository's own pre-existing debt, and that `.ai/runs/<run-id>/baseline.json` and `task-001-quality.json` are written and look correct.
+3. If Task 001 genuinely does introduce a regression this time, confirm the auto-repair loop actually attempts a fix and that the eventual PR (or failure) correctly reflects what happened.
+4. Only after that succeeds should an unattended/overnight run be trusted.
+5. Separately, unrelated to this queue-tooling fix: the product-track recommendations in `OPEN_ITEMS.md` (the three-competing-decision-systems architecture question, the spoofable rate-limit key) remain the highest-priority carried-forward items.
 
 
 ---
@@ -339,12 +365,12 @@ None blocking this preparation task. Two things intentionally deferred, both alr
   "project": "AJN Marketing (Project Magic)",
   "repository": "ajnsolutions/ajnmarketing",
   "current_phase": "Project Magic 2.0 (AI Growth Engine) — Wave I and Wave II shipped; Wave III partially shipped (Goals & Strategy, Customer Voice); several Business Brain intelligence features shipped outside the originally-documented wave sequence",
-  "active_initiative": ".ai/queue/RUN_QUEUE.yaml holds its first two REAL, status: pending tasks (prepared on branch prepare-first-real-ai-queue, not yet run): 001 (Market Radar owner-managed persistence foundation) and 002 (Market Radar owner-facing view, depends on 001), replacing PR #97's two documentation-only example tasks. Neither task has run yet — an attended daytime dry run is required first per docs/AI_OVERNIGHT_QUEUE.md. No feature branch or PR is otherwise in progress on the product/intelligence track — main is caught up through PR #96 (Head of Marketing Orchestrator) and PR #97 (AI project memory + queue).",
+  "active_initiative": "Queue v2 — baseline-aware quality gates (branch ai-queue-v2-baseline-aware). The first real daytime dry run of .ai/queue/RUN_QUEUE.yaml's two real tasks (001 Market Radar persistence foundation, 002 Market Radar owner-facing view) surfaced a design flaw: v1's quality gate required a perfectly clean lint/typecheck/unit-test run, so this repository's own pre-existing baseline issues stopped the queue even when a task introduced zero regressions. scripts/ai/qualityGates.ts now captures one QualitySnapshot before a run's first task begins, persists it to .ai/runs/<run-id>/baseline.json, and compares every task's after-state against that same baseline (identity-aware for unit/Playwright failures, count-based for TypeScript/ESLint, unconditional for build) — pre-existing debt never fails a task; a new regression always does, with up to max_repair_attempts (default 3) automatic repair tries first. See DECISIONS.md ADR-0012. The two Market Radar tasks themselves are unchanged in content and still status: pending, not yet run to completion end-to-end. No other feature branch or PR is in progress on the product/intelligence track — main is caught up through PR #98.",
   "status": "active",
-  "last_verified_at": "2026-07-31T00:00:00Z",
-  "last_verified_branch": "prepare-first-real-ai-queue",
-  "last_verified_commit": "9e72ff2",
-  "last_completed_task": "PR #97 — Add shared AI project memory and autonomous overnight task queue (merged into main); this branch prepares (but does not run) the queue's first two real tasks",
+  "last_verified_at": "2026-08-01T00:00:00Z",
+  "last_verified_branch": "ai-queue-v2-baseline-aware",
+  "last_verified_commit": "44d6db1",
+  "last_completed_task": "PR #98 — Prepare the first real controlled AI overnight queue run (Market Radar foundation + view) (merged into main); this branch adds Queue v2's baseline-aware quality gates on top of it",
   "current_blockers": [
     "Unpatched High-severity security finding (ARCHITECTURE_REVIEW_2026.md §3.9): the public interactive-demo endpoint's rate limit key is derived from a spoofable x-forwarded-for header, allowing unbounded OpenAI cost abuse.",
     "Three competing 'what should this business do' systems (Marketing Recommendations, Tasks, Marketing Plan) plus Assisted Pilot as a fourth adjacent layer — called out in ARCHITECTURE_REVIEW_2026.md as the single biggest prerequisite decision before further Magic work, not yet resolved.",
@@ -358,7 +384,7 @@ None blocking this preparation task. Two things intentionally deferred, both alr
     "GET /api/publishing executes due jobs as a live side effect of a page load (RELEASE_CANDIDATE_END_TO_END_AUDIT.md) — architectural smell, not yet fixed.",
     "Approval Center UI copy falsely claims full automation ('From AI draft to published — automatically'); GBP Disconnect button is a no-op; Regenerate silently severs the recommendation link; analytics-to-opportunities feedback loop is dead in production (all from RELEASE_CANDIDATE_END_TO_END_AUDIT.md)."
   ],
-  "recommended_next_task": "Resolve the three-competing-decision-systems architecture question (ARCHITECTURE_REVIEW_2026.md) before adding further recommendation/decision surface area; in parallel, patch the spoofable rate-limit key (§3.9) since it is an active, unbounded-cost-abuse security gap. Separately, on the AI-tooling track: run the attended daytime dry run of .ai/queue/RUN_QUEUE.yaml's two now-real tasks (npm run ai:queue) before ever trusting an unattended overnight run, per docs/AI_OVERNIGHT_QUEUE.md.",
+  "recommended_next_task": "Resolve the three-competing-decision-systems architecture question (ARCHITECTURE_REVIEW_2026.md) before adding further recommendation/decision surface area; in parallel, patch the spoofable rate-limit key (§3.9) since it is an active, unbounded-cost-abuse security gap. Separately, on the AI-tooling track: retry the attended daytime dry run of .ai/queue/RUN_QUEUE.yaml's two real tasks (npm run ai:queue) now that Queue v2's baseline-aware quality gate is in place, and confirm end-to-end that a task with zero regressions completes without being blocked by pre-existing debt.",
   "production_deploy_allowed": false,
   "automatic_merge_allowed": false,
   "automatic_migrations_allowed": false,

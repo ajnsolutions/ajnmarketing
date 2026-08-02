@@ -80,9 +80,25 @@ The queue **stops immediately** on the first failed task, an ambiguous requireme
 Set once, queue-wide, via `RUN_QUEUE.yaml`'s `queue.branch_strategy`:
 
 - **`independent`** — every task branches from `queue.base_branch` (e.g. `main`), regardless of `depends_on`. Use this when tasks touch disjoint files and each should be independently reviewable and mergeable in any order. A dependent task under `independent` mode will not actually see its dependency's file changes until a human merges the dependency's PR first — only use `depends_on` here for *ordering* (e.g. "don't even attempt this until that one's reviewed"), not for tasks that need the earlier task's files.
-- **`stacked`** — a task with `depends_on` branches from its dependency's own branch tip instead of `base_branch`, so its changes are actually present to build on. Use this whenever a later task genuinely needs an earlier task's files (the two shipped example tasks demonstrate this).
+- **`stacked`** — a task with `depends_on` branches from its dependency's own branch tip instead of `base_branch`, so its changes are actually present to build on. Use this whenever a later task genuinely needs an earlier task's files (the current Market Radar tasks demonstrate this — see `RUN_QUEUE.yaml`'s own header comment).
 
 Either way, **PRs must be reviewed and merged in dependency order** — `npm run ai:morning-brief`'s "Merge order" section states this explicitly for whatever ran last.
+
+## Queue v2 — baseline-aware quality gates
+
+The first real daytime dry run of this queue surfaced a design flaw: v1's quality gate ran `npm run lint`, `npm run typecheck`, and `npm run test:unit` and required a perfectly clean result. This repository intentionally carries a small number of documented, pre-existing baseline issues (see `.ai/OPEN_ITEMS.md`'s "Pre-existing type-check debt"), so v1's gate stopped the queue even on a task that introduced zero regressions of its own — the queue was evaluating **repository-wide** quality instead of **task-specific** quality.
+
+Queue v2 (`scripts/ai/qualityGates.ts`) fixes this:
+
+1. **Baseline capture.** Before this run's first eligible task begins, `run-queue.ts` runs the full quality suite once — TypeScript (`tsc --noEmit`), ESLint (errors and warnings separately), unit tests (`test:unit`), Playwright (`test:e2e`), and the production build — and persists the result as one `QualitySnapshot` to `.ai/runs/<run-id>/baseline.json`. If no task is eligible this invocation (e.g. the queue is already exhausted), no baseline is captured — there's nothing to compare against.
+2. **Per-task comparison.** After each task's agent invocation finishes, the same quality suite runs again and is compared against that same baseline (`compareQualitySnapshots`), never against a different or updated baseline, and never against the *previous* task's result — every task in a run is judged against the one snapshot taken before the run started:
+   - **TypeScript / ESLint errors / ESLint warnings** — PASS if the count did not increase. A baseline count of 18 staying at 18 is a PASS; existing debt is never held against a task that didn't touch it.
+   - **Unit tests / Playwright** — identity-aware, not just count-based. A currently-failing test passes this gate only if the *same test, by name*, was already failing in the baseline. This catches the case a raw count comparison would miss: an old failure gets fixed while a different, new one appears, netting to the same total count but still a real regression.
+   - **Build** — must succeed, unless the baseline build was itself already broken (pre-existing breakage isn't this task's fault either — same philosophy as every other gate).
+3. **Bounded auto-repair.** If the comparison fails, `run-queue.ts` re-invokes the same agent with a narrow repair prompt (`buildRepairPrompt`) listing exactly the new regressions found and explicitly forbidding scope expansion or "fixing" unrelated historical debt, then re-runs the full comparison. This repeats up to `queue.max_repair_attempts` times (default 3, see `RUN_QUEUE.yaml`) before the task is marked `failed` and the queue stops — pre-existing debt never triggers a repair attempt, since it never fails the gate in the first place.
+4. **Persistence and reporting.** Every task's `baseline`/`current`/`comparison`/`repairAttempts` are written to `.ai/runs/<run-id>/task-<id>-quality.json`, and `RUN_SUMMARY.md`/`RUN_STATUS.json` include a per-task table of every gate's baseline value, current value, and result, plus explicit "new regressions," "fixed regressions," and "remaining historical debt" lists (`formatQualityComparisonMarkdown`).
+
+This means: **existing repository debt never stops autonomous execution; any regression a task itself introduces always does**, and the queue gets a bounded number of automatic attempts to fix its own regression before giving up and asking a human to look.
 
 ## Safety boundaries, restated
 

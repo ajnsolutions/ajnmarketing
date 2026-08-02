@@ -52,7 +52,18 @@ export interface QueueMeta {
   branch_strategy: string;
   base_branch: string;
   default_agent: string;
+  /**
+   * Queue v2 (baseline-aware quality gates). How many times run-queue.ts
+   * will re-invoke the agent with a narrow repair prompt when a task's
+   * quality-gate comparison finds new regressions, before giving up and
+   * failing the task. Optional — DEFAULT_MAX_REPAIR_ATTEMPTS applies when
+   * absent, so a queue file written before this field existed stays valid.
+   */
+  max_repair_attempts?: number;
 }
+
+/** Applied when queue.max_repair_attempts is absent from RUN_QUEUE.yaml. */
+export const DEFAULT_MAX_REPAIR_ATTEMPTS = 3;
 
 export interface RunQueue {
   queue: QueueMeta;

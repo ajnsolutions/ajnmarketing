@@ -64,7 +64,11 @@ export function buildMorningBriefMarkdown(queue: RunQueue | null, run: RunStatus
   lines.push("");
 
   lines.push("## Quality gates");
-  lines.push(failed.length === 0 && completed.length > 0 ? "All quality gates passed for every completed task (lint, typecheck, unit tests)." : "See each task above — a failed task's blocker line states which gate (or step) stopped it.");
+  lines.push(
+    failed.length === 0 && completed.length > 0
+      ? "Every completed task passed Queue v2's baseline-aware quality gates (TypeScript, ESLint errors/warnings, unit tests, Playwright, build) — see .ai/runs/<run-id>/task-<id>-quality.json for the full baseline-vs-current comparison per task. Pre-existing repository debt never blocks a task; only regressions the task itself introduced do."
+      : "See each task above — a failed task's blocker line states which gate (or step) stopped it, and .ai/runs/<run-id>/task-<id>-quality.json (if present) has the full comparison."
+  );
   lines.push("");
 
   lines.push("## Blockers");

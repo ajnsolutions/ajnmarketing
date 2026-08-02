@@ -109,6 +109,13 @@ function validateQueueMeta(queue: Partial<RunQueue["queue"]> | undefined, errors
       `queue.default_agent "${queue.default_agent}" is not a supported agent — only ${SUPPORTED_AGENTS.join(", ")} can actually execute tasks in this version. See scripts/ai/adapters/cursor-placeholder.ts.`
     );
   }
+  if (queue.max_repair_attempts !== undefined) {
+    if (typeof queue.max_repair_attempts !== "number" || !Number.isInteger(queue.max_repair_attempts) || queue.max_repair_attempts < 0) {
+      pushError(errors, "queue", "queue.max_repair_attempts, if present, must be a non-negative integer.");
+    } else if (queue.max_repair_attempts > 10) {
+      pushError(errors, "queue", "queue.max_repair_attempts must not exceed 10 — an unattended queue should not be able to loop indefinitely on a single task.");
+    }
+  }
 }
 
 function validateSafety(safety: Partial<RunQueue["safety"]> | undefined, errors: ValidationIssue[]): void {
