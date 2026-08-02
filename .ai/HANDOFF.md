@@ -43,7 +43,7 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## PR
 
-Not yet created at the time this file was written — will be `ai-queue-v2-baseline-aware` → `main`. Not merged. Not deployed. The queue itself was not executed.
+[#99](https://github.com/ajnsolutions/ajnmarketing/pull/99) — `ai-queue-v2-baseline-aware` → `main`. Not merged. Not deployed. The queue itself was not executed.
 
 ## Blockers
 
