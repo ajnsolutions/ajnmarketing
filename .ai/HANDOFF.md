@@ -38,7 +38,7 @@ Opening the PR with `--base ai-queue/001-market-radar-foundation` would therefor
 
 ## PR
 
-<!-- Filled in immediately after `gh pr create` succeeds — see the final commit on this branch for the real values. -->
+[#104](https://github.com/ajnsolutions/ajnmarketing/pull/104) — `ai-queue/002-market-radar-view` → `main` (see "A deliberate deviation..." above for why `main` and not `ai-queue/001-market-radar-foundation`). Not merged. Not deployed.
 
 ## Blockers
 
