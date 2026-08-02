@@ -2,18 +2,18 @@
   "queue_name": "ajnmarketing-overnight-queue",
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
-  "current_task": null,
-  "last_run_id": null,
+  "current_task": "001",
+  "last_run_id": "2026-08-02T134243291Z",
   "resume_eligible": false,
   "tasks": [
     {
       "id": "001",
       "name": "Market Radar: owner-managed competitor & benchmark persistence foundation",
-      "status": "pending",
+      "status": "in_progress",
       "branch": null,
       "commit": null,
       "pr": null,
-      "started_at": null,
+      "started_at": "2026-08-02T13:46:35.636Z",
       "completed_at": null,
       "tests": null,
       "blocker": null

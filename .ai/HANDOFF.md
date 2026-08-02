@@ -4,46 +4,47 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## Branch
 
-`harden-ai-queue-unattended-execution` (based on `origin/main` @ `dc537d2`, the merge of PR #99)
+`ai-queue/001-market-radar-foundation` (based on `origin/main` @ `5d60a07`, the merge of PR #100)
 
 ## Task status
 
-**Complete.** This task's explicit goal was "enable reliable unattended overnight execution" of `.ai/queue/`. It fixes a real bug this queue's own first live, unattended run just found, plus a broader class of reliability gaps that same incident's investigation surfaced.
+**Complete.** Task 001 — Market Radar owner-managed competitor & benchmark persistence foundation. Persistence and types only, per the task's explicit scope: no UI, no route, no wiring into `lib/market-context/`.
 
 ## What happened, and what was built
 
-1. On starting this task, the working checkout was sitting on branch `ai-queue/001-market-radar-foundation` with uncommitted `QUEUE_STATUS.json` changes and a new `.ai/runs/2026-08-02T065749882Z/` directory — evidence that **the queue's first real, live, unattended run had actually executed** (in an environment with a working `claude` CLI, unlike every sandbox this project's build sessions have had access to). That run failed at the "no project-memory update" safety check — correctly, but for a deeper underlying reason: the task's `claude -p` invocation never did any real work at all.
-2. Investigated the run's own logs (`task-001.log`, not committed — see `.ai/runs/README.md`'s log policy) and found the root cause directly in Claude's own JSON response: it tried to use Write/Edit/Bash tools, each triggered the CLI's normal interactive permission-approval flow, and with no human present in the unattended session, every approval sat pending until Claude gave up and exited 0 with a text explanation — having made zero file changes. The old adapter (`scripts/ai/adapters/claude.ts`) checked only the exit code and reported success.
-3. Preserved the run's safe artifacts (`RUN_SUMMARY.md`, `RUN_STATUS.json`, `baseline.json`, `task-001-quality.json`) as committed evidence, reset to a clean `origin/main` checkout, and built the fix on a fresh branch rather than on top of the contaminated one.
-4. **Fixed** `scripts/ai/adapters/claude.ts`: now invokes `claude -p --output-format json --dangerously-skip-permissions`; `checkAvailability()` verifies the CLI supports a permission-bypass flag before reporting available; and — as an independent second layer — the adapter now parses the JSON response body and treats a non-empty `permission_denials` array or `is_error: true` as a real failure regardless of exit code. Full reasoning: `.ai/DECISIONS.md` ADR-0013.
-5. **Hardened more broadly for reliability**, since the same investigation showed nothing in the queue had a timeout: added `scripts/ai/subprocess.ts` (every git/gh/quality-gate subprocess call now has an explicit timeout and bounded buffer; stdin is never inherited so nothing can block on input that will never come); made `QUEUE_STATUS.json` writes atomic (`queueIO.ts`, write-temp-then-rename); wrapped each task attempt so an unexpected crash is recorded as that task's failure instead of silently losing the run's artifacts; added a run-level wall-clock ceiling (`queue.max_run_duration_minutes`, default 360 min); added timeout-awareness to `qualityGates.ts`'s snapshots (`timedOutGates`) so a killed gate is always treated as a regression, never silently read as "0 errors."
-6. Updated `.ai/queue/RUN_QUEUE.yaml`'s header comment and added `max_run_duration_minutes: 360` explicitly. `QUEUE_STATUS.json` already reflected both Market Radar tasks (`001`, `002`) as `pending` on the fresh `origin/main` checkout — no reset needed.
+1. Read `AGENTS.md`, every `.ai/` file, `docs/project-magic/MARKET_RADAR.md`, `docs/project-magic/EXISTING_SYSTEM_AUDIT.md`'s Market Radar table, `lib/market-context/types.ts`, `lib/market-context/providers/competitorProvider.ts` / `competitorProfile.ts`, and the conventions in `lib/opportunity-engine/persistence.ts` / `types.ts` (the pattern this task's persistence layer mirrors) and `supabase/migrations/035_website_testimonials.sql` / `036_opportunity_detection_engine.sql` (the migration convention).
+2. **Drift found and corrected**: the `.ai/` snapshot at task start described PR #100 (`harden-ai-queue-unattended-execution`, the `--dangerously-skip-permissions` fix, ADR-0013) as still open/unmerged. `git log` showed it was actually already merged into `main` (`5d60a07`). This task's own successful, unattended execution is itself the first observed confirmation of that fix's success path — see `.ai/OPEN_ITEMS.md`'s updated "Live dry-run incident" entry and `.ai/CURRENT_STATUS.md`.
+3. Confirmed highest existing migration was `036_opportunity_detection_engine.sql` — numbered the new one `037_market_radar.sql`, no drift there.
+4. **Built**, exactly matching Scope:
+   - `supabase/migrations/037_market_radar.sql` — `public.market_radar_entries` table (`kind` constrained to `'competitor'`/`'benchmark'`, nullable `priority`, `notes`, standard `created_at`/`updated_at` + trigger), indexes on `business_profile_id` and `user_id`, RLS enabled with select/insert/update/**delete** policies scoped to `auth.uid() = user_id` (mirrors `035_website_testimonials.sql`, not `036`'s retire-only pattern, since an owner's tracked entry is genuinely theirs to delete). **Not applied to any database** — file only, per `AGENTS.md` rule 13.
+   - `lib/market-radar/types.ts` — `MarketRadarEntryKinds` const + derived type, `MarketRadarEntry` type (camelCase, mirrors `mapRow`'s field mapping convention).
+   - `lib/market-radar/sort.ts` — pure, exported `sortMarketRadarEntries()`: competitors ordered by priority ascending (nulls last) then name, benchmarks after, ordered by name. Extracted specifically so it's unit-testable without a database.
+   - `lib/market-radar/persistence.ts` — `listMarketRadarEntriesForUser`, `addMarketRadarEntryForUser`, `removeMarketRadarEntryForUser`, `setMarketRadarEntryPriorityForUser`, all `*ForUser(userId, ...)` with an explicit `SupabaseClient` param (ADR-0001), returning `null`/`false` on failure rather than throwing, and each filtering by `user_id` in its own query as defense-in-depth alongside RLS.
+   - `unit-tests/market-radar-foundation.test.ts` — 5 `node:test` cases directly exercising `sortMarketRadarEntries` (priority ordering, null-priority-last, benchmarks-after-competitors, empty input, no-mutation). No DB-wrapper unit tests, matching this repo's established convention (`lib/opportunity-engine/persistence.ts` has none either).
+   - Did **not** touch `lib/market-context/providers/competitorProvider.ts`, `competitorProfile.ts`, or any other existing market-context file, `lib/marketing-director/`, `lib/opportunity-engine/`, or Growth Advisor — confirmed via the diff before committing.
+5. Updated `docs/project-magic/MARKET_RADAR.md` (added a short "Implementation status" note near the top, no other edits — that file stays product-design source-of-truth per ADR-0010), `.ai/ROADMAP.md`'s Market Radar "Next" bullet, `.ai/CURRENT_STATUS.md`, `.ai/STATUS.json`, `.ai/OPEN_ITEMS.md` (the PR #100 drift + success-path update).
 
 ## Tests
 
-- `unit-tests/ai-queue-*.test.ts`: **112 tests, all pass** (67 pre-existing + 45 new/added this branch, across two new files — `ai-queue-subprocess.test.ts`, `ai-queue-claude-adapter.test.ts` — plus additions to `ai-queue-run.test.ts`, `ai-queue-validate.test.ts`, and `ai-queue-quality-gates.test.ts`). New coverage specifically: `buildClaudeArgs()` includes `--dangerously-skip-permissions`; `detectSilentPermissionFailure()` correctly flags the exact 2026-08-02 incident's response shape (`is_error: false` + non-empty `permission_denials`) and correctly passes a clean response; `subprocess.ts`'s `sh()`/`runCommand()` actually kill a real slow process at its timeout, correctly separate stdout/stderr, and never block on stdin; `runExceedsWallClockBudget()`; `compareQualitySnapshots()`'s new timeout-regression handling (including backward-compatibility with a baseline snapshot from before `timedOutGates` existed); `max_run_duration_minutes` validation.
-- Full unit suite (`npm run test:unit`): **1740/1740 passing.**
-- Lint (`npm run lint`): clean — 0 errors, 7 pre-existing warnings in files this branch never touched.
-- Typecheck (`npm run typecheck`): 18 pre-existing errors, identical set to before this branch — none touched by this branch (confirmed: a real typecheck bug in this branch's own new `subprocess.ts` was found and fixed during this session — `SpawnSyncReturns<string>` needed an explicit type annotation, `ReturnType<typeof spawnSync>` alone resolved to a `string | Buffer` union — see git history on this branch for the fix).
-- Build (`npm run build`): succeeds, isolated (no dev server running concurrently). Route manifest unaffected by this branch's changes (none of it touches `app/`).
-- Playwright (`npx playwright test`): **302/302 passing**, run in isolation on a clean checkout.
-- **A real bug was found and fixed during this session's own work**, not just the incident being fixed: the first draft of `subprocess.ts` merged stdout+stderr into one `output` field, which would have silently broken `qualityGates.ts`'s ESLint JSON parsing (`--format json` writes clean JSON to stdout only; any stderr content would have corrupted the parse). Caught before it shipped by reasoning through the exact call site, not by a failing test — fixed by keeping stdout/stderr separate in `SubprocessResult`, with `.output` as a combined view for logging only. Now has direct test coverage.
+- `unit-tests/market-radar-foundation.test.ts` alone: **5/5 passing.**
+- Full unit suite (`npm run test:unit`): **1745/1745 passing** (1740 pre-existing + 5 new).
+- Typecheck (`npm run typecheck`): same **18 pre-existing errors**, identical set to the documented baseline in `OPEN_ITEMS.md`'s "Pre-existing type-check debt" — none in any file this branch touched.
+- Lint (`npm run lint`): **0 errors**, same **7 pre-existing warnings**, identical set to baseline — none in any file this branch touched.
+- Build (`npm run build`): succeeds.
+- Playwright: not run (this task added no UI/route surface for it to exercise; scope is persistence/types only).
 
 ## PR
 
-[#100](https://github.com/ajnsolutions/ajnmarketing/pull/100) — `harden-ai-queue-unattended-execution` → `main`. Not merged. Not deployed.
+Pending creation — will be recorded here in a follow-up commit immediately after `gh pr create`, per this repo's established pattern (see `git log -- .ai/HANDOFF.md` on the prior branch, "Record PR #100 in HANDOFF.md").
 
 ## Blockers
 
-None blocking this task's own completion. One carried-forward limitation, now narrower than before:
+None. No requirement in the task prompt was materially ambiguous.
 
-**The fix's failure-detection path is verified; its success path is not.** `detectSilentPermissionFailure()` is unit-tested directly against the real incident's actual response shape — that part is solid. But a real `claude --dangerously-skip-permissions` invocation actually completing a real task end-to-end has still never been observed in any sandbox available to this project's build/fix sessions — no `claude` binary was on `PATH` here either. The next environment with a working `claude` CLI should run the daytime dry run below before this is trusted for a real unattended overnight run.
-
-Unrelated, pre-existing, not touched by this branch: the product-track blockers in `OPEN_ITEMS.md` (spoofable rate-limit key, three-competing-decision-systems question, production launch blockers, missing recommendation-engine trigger) and the pre-existing TypeScript debt (18 errors, unchanged).
+Unrelated, pre-existing, not touched by this branch: the product-track blockers in `OPEN_ITEMS.md` (spoofable rate-limit key, three-competing-decision-systems question, production launch blockers, missing recommendation-engine trigger) and the pre-existing TypeScript debt (18 errors, unchanged) / ESLint warnings (7, unchanged).
 
 ## Recommended next step
 
-1. In an environment where `claude --version` and `claude --help` actually work, run the daytime dry run: `npm run ai:queue:validate` → confirm clean `git status` on `main` → `npm run ai:queue` attended, in the foreground → confirm both Market Radar tasks (`001`, `002`) actually produce real file changes (a migration, `lib/market-radar/`, tests, docs) and real PRs, not another silent no-op.
-2. If task 001 succeeds, its PR should be reviewed and merged before 002's (per `branch_strategy: stacked`) — `npm run ai:morning-brief` states this explicitly once a run completes.
-3. If the same silent-no-op pattern recurs even with `--dangerously-skip-permissions`, inspect the raw `claude -p` JSON response directly (`is_error`, `permission_denials`, `result` fields) — `detectSilentPermissionFailure()` in `scripts/ai/adapters/claude.ts` may need updating for a changed CLI response shape rather than the underlying approach being wrong.
-4. Separately, unrelated to this queue-reliability task: the product-track recommendations in `OPEN_ITEMS.md` remain the highest-priority carried-forward items.
+1. A human reviews and merges this PR (never auto-merged).
+2. **Task 002 is ready to run against this branch** (owner-facing tracked competitors & benchmarks view, `.ai/queue/prompts/002-market-radar-view.md`) — it depends on exactly the types/persistence functions shipped here (`lib/market-radar/types.ts`, `lib/market-radar/persistence.ts`).
+3. Separately, unrelated to this task: the product-track recommendations in `OPEN_ITEMS.md` (spoofable rate-limit key, three-competing-decision-systems question) remain the highest-priority carried-forward items for a human to prioritize.

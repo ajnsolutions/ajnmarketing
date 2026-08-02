@@ -4,6 +4,8 @@
 
 Market Radar is continuous, low-noise monitoring of everything happening around a business that it doesn't control but needs to know about. It replaces the current assisted-pilot's manual, admin-driven competitor tracking with an owner-facing, continuous, self-service model.
 
+**Implementation status (2026-08-02):** the owner-managed persistence foundation for this doc's "Owner control" section has shipped — `supabase/migrations/037_market_radar.sql` and `lib/market-radar/` (types + tenant-scoped `*ForUser` functions) support add/remove/prioritize-competitor and benchmark tracking. This is persistence and types only, alongside the existing `lib/market-context/` signal pipeline (unmodified). The owner-facing Market Radar view described below is the next, already-queued phase.
+
 ---
 
 ## What it monitors

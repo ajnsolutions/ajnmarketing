@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-08-02T13:42:44.492Z",
+  "typescriptErrorCount": 18,
+  "eslintErrorCount": 0,
+  "eslintWarningCount": 7,
+  "unitTestFailureCount": 0,
+  "unitTestFailureNames": [],
+  "playwrightFailureCount": 1,
+  "playwrightFailureNames": [
+    "customer-experience-polish.spec.ts > cross-tenant APIs remain unauthorized without a session"
+  ],
+  "buildSucceeded": true,
+  "timedOutGates": []
+}
