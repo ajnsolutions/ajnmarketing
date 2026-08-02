@@ -1,6 +1,6 @@
 # Project Memory — AJN Marketing
 
-Generated 2026-08-02T16:01:21.851Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
+Generated 2026-08-02T16:03:07.017Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
 
 
 ---
@@ -404,7 +404,7 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## PR
 
-Opened against `main` from this branch — see this repository's PR list for the number/URL (`gh pr list --head fix/queue-merged-dependency-base-resolution`). Not merged. Not deployed.
+[#103](https://github.com/ajnsolutions/ajnmarketing/pull/103) — `fix/queue-merged-dependency-base-resolution` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
