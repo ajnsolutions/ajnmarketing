@@ -38,7 +38,7 @@ Never trust a new or edited queue file's first real execution to happen unattend
 
 1. `npm run ai:queue:validate` — must pass.
 2. `git status` — must be clean (the runner refuses otherwise).
-3. Confirm prerequisites: `gh --version` (authenticated), and `claude --version` — the runner's own capability probe will refuse cleanly and tell you exactly what's missing if either isn't ready. **This build's own sandbox did not have the `claude` CLI installed** — its capability probe was verified against that exact failure case, but a real, successful non-interactive `claude` invocation has not yet been observed end-to-end. Confirm it works in your actual environment before trusting an overnight run.
+3. Confirm prerequisites: `gh --version` (authenticated), and `claude --version` — the runner's own capability probe will refuse cleanly and tell you exactly what's missing if either isn't ready, including whether the installed CLI supports the permission-bypass flag this queue now requires (see "The Claude Code adapter's current honesty" below for why). No sandbox this project's own build/fix sessions have run in has had a `claude` binary on `PATH` — confirm it actually works in your real environment before trusting an overnight run.
 4. `RUN_QUEUE.yaml` currently holds two real, `status: pending` tasks (Market Radar's persistence foundation and its owner-facing view — see the file's own header comment and `.ai/HANDOFF.md` for how they were selected and their current status), prepared but not yet run. Before trusting an unattended overnight run, run `npm run ai:queue` attended once, in the foreground, watching it: confirm two real PRs open, in the right order (002 based on 001's branch, per `branch_strategy: stacked`), each with the `.ai/` memory updates present, each passing quality gates. This is a real run, not a throwaway demonstration — its PRs are meant to be reviewed and merged (in dependency order) like any other PR, not reverted.
 5. Only after a real daytime run has produced a real, reviewed PR should you trust a first overnight run with real tasks.
 
@@ -66,7 +66,7 @@ Reports: queue name, current task, completed/pending/in-progress/failed/disabled
 
 ## Resuming after a failure
 
-The queue **stops immediately** on the first failed task, an ambiguous requirement, a failed quality gate, a missing project-memory update, or any git/GitHub operation failure — it does not skip ahead. To resume:
+The queue **stops immediately** on the first failed task, an ambiguous requirement, a failed quality gate (including a gate that timed out — see "Reliability hardening" above), a missing project-memory update, a permission-denial from the agent itself, or any git/GitHub operation failure (including one that timed out) — it does not skip ahead. To resume:
 
 1. Run `npm run ai:queue:status` and read the failed task's `blocker` line.
 2. Fix the underlying problem by hand (it could be in the repo, in the task's prompt file, or an environment/prerequisite issue — the blocker message says which).
@@ -104,9 +104,26 @@ This means: **existing repository debt never stops autonomous execution; any reg
 
 Every boundary in this section is enforced independently by `scripts/ai/validate-queue.ts` and is also part of the permanent rules in `AGENTS.md` — the queue is not the only place these rules are stated, and the queue's enforcement does not replace the human review step of actually reading each PR before merging it.
 
+## Reliability hardening (2026-08-02)
+
+The queue's first real, *live, unattended* run (`.ai/runs/2026-08-02T065749882Z/`, evidence preserved) surfaced two classes of problem, both fixed on branch `harden-ai-queue-unattended-execution`:
+
+1. **The agent adapter could report success while having done nothing.** See "The Claude Code adapter's current honesty" below for the full incident and fix.
+2. **Nothing in the queue had a timeout.** Every subprocess call — git operations, `gh`, and every quality-gate command (`tsc`, `eslint`, unit tests, Playwright, build) — now goes through `scripts/ai/subprocess.ts`, which requires an explicit timeout at every call site. A hung command is killed and treated as a real failure (a gate that times out is always a new regression if it wasn't already timing out in the baseline — see `qualityGates.ts`'s `timedOutGates`), not silently ignored or waited on forever.
+
+Three smaller but related fixes shipped alongside these:
+
+- **`QUEUE_STATUS.json` writes are now atomic** (write-to-temp-then-rename, `queueIO.ts`) — a process killed mid-write (machine sleep despite `caffeinate`, `SIGKILL`, power loss) can no longer leave the state file corrupted.
+- **A crash mid-task no longer disappears silently.** `run-queue.ts` catches an unexpected exception during any single task's attempt, records it as that task's failure, and still writes a normal `RUN_SUMMARY.md`/`RUN_STATUS.json` — a human checking `npm run ai:morning-brief` the next morning always has something to read, regardless of how the run actually ended.
+- **The whole run now has a wall-clock ceiling** — `queue.max_run_duration_minutes` in `RUN_QUEUE.yaml` (default 360 minutes / 6 hours, `DEFAULT_MAX_RUN_DURATION_MINUTES` in `queueTypes.ts`). Checked at the top of every loop iteration; if exceeded, the run stops cleanly with remaining tasks left `pending` for the next invocation, rather than potentially running indefinitely.
+
 ## The Claude Code adapter's current honesty
 
-`scripts/ai/adapters/claude.ts` is implemented against documented Claude Code CLI non-interactive conventions (`-p`/`--print`, `--output-format json`). Its capability-detection path (`checkAvailability()`) was verified live during this build — in that sandbox, no `claude` binary was on `PATH`, and the adapter correctly reported that and refused to proceed. The success path (an actual completed non-interactive task) has not been observed end-to-end anywhere yet. Do the daytime dry run above before trusting this for a real overnight run, and update this note once it's been verified.
+**Live incident, 2026-08-02:** the queue's first real unattended task invocation ran `claude -p --output-format json` with no permission-mode flag. Claude correctly tried to use its Write/Edit/Bash tools, correctly triggered the CLI's normal interactive per-tool-call approval flow — and with no human present to approve anything in an unattended session, every one of those approvals sat pending until Claude gave up and exited 0 with a text explanation, having made zero file changes. The old adapter checked only the exit code, saw 0, and reported success. The queue's auto-repair loop then burned a second, identically-blocked invocation before self-diagnosing the real cause in its own response text. Full evidence: `.ai/runs/2026-08-02T065749882Z/` (raw log not committed, per this repo's log policy — see `.ai/runs/README.md`).
+
+**Fixed:** `scripts/ai/adapters/claude.ts` now invokes `claude -p --output-format json --dangerously-skip-permissions`, and — as an independent second layer — parses the JSON response body afterward: a non-empty `permission_denials` array or `is_error: true` is now treated as a real failure regardless of exit code. `checkAvailability()` also verifies the installed CLI's `--help` mentions a permission-bypass flag before reporting the agent available at all. See `.ai/DECISIONS.md` ADR-0013 for the full safety reasoning on why running with `--dangerously-skip-permissions` is an acceptable tradeoff here (short version: the thing that actually keeps an unattended run safe was never per-tool-call human approval — that's incompatible with "unattended" by definition — it's `validate-queue.ts`'s safety gate plus the fact that `run-queue.ts`'s own code never calls merge/deploy/migration/secret-change/schedule-activation anywhere).
+
+**Still unverified:** the fix's *failure-detection* path was proven correct against the real incident's actual response shape (`unit-tests/ai-queue-claude-adapter.test.ts`). Its *success* path — a real `claude --dangerously-skip-permissions` invocation actually completing a real task end-to-end — has **not** been observed anywhere yet; no `claude` binary was on `PATH` in the sandbox that built this fix either. Do the daytime dry run above, in an environment where `claude --version` actually works, before trusting this for a real overnight run — and update this note once it's been verified.
 
 ## The Cursor/Grok adapter is not implemented
 

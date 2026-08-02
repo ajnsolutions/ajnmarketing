@@ -24,7 +24,15 @@
  * unit-tested with canned sample output in
  * unit-tests/ai-queue-quality-gates.test.ts.
  */
-import { spawnSync } from "node:child_process";
+import { runCommand } from "./subprocess.ts";
+
+// Generous per-gate ceilings for an unattended run — see subprocess.ts's
+// header comment for why every subprocess call needs an explicit one.
+const TSC_TIMEOUT_MS = 8 * 60 * 1000;
+const ESLINT_TIMEOUT_MS = 5 * 60 * 1000;
+const UNIT_TEST_TIMEOUT_MS = 8 * 60 * 1000;
+const PLAYWRIGHT_TIMEOUT_MS = 20 * 60 * 1000;
+const BUILD_TIMEOUT_MS = 10 * 60 * 1000;
 
 export type QualitySnapshot = {
   generatedAt: string;
@@ -36,6 +44,16 @@ export type QualitySnapshot = {
   playwrightFailureCount: number;
   playwrightFailureNames: string[];
   buildSucceeded: boolean;
+  /**
+   * Reliability hardening (2026-08-02): which gate commands, if any, were
+   * killed for exceeding their timeout (subprocess.ts) rather than actually
+   * completing. A timed-out gate's counts above are computed from whatever
+   * partial output it produced before being killed — not trustworthy as a
+   * real pass/fail signal. compareQualitySnapshots() treats any
+   * newly-timed-out gate as an automatic regression precisely because a
+   * silent "0 errors" from a killed process is worse than an honest failure.
+   */
+  timedOutGates: string[];
 };
 
 export type GateStatus = "pass" | "fail";
@@ -138,9 +156,9 @@ export function parsePlaywrightJson(jsonOutput: string): { failureCount: number;
 // Capture — impure, shells out. Not unit-tested directly.
 // ---------------------------------------------------------------------------
 
-function runCapture(command: string, args: string[], cwd: string): { ok: boolean; stdout: string; stderr: string } {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8", shell: process.platform === "win32" });
-  return { ok: result.status === 0, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+function runCapture(command: string, args: string[], cwd: string, timeoutMs: number): { ok: boolean; stdout: string; stderr: string; timedOut: boolean } {
+  const result = runCommand(command, args, cwd, timeoutMs);
+  return { ok: result.ok, stdout: result.stdout, stderr: result.stderr, timedOut: result.timedOut };
 }
 
 /**
@@ -149,29 +167,42 @@ function runCapture(command: string, args: string[], cwd: string): { ok: boolean
  * baseline (once, before the first task) and to check every task's
  * after-state (compared against that same baseline) — see
  * run-queue.ts's use of this function for exactly when each happens.
+ *
+ * Every command below has an explicit timeout (subprocess.ts) so a single
+ * hung gate can never block an unattended run indefinitely — a timed-out
+ * gate is treated as a real failure (its snapshot reflects whatever partial
+ * output it produced before being killed), not silently skipped.
  */
 export function captureQualitySnapshot(repoRoot: string, now: Date = new Date()): QualitySnapshot {
-  const tsResult = runCapture("npx", ["tsc", "--noEmit"], repoRoot);
+  const tsResult = runCapture("npx", ["tsc", "--noEmit"], repoRoot, TSC_TIMEOUT_MS);
   const typescriptErrorCount = parseTypescriptErrorCount(tsResult.stdout + tsResult.stderr);
 
-  const eslintResult = runCapture("npx", ["eslint", ".", "--format", "json"], repoRoot);
+  const eslintResult = runCapture("npx", ["eslint", ".", "--format", "json"], repoRoot, ESLINT_TIMEOUT_MS);
   const { errorCount: eslintErrorCount, warningCount: eslintWarningCount } = parseEslintJson(eslintResult.stdout);
 
   const unitResult = runCapture(
     "node",
     ["--import", "./unit-tests/support/register.mjs", "--test", "unit-tests/*.test.ts"],
-    repoRoot
+    repoRoot,
+    UNIT_TEST_TIMEOUT_MS
   );
   const { failureCount: unitTestFailureCount, failureNames: unitTestFailureNames } = parseNodeTestFailures(
     unitResult.stdout + unitResult.stderr
   );
 
-  const playwrightResult = runCapture("npx", ["playwright", "test", "--reporter=json"], repoRoot);
+  const playwrightResult = runCapture("npx", ["playwright", "test", "--reporter=json"], repoRoot, PLAYWRIGHT_TIMEOUT_MS);
   const { failureCount: playwrightFailureCount, failureNames: playwrightFailureNames } = parsePlaywrightJson(
     playwrightResult.stdout
   );
 
-  const buildResult = runCapture("npm", ["run", "build"], repoRoot);
+  const buildResult = runCapture("npm", ["run", "build"], repoRoot, BUILD_TIMEOUT_MS);
+
+  const timedOutGates: string[] = [];
+  if (tsResult.timedOut) timedOutGates.push("typescript");
+  if (eslintResult.timedOut) timedOutGates.push("eslint");
+  if (unitResult.timedOut) timedOutGates.push("unit_tests");
+  if (playwrightResult.timedOut) timedOutGates.push("playwright");
+  if (buildResult.timedOut) timedOutGates.push("build");
 
   return {
     generatedAt: now.toISOString(),
@@ -183,6 +214,7 @@ export function captureQualitySnapshot(repoRoot: string, now: Date = new Date())
     playwrightFailureCount,
     playwrightFailureNames,
     buildSucceeded: buildResult.ok,
+    timedOutGates,
   };
 }
 
@@ -214,12 +246,35 @@ function identityDiff(baselineNames: string[], currentNames: string[]): { added:
  *   the same run (so counts alone can't mask a real regression).
  * - Build: must succeed, unless the baseline build was itself already
  *   broken (pre-existing breakage isn't this task's fault either).
+ * - Timeouts (reliability hardening, 2026-08-02): a gate that timed out in
+ *   `current` but not in `baseline` is always a hard failure, regardless of
+ *   whatever partial counts it produced — a killed process's output is not
+ *   a trustworthy "0 errors". A gate that was already timing out in the
+ *   baseline is historical debt, same as any other pre-existing issue.
  */
 export function compareQualitySnapshots(baseline: QualitySnapshot, current: QualitySnapshot): QualityComparisonResult {
   const gates: GateComparison[] = [];
   const newRegressions: string[] = [];
   const fixedRegressions: string[] = [];
   const remainingHistoricalDebt: string[] = [];
+
+  // Timeouts — checked first; a timed-out gate's own counts below are not trustworthy.
+  {
+    const baselineTimedOut = new Set(baseline.timedOutGates ?? []);
+    const currentTimedOut = new Set(current.timedOutGates ?? []);
+    for (const gate of currentTimedOut) {
+      if (!baselineTimedOut.has(gate)) {
+        newRegressions.push(`${gate}: timed out (did not complete within its time budget)`);
+      } else {
+        remainingHistoricalDebt.push(`${gate}: still timing out, unchanged from baseline`);
+      }
+    }
+    for (const gate of baselineTimedOut) {
+      if (!currentTimedOut.has(gate)) {
+        fixedRegressions.push(`${gate}: no longer timing out`);
+      }
+    }
+  }
 
   // TypeScript
   {
@@ -315,7 +370,9 @@ export function compareQualitySnapshots(baseline: QualitySnapshot, current: Qual
     else if (!baseline.buildSucceeded && current.buildSucceeded) fixedRegressions.push("build: pre-existing failure fixed");
   }
 
-  const overallStatus: GateStatus = gates.every((g) => g.status === "pass") ? "pass" : "fail";
+  // newRegressions can gain entries above (timeouts) that never produced a
+  // `gates` row — overallStatus must fail on those too, not just on `gates`.
+  const overallStatus: GateStatus = gates.every((g) => g.status === "pass") && newRegressions.length === 0 ? "pass" : "fail";
   return { overallStatus, gates, newRegressions, fixedRegressions, remainingHistoricalDebt };
 }
 

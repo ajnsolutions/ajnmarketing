@@ -3,8 +3,9 @@
  * and reading/writing QUEUE_STATUS.json. Kept separate from validation and
  * orchestration logic so both can be unit tested without touching disk.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { parse as parseYaml } from "yaml";
 import type { QueueState, RunQueue } from "./queueTypes.ts";
 
@@ -44,9 +45,22 @@ export function loadQueueState(repoRoot: string): QueueState {
   return JSON.parse(readFileSync(path, "utf8")) as QueueState;
 }
 
+/**
+ * Writes QUEUE_STATUS.json atomically: write to a throwaway sibling file,
+ * then rename over the real path. rename() is atomic on the same
+ * filesystem, so a process killed mid-write (machine sleep despite
+ * caffeinate, SIGKILL, power loss) can never leave QUEUE_STATUS.json
+ * truncated or half-written — the reader always sees either the old
+ * complete state or the new complete state, never a mangled one. This
+ * matters specifically for unattended overnight runs, where a corrupted
+ * state file with no one at the keyboard to notice would silently break
+ * every future `npm run ai:queue:status` / resume attempt.
+ */
 export function saveQueueState(repoRoot: string, state: QueueState): void {
   const path = join(repoRoot, QUEUE_STATUS_PATH);
-  writeFileSync(path, JSON.stringify(state, null, 2) + "\n", "utf8");
+  const tmpPath = `${path}.${randomUUID()}.tmp`;
+  writeFileSync(tmpPath, JSON.stringify(state, null, 2) + "\n", "utf8");
+  renameSync(tmpPath, path);
 }
 
 /** True when the queue can be safely re-run with `npm run ai:queue` and it will pick up where it left off — false when a task is stuck in_progress (a previous run crashed mid-task and needs manual inspection first) or nothing pending remains. */

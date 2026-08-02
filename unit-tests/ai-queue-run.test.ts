@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { selectNextEligibleTask, determineBranchBase } from "../scripts/ai/run-queue.ts";
+import { selectNextEligibleTask, determineBranchBase, runExceedsWallClockBudget } from "../scripts/ai/run-queue.ts";
 import type { QueueState, QueueTask, RunQueue, TaskState } from "../scripts/ai/queueTypes.ts";
 
 function task(overrides: Partial<QueueTask> = {}): QueueTask {
@@ -134,4 +134,33 @@ test("determineBranchBase (independent) always uses the base branch, even for a 
   const queue = queueWith(tasks, "independent");
   const state = stateFor(tasks, { "001": { status: "completed", branch: "ai-queue/001" } });
   assert.equal(determineBranchBase(queue, tasks[1], state), "origin/main");
+});
+
+// ---------------------------------------------------------------------------
+// runExceedsWallClockBudget — reliability hardening, 2026-08-02. Without this,
+// an unattended overnight run had no ceiling at all and could, in principle,
+// still be running well into the next business day.
+// ---------------------------------------------------------------------------
+
+test("runExceedsWallClockBudget is false immediately after the run starts", () => {
+  const start = Date.parse("2026-08-02T02:00:00.000Z");
+  assert.equal(runExceedsWallClockBudget(start, start, 360), false);
+});
+
+test("runExceedsWallClockBudget is false just under the budget", () => {
+  const start = Date.parse("2026-08-02T02:00:00.000Z");
+  const almostThere = start + 359 * 60 * 1000;
+  assert.equal(runExceedsWallClockBudget(start, almostThere, 360), false);
+});
+
+test("runExceedsWallClockBudget is true exactly at the budget", () => {
+  const start = Date.parse("2026-08-02T02:00:00.000Z");
+  const exactly = start + 360 * 60 * 1000;
+  assert.equal(runExceedsWallClockBudget(start, exactly, 360), true);
+});
+
+test("runExceedsWallClockBudget is true well past the budget", () => {
+  const start = Date.parse("2026-08-02T02:00:00.000Z");
+  const wayPast = start + 500 * 60 * 1000;
+  assert.equal(runExceedsWallClockBudget(start, wayPast, 360), true);
 });

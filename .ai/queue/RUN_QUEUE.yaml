@@ -43,6 +43,21 @@
 # before the task is failed and the queue stops. See
 # scripts/ai/qualityGates.ts and docs/AI_OVERNIGHT_QUEUE.md's "Queue v2"
 # section for the full design.
+#
+# Reliability hardening (2026-08-02): this queue's actual first live,
+# unattended run (evidence: .ai/runs/2026-08-02T065749882Z/, preserved) hit
+# a real bug — every Claude tool call silently blocked on a permission
+# approval no one was present to give, so the agent exited 0 having done
+# zero work, and the adapter reported success anyway. Fixed in
+# scripts/ai/adapters/claude.ts (permission bypass flag + response-body
+# inspection instead of trusting exit code alone) and hardened further in
+# run-queue.ts/qualityGates.ts (every subprocess now has an explicit
+# timeout, QUEUE_STATUS.json writes are atomic, a crash mid-task still
+# produces a normal run summary, and this whole run now has a wall-clock
+# ceiling — max_run_duration_minutes below). The fix has NOT yet been
+# verified against a real `claude` invocation (no `claude` binary was on
+# PATH in the sandbox that built the fix either) — see .ai/OPEN_ITEMS.md and
+# docs/AI_OVERNIGHT_QUEUE.md before trusting an unattended run.
 
 queue:
   name: "ajnmarketing-overnight-queue"
@@ -76,6 +91,14 @@ queue:
   # regressions, before giving up and failing the task. Optional — defaults
   # to 3 (DEFAULT_MAX_REPAIR_ATTEMPTS in scripts/ai/queueTypes.ts) if unset.
   max_repair_attempts: 3
+  # Reliability hardening: overall wall-clock ceiling (minutes) for one
+  # `npm run ai:queue` invocation, independent of every individual
+  # subprocess's own timeout — the last line of defense against an
+  # unattended overnight run still going at 9am. Optional — defaults to 360
+  # (6 hours; DEFAULT_MAX_RUN_DURATION_MINUTES in scripts/ai/queueTypes.ts)
+  # if unset. Set explicitly here so the number is visible without reading
+  # the source.
+  max_run_duration_minutes: 360
 
 safety:
   allow_merge: false

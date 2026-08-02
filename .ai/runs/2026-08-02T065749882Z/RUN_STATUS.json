@@ -1,0 +1,38 @@
+{
+  "run_id": "2026-08-02T065749882Z",
+  "started_at": "2026-08-02T06:57:49.883Z",
+  "finished_at": "2026-08-02T07:14:42.110Z",
+  "stop_reason": "task 001 failed: no project-memory update",
+  "baseline": {
+    "generatedAt": "2026-08-02T06:57:51.179Z",
+    "typescriptErrorCount": 18,
+    "eslintErrorCount": 0,
+    "eslintWarningCount": 7,
+    "unitTestFailureCount": 0,
+    "unitTestFailureNames": [],
+    "playwrightFailureCount": 0,
+    "playwrightFailureNames": [],
+    "buildSucceeded": true
+  },
+  "tasks": [
+    {
+      "id": "001",
+      "name": "Market Radar: owner-managed competitor & benchmark persistence foundation",
+      "status": "failed",
+      "branch": "ai-queue/001-market-radar-foundation",
+      "commit": null,
+      "pr": null,
+      "blocker": "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.",
+      "quality_gate": {
+        "overall_status": "pass",
+        "new_regressions": [],
+        "fixed_regressions": [],
+        "remaining_historical_debt": [
+          "18 pre-existing TypeScript error(s), unchanged",
+          "7 pre-existing ESLint warning(s), unchanged"
+        ],
+        "repair_attempts": 1
+      }
+    }
+  ]
+}

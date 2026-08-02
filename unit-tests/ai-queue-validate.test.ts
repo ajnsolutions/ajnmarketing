@@ -264,6 +264,44 @@ test("rejects a pending task that depends on a permanently disabled task", () =>
   }
 });
 
+test("accepts a queue with a valid max_run_duration_minutes", () => {
+  const root = makeFixtureRepo();
+  try {
+    const queue = baseQueue([baseTask()]);
+    queue.queue.max_run_duration_minutes = 120;
+    const result = validateQueue(queue, root);
+    assert.equal(result.valid, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects a non-positive max_run_duration_minutes", () => {
+  const root = makeFixtureRepo();
+  try {
+    const queue = baseQueue([baseTask()]);
+    queue.queue.max_run_duration_minutes = 0;
+    const result = validateQueue(queue, root);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.message.includes("max_run_duration_minutes")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects a max_run_duration_minutes over 24 hours", () => {
+  const root = makeFixtureRepo();
+  try {
+    const queue = baseQueue([baseTask()]);
+    queue.queue.max_run_duration_minutes = 1441;
+    const result = validateQueue(queue, root);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.message.includes("must not exceed 1440")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("the real .ai/queue/RUN_QUEUE.yaml in this repository is itself valid", async () => {
   const { parse } = await import("yaml");
   const { readFileSync } = await import("node:fs");

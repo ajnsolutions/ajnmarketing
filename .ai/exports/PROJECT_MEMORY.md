@@ -1,6 +1,6 @@
 # Project Memory — AJN Marketing
 
-Generated 2026-08-02T06:01:47.015Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
+Generated 2026-08-02T08:15:04.036Z by `scripts/ai/export-memory.ts`. This file combines every `.ai/` memory doc into one upload-friendly document for AI tools without direct repository access. It is a snapshot — for anything time-sensitive, prefer reading the repository directly if you can.
 
 
 ---
@@ -30,7 +30,7 @@ The 1.0 roadmap (`docs/IMPLEMENTATION_ROADMAP.md`, Phases A–H) runs in paralle
 - Head of Marketing Orchestrator — the newest merge (PR #96): a daily Executive Review composing Weekly Growth Plan + Executive Brief + Opportunity Engine into one view, at `/dashboard/executive-review` (customer) and `/dashboard/admin/executive-overview` (admin).
 - Publishing pipeline with atomic job claiming (background_jobs table + Trigger.dev, two systems not yet merged — see `DECISIONS.md`).
 
-**Current active initiative:** Queue v2 — baseline-aware quality gates (branch `ai-queue-v2-baseline-aware`). The first real daytime dry run of `.ai/queue/RUN_QUEUE.yaml`'s two real tasks (Market Radar persistence foundation, id `001`; Market Radar owner-facing view, id `002`, depends on `001`) surfaced a design flaw: v1's quality gate required a perfectly clean lint/typecheck/unit-test run, so this repository's own documented, pre-existing baseline issues stopped the queue even when a task introduced zero regressions. `scripts/ai/qualityGates.ts` now captures one `QualitySnapshot` (TypeScript, ESLint errors/warnings, unit tests, Playwright, build) before a run's first task begins, persists it to `.ai/runs/<run-id>/baseline.json`, and compares every task's after-state against that same baseline — pre-existing debt that stays unchanged never fails a task; a genuine new regression always does, and gets up to `max_repair_attempts` (default 3) automatic repair tries before the task fails and the queue stops. See `DECISIONS.md` ADR-0012 and `docs/AI_OVERNIGHT_QUEUE.md`'s "Queue v2" section. Both Market Radar tasks in `RUN_QUEUE.yaml` are unaffected in content — still `status: pending`, not yet actually run to completion end-to-end. Otherwise, main is caught up through PR #98 with no other open product-track PR or unmerged product branch. See `recommended_next_task` below and `OPEN_ITEMS.md` for what a human should prioritize next on the product/intelligence track.
+**Current active initiative:** AI overnight queue reliability hardening (branch `harden-ai-queue-unattended-execution`). The queue's first real, *live, unattended* run (2026-08-02, run id `2026-08-02T065749882Z`, evidence preserved under `.ai/runs/2026-08-02T065749882Z/`) surfaced a real bug: `scripts/ai/adapters/claude.ts` invoked `claude -p` with no permission-bypass flag, so every Write/Edit/Bash tool call silently blocked on an approval no one was present to give — Claude exited 0 having done zero work, and the adapter reported success anyway (it only checked exit code). Fixed this session: the adapter now passes `--dangerously-skip-permissions` and independently inspects the JSON response body (`permission_denials`, `is_error`) instead of trusting exit code alone (see `DECISIONS.md` ADR-0013 for the full safety reasoning). Also hardened more broadly for reliability: every subprocess call now has an explicit timeout (`scripts/ai/subprocess.ts`), `QUEUE_STATUS.json` writes are atomic, a crash mid-task still produces a normal run summary, and the whole run now has a wall-clock ceiling (`queue.max_run_duration_minutes`, default 360 min). **The fix's success path is still unverified** — no `claude` binary was on `PATH` in this fix's own build sandbox either; see `OPEN_ITEMS.md`'s "Live dry-run incident" entry before trusting an unattended overnight run. Both Market Radar tasks in `RUN_QUEUE.yaml` (`001` persistence foundation, `002` owner-facing view, depends on `001`) are unaffected in content — still `status: pending`, ready to retry once the fix is verified. Otherwise, main is caught up through PR #99 with no other open product-track PR or unmerged product branch. See `recommended_next_task` below and `OPEN_ITEMS.md` for what a human should prioritize next on the product/intelligence track.
 
 **Known safety gates (must not be silently changed by any agent):**
 - `ATTACH_DECLARATIVE_PRODUCTION_CRONS` — the Trigger.dev production-schedule activation gate. **Must remain `false`.** Canonical source: `lib/trigger/scheduleActivation.ts`. Referenced/enforced across ~10+ tests, most `docs/` files, and this repo's own `RUNBOOKS.md` (which treats an accidentally-`true` gate as a severe production-safety incident).
@@ -40,9 +40,9 @@ The 1.0 roadmap (`docs/IMPLEMENTATION_ROADMAP.md`, Phases A–H) runs in paralle
 
 **Recommended next step:** Resolve the three-competing-"what should this business do"-systems architecture question (`docs/ARCHITECTURE_REVIEW_2026.md`) before adding further recommendation/decision surface area. In parallel, patch the spoofable `x-forwarded-for` rate-limit key on the public interactive-demo endpoint (§3.9 of that same review) — it is an active, unbounded-cost-abuse security gap, not a hypothetical one.
 
-**Date last verified:** 2026-08-01
+**Date last verified:** 2026-08-02
 
-**Branch/commit used for verification:** `ai-queue-v2-baseline-aware`, based on `origin/main` at `44d6db1` (merge of PR #98).
+**Branch/commit used for verification:** `harden-ai-queue-unattended-execution`, based on `origin/main` at `dc537d2` (merge of PR #99).
 
 
 ---
@@ -151,7 +151,7 @@ Business Brain intelligence layer: `lib/business-brain/`, `lib/business-brain-in
 
 - **Unit**: Node's built-in test runner, `unit-tests/*.test.ts`, invoked via `node --import ./unit-tests/support/register.mjs --test unit-tests/*.test.ts` (`npm run test:unit`). `register.mjs` resolves the `@/*` path alias and stubs `server-only`/`next/headers`/`next/server` for plain-Node execution outside the Next.js runtime.
 - **E2E**: Playwright, `tests/*.spec.ts` (`npm run test:e2e`). CI (`.github/workflows/e2e.yml`) runs Playwright only, on `pull_request`, against Chromium. CI does **not** currently run lint, typecheck, or unit tests — those are run manually/locally as quality gates (see `docs/AI_QUEUE_TROUBLESHOOTING.md` for the full gate list this repo's AI tooling now enforces before opening a PR).
-- **One-off audit scripts**: `scripts/audit/*.ts`, run via `node --experimental-strip-types scripts/audit/<name>.ts`, excluded from the main `tsconfig.json`'s type-checking (`scripts/**/*` is in `exclude`) and from `test:unit`/`test:e2e` — standalone verification tools, not part of the committed test suite. The `.ai/queue/` tooling (`scripts/ai/`) follows this same run convention. The queue's own per-task quality gate (`scripts/ai/qualityGates.ts`, "Queue v2") is baseline-aware — see `DECISIONS.md` ADR-0012 and `docs/AI_OVERNIGHT_QUEUE.md` — so it never blocks on this repository's own pre-existing debt, only on regressions a queue task itself introduces.
+- **One-off audit scripts**: `scripts/audit/*.ts`, run via `node --experimental-strip-types scripts/audit/<name>.ts`, excluded from the main `tsconfig.json`'s type-checking (`scripts/**/*` is in `exclude`) and from `test:unit`/`test:e2e` — standalone verification tools, not part of the committed test suite. The `.ai/queue/` tooling (`scripts/ai/`) follows this same run convention. The queue's own per-task quality gate (`scripts/ai/qualityGates.ts`, "Queue v2") is baseline-aware — see `DECISIONS.md` ADR-0012 and `docs/AI_OVERNIGHT_QUEUE.md` — so it never blocks on this repository's own pre-existing debt, only on regressions a queue task itself introduces. Every subprocess the queue shells out to (git, `gh`, quality gates, the `claude` CLI itself) goes through `scripts/ai/subprocess.ts`, which requires an explicit timeout at every call site — added after the queue's first live run showed nothing had one. The `claude` CLI invocation runs with `--dangerously-skip-permissions` (`DECISIONS.md` ADR-0013) — a deliberate, documented tradeoff, not an oversight; the queue's actual safety boundary is `validate-queue.ts` plus the fact that no merge/deploy/migration/secret-change/schedule-activation call exists anywhere in `run-queue.ts`'s code, not per-tool-call human approval (which cannot function in an unattended run by definition).
 
 ## Deployment
 
@@ -231,6 +231,19 @@ Assisted Pilot exists to build trust toward more autonomous execution — it com
 
 **Consequences:** A queue run now costs one extra full quality-suite invocation up front (the baseline capture) plus one per ta[REDACTED] (and one more per repair attempt) — meaningfully slower than v1's single gate pass, accepted as the cost of correctness. `.ai/runs/<run-id>/` now also contains `baseline.json` and one `task-<id>-quality.json` per attempted task (both committed; raw logs remain gitignored). See `docs/AI_OVERNIGHT_QUEUE.md`'s "Queue v2" section for the full walkthrough and `scripts/ai/qualityGates.ts` for the implementation.
 
+## ADR-0013 — Claude CLI invocations run with `--dangerously-skip-permissions` (2026-08-02)
+**Status:** Implemented, this build. Security-relevant — read in full before changing.
+
+**Decision:** `scripts/ai/adapters/claude.ts` now invokes `claude -p --output-format json --dangerously-skip-permissions` for every queue task, instead of omitting the permission flag. `checkAvailability()` also verifies the installed CLI's `--help` output mentions a permission-bypass flag before reporting the agent available at all. As a second, independent layer, the adapter now parses the JSON response body and treats a non-empty `permission_denials` array or `is_error: true` as a real failure regardless of exit code — it no longer trusts exit code 0 alone.
+
+**Why:** The queue's first real, live unattended run (2026-08-02, run id `2026-08-02T065749882Z`, evidence preserved under `.ai/runs/2026-08-02T065749882Z/`) invoked `claude -p` with no permission flag. Claude correctly tried to use its Write/Edit/Bash tools, correctly triggered the CLI's normal interactive per-tool-call approval flow, and — with no human present in an unattended session to approve anything — every approval sat pending until Claude gave up. It then exited 0 with a text explanation of what happened, having made zero file changes. The adapter's old logic checked only the exit code, saw 0, and reported success; `run-queue.ts`'s own auto-repair loop (ADR-0012) then burned a second, identical, equally-blocked invocation before a human had to read the raw log by hand to find the real cause. An unattended queue that silently does nothing while reporting success is worse than one that visibly fails — this is the single largest reliability gap `.ai/OPEN_ITEMS.md`'s "This build's own limitation" entry had flagged as unverified, and it's exactly what happened.
+
+**Alternatives considered:** A narrower permission mode (e.g. `--permission-mode acceptEdits`, which typically only auto-accepts file-edit tool calls, not Bash). Rejected — the live incident's log shows Bash tool calls were *also* permission-denied (`git diff`/exploratory reads the agent attempted), so a mode that leaves Bash gated would still block on real, ordinary task work (running tests, reading multiple files via a single command, etc.). Do nothing and rely on a human to notice a silent no-op run each time. Rejected — directly defeats this task's own purpose ("enable reliable unattended overnight execution"); an unattended run with no one watching needs the failure to be *detected*, not just theoretically diagnosable after the fact from a raw log.
+
+**Why this is an acceptable tradeoff, not a safety regression:** the thing that actually keeps an unattended queue run safe was never "a human approves each individual tool call" — that requirement is fundamentally incompatible with "unattended." The real safety boundary is, and remains, `scripts/ai/validate-queue.ts` (rejects any task or safety-block setting requesting merge, deploy, a production migration, a secret change, or production-schedule activation, cross-checked against the real code-level `ATTACH_DECLARATIVE_PRODUCTION_CRONS` gate) plus the simple fact that `run-queue.ts`'s own code never calls any of those operations — there is no flag to bypass because the capability isn't present in the orchestrator's code path at all. Skipping *interactive tool-call approval* removes a layer that could never function unattended in the first place; it does not remove the layer that actually enforces this repository's safety boundaries. A human still reviews and merges every PR the queue opens — nothing about this decision changes that.
+
+**Consequences:** Every queue task's Claude invocation now runs with full tool access (no per-call approval prompts) inside this repository's checkout. This is scoped to `scripts/ai/adapters/claude.ts`'s own invocations only — it is not a global CLI setting, and it does not change how any human runs `claude` interactively. The fix's *failure-detection* path (permission-denial parsing) was proven correct against the real incident's actual response shape (see `unit-tests/ai-queue-claude-adapter.test.ts`). Its *success* path — a real `claude --dangerously-skip-permissions` invocation actually completing a real task end-to-end — has **not yet been verified**, because no `claude` binary was on `PATH` in the sandbox this fix was built in either. See `.ai/OPEN_ITEMS.md` and `docs/AI_OVERNIGHT_QUEUE.md`'s daytime dry run requirement before trusting this for a real unattended overnight run.
+
 
 ---
 
@@ -238,7 +251,7 @@ Assisted Pilot exists to build trust toward more autonomous execution — it com
 
 # Open Items
 
-Verified 2026-08-01 against `origin/main` @ `44d6db1` (merge of PR #98). Update this file whenever an item is resolved, deferred further, or a new one is discovered — do not let it silently go stale (see `ADR-0010`'s caveat in `DECISIONS.md` for why that matters).
+Verified 2026-08-02 against `origin/main` @ `dc537d2` (merge of PR #99). Update this file whenever an item is resolved, deferred further, or a new one is discovered — do not let it silently go stale (see `ADR-0010`'s caveat in `DECISIONS.md` for why that matters).
 
 ## Active blockers
 
@@ -284,9 +297,13 @@ This build added the first `typecheck` script (`tsc --noEmit`) this repository h
 
 `compareQualitySnapshots` (`scripts/ai/qualityGates.ts`) distinguishes a historical unit-test/Playwright failure from a new one by matching failing-test **name** between baseline and current. If a task legitimately renames or restructures a test (even without changing its underlying behavior), the comparator has no way to know the "new-named" failure is the same one — it would be classified as a new regression and could trigger an unnecessary auto-repair attempt or task failure. This is a known, accepted trade-off (matching by name is far more correct than matching by raw count alone — see ADR-0012's "alternatives considered") rather than a bug; a human resolving such a failure should recognize this pattern (a renamed test showing up as "new") rather than assume the repair loop's diagnosis is always literal.
 
-## This build's own limitation (self-reported)
+## Live dry-run incident (2026-08-02) and its fix — read before trusting an overnight run
 
-The Claude Code CLI adapter (`scripts/ai/adapters/claude.ts`) is implemented against documented Claude Code CLI non-interactive conventions but **could not be end-to-end tested in this build's sandbox** — no `claude` binary was present on `PATH` here. The adapter's capability probe (`isAvailable()`) correctly detects this and fails with an actionable message; that specific failure path *was* verified live in this sandbox. The success path (an actual non-interactive `claude` invocation completing a real task) has not been. See `docs/AI_OVERNIGHT_QUEUE.md` for the required first daytime dry run before trusting this for unattended overnight runs.
+The queue's first real, live, unattended run (run id `2026-08-02T065749882Z`) actually executed — meaning a `claude` binary genuinely was available in whatever environment ran it, unlike every sandbox this project's own build/fix sessions have had access to. It surfaced the exact risk `OPEN_ITEMS.md` had previously only flagged as *unverified*: `scripts/ai/adapters/claude.ts` invoked `claude -p` with no permission-bypass flag, every Write/Edit/Bash tool call silently blocked on an approval no one was present to give, and Claude exited 0 having done zero work. The adapter reported success anyway (it only checked exit code). The queue's auto-repair loop (ADR-0012) then burned a second, identically-blocked invocation before self-diagnosing the true cause in its own response text (evidence preserved: `.ai/runs/2026-08-02T065749882Z/RUN_SUMMARY.md`, `RUN_STATUS.json`, `baseline.json`, `task-001-quality.json`; the raw `task-001.log` containing the full diagnostic transcript is local-only per this repo's log policy, not committed).
+
+**Fixed this session** (see `DECISIONS.md` ADR-0013 for full reasoning): the adapter now passes `--dangerously-skip-permissions` and independently inspects the JSON response body (`permission_denials`, `is_error`) rather than trusting exit code 0 alone. Also hardened for reliability more broadly: every subprocess call across `run-queue.ts`/`qualityGates.ts` now has an explicit timeout (`scripts/ai/subprocess.ts`), `QUEUE_STATUS.json` writes are now atomic, an unexpected crash mid-task still produces a normal `RUN_SUMMARY.md`/`RUN_STATUS.json`, and the whole run now has a wall-clock ceiling (`queue.max_run_duration_minutes`, default 360 minutes).
+
+**Still true after this fix, and still the main reason not to trust an unattended overnight run yet:** the fix's *failure-detection* path was proven correct against the real incident's actual response shape (unit-tested directly). The fix's *success* path — a real `claude --dangerously-skip-permissions` invocation actually completing Task 001 or 002 end-to-end — has **not been verified**, because no `claude` binary was on `PATH` in the sandbox this fix was built in either. Run the daytime dry run in `docs/AI_OVERNIGHT_QUEUE.md` in an environment where `claude --version` actually works before trusting this for a real overnight run.
 
 
 ---
@@ -299,61 +316,49 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## Branch
 
-`ai-queue-v2-baseline-aware` (based on `origin/main` @ `44d6db1`, the merge of PR #98)
+`harden-ai-queue-unattended-execution` (based on `origin/main` @ `dc537d2`, the merge of PR #99)
 
 ## Task status
 
-**Complete.** Fixed the design flaw the first real daytime dry run of the queue surfaced: v1's quality gate compared each task's lint/typecheck/unit-test run against a hard "must be perfectly clean" bar, so this repository's own documented, pre-existing baseline issues stopped the queue even when a task introduced zero regressions of its own. Queue v2 makes the gate baseline-aware.
+**Complete.** This task's explicit goal was "enable reliable unattended overnight execution" of `.ai/queue/`. It fixes a real bug this queue's own first live, unattended run just found, plus a broader class of reliability gaps that same incident's investigation surfaced.
 
-## What was built
+## What happened, and what was built
 
-- **`scripts/ai/qualityGates.ts`** (new) — the core of Queue v2:
-  - `QualitySnapshot` type + `captureQualitySnapshot(repoRoot)`: runs TypeScript (`tsc --noEmit`), ESLint (`eslint . --format json`, errors and warnings tracked separately), unit tests (`test:unit`, TAP output), Playwright (`test:e2e --reporter=json`), and the production build, returning one structured snapshot.
-  - Pure parsing functions (unit-tested with canned sample output): `parseTypescriptErrorCount`, `parseEslintJson`, `parseNodeTestFailures` (count + failing-test **names**, not just count), `parsePlaywrightJson` (same, recursively walking suites).
-  - `compareQualitySnapshots(baseline, current)`: TypeScript/ESLint errors/ESLint warnings pass if the count didn't increase (existing debt is never a failure); unit tests/Playwright are **identity-aware** — a currently-failing test only passes if the *same test by name* was already failing in the baseline, which catches a regression a naive count comparison would miss (an old failure gets fixed while a different new one appears, netting to the same count); build must succeed unless the baseline build was itself already broken. Returns `overallStatus`, per-gate `gates[]`, and `newRegressions`/`fixedRegressions`/`remainingHistoricalDebt` lists.
-  - `buildRepairPrompt(comparison, attempt, maxAttempts)`: a narrow follow-up prompt naming exactly the new regressions and explicitly forbidding scope expansion or "fixing" historical debt.
-  - `formatQualityComparisonMarkdown(...)`: renders a comparison as a Markdown table for `RUN_SUMMARY.md`.
-- **`scripts/ai/run-queue.ts`** (modified):
-  - Captures one baseline via `captureQualitySnapshot` before this run's first eligible task begins (skipped entirely if no task is eligible — nothing to compare against), persisted to `.ai/runs/<run-id>/baseline.json`.
-  - Replaced the old fixed `["npm run lint", "npm run typecheck", "npm run test:unit"]` gate loop with: capture current snapshot → `compareQualitySnapshots` against the baseline → if it fails, invoke the agent again with `buildRepairPrompt` (up to `queue.max_repair_attempts`, default 3) → re-capture → re-compare, repeating until it passes or attempts are exhausted. Only then does the task fail and the queue stop.
-  - Persists `.ai/runs/<run-id>/task-<id>-quality.json` (baseline, current, comparison, repair attempt count) per attempted task, and `RUN_SUMMARY.md`/`RUN_STATUS.json` now include the repository baseline plus a per-task quality-gate table (baseline/current/result per gate, new regressions, fixed regressions, remaining historical debt).
-  - The PR body `run-queue.ts` writes now states the Queue v2 result (pass + any remaining historical debt + repair attempts used) instead of the old fixed gate-command list.
-- **`scripts/ai/queueTypes.ts`** — added optional `queue.max_repair_attempts` (defaults to `DEFAULT_MAX_REPAIR_ATTEMPTS = 3` when absent, so an older queue file without this field stays valid).
-- **`scripts/ai/validate-queue.ts`** — validates `max_repair_attempts` if present (non-negative integer, capped at 10 so an unattended queue can't loop indefinitely on one task).
-- **`.ai/queue/RUN_QUEUE.yaml`** — sets `max_repair_attempts: 3` explicitly; header comments explain Queue v2. The two Market Radar tasks (`001`, `002`) are otherwise unchanged in content.
-- **Docs**: `docs/AI_OVERNIGHT_QUEUE.md` gained a full "Queue v2 — baseline-aware quality gates" section; `docs/AI_QUEUE_TROUBLESHOOTING.md`'s failed-task guidance updated to describe the new blocker message and where to find the comparison; `.ai/queue/README.md` and `.ai/runs/README.md` updated to mention `baseline.json`/`task-<id>-quality.json`; `scripts/ai/generate-morning-brief.ts`'s "Quality gates" section text updated for accuracy.
-- **`.ai/DECISIONS.md`** — added ADR-0012 documenting this decision (what changed, why, alternatives considered, consequences). **`.ai/ARCHITECTURE.md`** and **`.ai/OPEN_ITEMS.md`** cross-reference it; `OPEN_ITEMS.md`'s pre-existing type-check debt entry now notes the queue no longer blocks on it, and a new "Known limitation of Queue v2's identity-aware test comparison" entry documents the test-rename edge case honestly.
+1. On starting this task, the working checkout was sitting on branch `ai-queue/001-market-radar-foundation` with uncommitted `QUEUE_STATUS.json` changes and a new `.ai/runs/2026-08-02T065749882Z/` directory — evidence that **the queue's first real, live, unattended run had actually executed** (in an environment with a working `claude` CLI, unlike every sandbox this project's build sessions have had access to). That run failed at the "no project-memory update" safety check — correctly, but for a deeper underlying reason: the task's `claude -p` invocation never did any real work at all.
+2. Investigated the run's own logs (`task-001.log`, not committed — see `.ai/runs/README.md`'s log policy) and found the root cause directly in Claude's own JSON response: it tried to use Write/Edit/Bash tools, each triggered the CLI's normal interactive permission-approval flow, and with no human present in the unattended session, every approval sat pending until Claude gave up and exited 0 with a text explanation — having made zero file changes. The old adapter (`scripts/ai/adapters/claude.ts`) checked only the exit code and reported success.
+3. Preserved the run's safe artifacts (`RUN_SUMMARY.md`, `RUN_STATUS.json`, `baseline.json`, `task-001-quality.json`) as committed evidence, reset to a clean `origin/main` checkout, and built the fix on a fresh branch rather than on top of the contaminated one.
+4. **Fixed** `scripts/ai/adapters/claude.ts`: now invokes `claude -p --output-format json --dangerously-skip-permissions`; `checkAvailability()` verifies the CLI supports a permission-bypass flag before reporting available; and — as an independent second layer — the adapter now parses the JSON response body and treats a non-empty `permission_denials` array or `is_error: true` as a real failure regardless of exit code. Full reasoning: `.ai/DECISIONS.md` ADR-0013.
+5. **Hardened more broadly for reliability**, since the same investigation showed nothing in the queue had a timeout: added `scripts/ai/subprocess.ts` (every git/gh/quality-gate subprocess call now has an explicit timeout and bounded buffer; stdin is never inherited so nothing can block on input that will never come); made `QUEUE_STATUS.json` writes atomic (`queueIO.ts`, write-temp-then-rename); wrapped each task attempt so an unexpected crash is recorded as that task's failure instead of silently losing the run's artifacts; added a run-level wall-clock ceiling (`queue.max_run_duration_minutes`, default 360 min); added timeout-awareness to `qualityGates.ts`'s snapshots (`timedOutGates`) so a killed gate is always treated as a regression, never silently read as "0 errors."
+6. Updated `.ai/queue/RUN_QUEUE.yaml`'s header comment and added `max_run_duration_minutes: 360` explicitly. `QUEUE_STATUS.json` already reflected both Market Radar tasks (`001`, `002`) as `pending` on the fresh `origin/main` checkout — no reset needed.
 
 ## Tests
 
-- New: `unit-tests/ai-queue-quality-gates.test.ts` (24 tests) — every parsing function with canned sample output, every `compareQualitySnapshots` rule (including this task's own worked example: 0→2 unit failures is a hard FAIL, and 18→18 TypeScript errors is a PASS), the identity-vs-count distinction specifically, `buildRepairPrompt`, `formatQualityComparisonMarkdown`. **All pass.**
-- `unit-tests/ai-queue-*.test.ts` (all four files together, 63 tests total) — **all pass**, including the pre-existing `ai-queue-run.test.ts` (`selectNextEligibleTask`/`determineBranchBase`, unaffected by this change) and the self-check that validates the real `.ai/queue/RUN_QUEUE.yaml`.
-- Full unit suite (`npm run test:unit`): **1718/1718 passing** (1694 prior + 24 new).
+- `unit-tests/ai-queue-*.test.ts`: **112 tests, all pass** (67 pre-existing + 45 new/added this branch, across two new files — `ai-queue-subprocess.test.ts`, `ai-queue-claude-adapter.test.ts` — plus additions to `ai-queue-run.test.ts`, `ai-queue-validate.test.ts`, and `ai-queue-quality-gates.test.ts`). New coverage specifically: `buildClaudeArgs()` includes `--dangerously-skip-permissions`; `detectSilentPermissionFailure()` correctly flags the exact 2026-08-02 incident's response shape (`is_error: false` + non-empty `permission_denials`) and correctly passes a clean response; `subprocess.ts`'s `sh()`/`runCommand()` actually kill a real slow process at its timeout, correctly separate stdout/stderr, and never block on stdin; `runExceedsWallClockBudget()`; `compareQualitySnapshots()`'s new timeout-regression handling (including backward-compatibility with a baseline snapshot from before `timedOutGates` existed); `max_run_duration_minutes` validation.
+- Full unit suite (`npm run test:unit`): **1740/1740 passing.**
 - Lint (`npm run lint`): clean — 0 errors, 7 pre-existing warnings in files this branch never touched.
-- Typecheck (`npm run typecheck`): 18 pre-existing errors, same baseline as before — none touched by this branch (see `OPEN_ITEMS.md`).
-- `npm run ai:queue:validate`: valid.
-- Build (`npm run build`): succeeds.
-- Playwright (`npx playwright test`): full suite run — see this PR's own quality-gate results for the exact count at merge time.
-- **The queue itself was not run** (`npm run ai:queue`) — this is a code change to the queue's own quality-gate mechanism, not a queue execution. The next real daytime dry run (per `docs/AI_OVERNIGHT_QUEUE.md`) is the actual end-to-end verification that Queue v2 behaves as designed against a live agent invocation.
+- Typecheck (`npm run typecheck`): 18 pre-existing errors, identical set to before this branch — none touched by this branch (confirmed: a real typecheck bug in this branch's own new `subprocess.ts` was found and fixed during this session — `SpawnSyncReturns<string>` needed an explicit type annotation, `ReturnType<typeof spawnSync>` alone resolved to a `string | Buffer` union — see git history on this branch for the fix).
+- Build (`npm run build`): succeeds, isolated (no dev server running concurrently). Route manifest unaffected by this branch's changes (none of it touches `app/`).
+- Playwright (`npx playwright test`): **302/302 passing**, run in isolation on a clean checkout.
+- **A real bug was found and fixed during this session's own work**, not just the incident being fixed: the first draft of `subprocess.ts` merged stdout+stderr into one `output` field, which would have silently broken `qualityGates.ts`'s ESLint JSON parsing (`--format json` writes clean JSON to stdout only; any stderr content would have corrupted the parse). Caught before it shipped by reasoning through the exact call site, not by a failing test — fixed by keeping stdout/stderr separate in `SubprocessResult`, with `.output` as a combined view for logging only. Now has direct test coverage.
 
 ## PR
 
-Not yet created at the time this file was written — will be `ai-queue-v2-baseline-aware` → `main`. Not merged. Not deployed. The queue itself was not executed.
+Opened against `main` from this branch — see this repository's PR list for the number/URL (`gh pr list --head harden-ai-queue-unattended-execution`). Not merged. Not deployed.
 
 ## Blockers
 
-None blocking this task's own completion. Two things carried forward, unchanged by this work:
+None blocking this task's own completion. One carried-forward limitation, now narrower than before:
 
-1. **The Claude CLI adapter's live success path is still unverified** (unchanged since PR #97/#98 — see `OPEN_ITEMS.md`). Queue v2 changes what happens *after* the agent invocation (the quality gate), not the invocation itself — that verification gap is orthogonal to this fix and still open.
-2. **Queue v2's identity-aware test comparison has a known, accepted limitation** around test renames — see the new `OPEN_ITEMS.md` entry. Not a bug, but worth a human's awareness when reading a repair-loop diagnosis.
+**The fix's failure-detection path is verified; its success path is not.** `detectSilentPermissionFailure()` is unit-tested directly against the real incident's actual response shape — that part is solid. But a real `claude --dangerously-skip-permissions` invocation actually completing a real task end-to-end has still never been observed in any sandbox available to this project's build/fix sessions — no `claude` binary was on `PATH` here either. The next environment with a working `claude` CLI should run the daytime dry run below before this is trusted for a real unattended overnight run.
+
+Unrelated, pre-existing, not touched by this branch: the product-track blockers in `OPEN_ITEMS.md` (spoofable rate-limit key, three-competing-decision-systems question, production launch blockers, missing recommendation-engine trigger) and the pre-existing TypeScript debt (18 errors, unchanged).
 
 ## Recommended next step
 
-1. Review this PR (the new `scripts/ai/qualityGates.ts` module, the `run-queue.ts` integration, the schema addition, the docs, and ADR-0012).
-2. Retry the attended daytime dry run per `docs/AI_OVERNIGHT_QUEUE.md`: confirm `gh --version`/`claude --version` are ready, confirm `git status` is clean on `main`, then run `npm run ai:queue` attended and watch it — this time, confirm Task 001 (which should introduce zero regressions if implemented as scoped) actually completes instead of being blocked by this repository's own pre-existing debt, and that `.ai/runs/<run-id>/baseline.json` and `task-001-quality.json` are written and look correct.
-3. If Task 001 genuinely does introduce a regression this time, confirm the auto-repair loop actually attempts a fix and that the eventual PR (or failure) correctly reflects what happened.
-4. Only after that succeeds should an unattended/overnight run be trusted.
-5. Separately, unrelated to this queue-tooling fix: the product-track recommendations in `OPEN_ITEMS.md` (the three-competing-decision-systems architecture question, the spoofable rate-limit key) remain the highest-priority carried-forward items.
+1. In an environment where `claude --version` and `claude --help` actually work, run the daytime dry run: `npm run ai:queue:validate` → confirm clean `git status` on `main` → `npm run ai:queue` attended, in the foreground → confirm both Market Radar tasks (`001`, `002`) actually produce real file changes (a migration, `lib/market-radar/`, tests, docs) and real PRs, not another silent no-op.
+2. If task 001 succeeds, its PR should be reviewed and merged before 002's (per `branch_strategy: stacked`) — `npm run ai:morning-brief` states this explicitly once a run completes.
+3. If the same silent-no-op pattern recurs even with `--dangerously-skip-permissions`, inspect the raw `claude -p` JSON response directly (`is_error`, `permission_denials`, `result` fields) — `detectSilentPermissionFailure()` in `scripts/ai/adapters/claude.ts` may need updating for a changed CLI response shape rather than the underlying approach being wrong.
+4. Separately, unrelated to this queue-reliability task: the product-track recommendations in `OPEN_ITEMS.md` remain the highest-priority carried-forward items.
 
 
 ---
@@ -365,12 +370,12 @@ None blocking this task's own completion. Two things carried forward, unchanged 
   "project": "AJN Marketing (Project Magic)",
   "repository": "ajnsolutions/ajnmarketing",
   "current_phase": "Project Magic 2.0 (AI Growth Engine) — Wave I and Wave II shipped; Wave III partially shipped (Goals & Strategy, Customer Voice); several Business Brain intelligence features shipped outside the originally-documented wave sequence",
-  "active_initiative": "Queue v2 — baseline-aware quality gates (branch ai-queue-v2-baseline-aware). The first real daytime dry run of .ai/queue/RUN_QUEUE.yaml's two real tasks (001 Market Radar persistence foundation, 002 Market Radar owner-facing view) surfaced a design flaw: v1's quality gate required a perfectly clean lint/typecheck/unit-test run, so this repository's own pre-existing baseline issues stopped the queue even when a task introduced zero regressions. scripts/ai/qualityGates.ts now captures one QualitySnapshot before a run's first task begins, persists it to .ai/runs/<run-id>/baseline.json, and compares every task's after-state against that same baseline (identity-aware for unit/Playwright failures, count-based for TypeScript/ESLint, unconditional for build) — pre-existing debt never fails a task; a new regression always does, with up to max_repair_attempts (default 3) automatic repair tries first. See DECISIONS.md ADR-0012. The two Market Radar tasks themselves are unchanged in content and still status: pending, not yet run to completion end-to-end. No other feature branch or PR is in progress on the product/intelligence track — main is caught up through PR #98.",
+  "active_initiative": "AI overnight queue reliability hardening (branch harden-ai-queue-unattended-execution). The queue's first real, LIVE, unattended run (2026-08-02, run id 2026-08-02T065749882Z, evidence under .ai/runs/2026-08-02T065749882Z/) surfaced a real bug: scripts/ai/adapters/claude.ts invoked claude -p with no permission-bypass flag, so every Write/Edit/Bash tool call silently blocked on an approval no one was present to give -- Claude exited 0 having done zero work and the adapter reported success anyway (exit-code-only check). Fixed: the adapter now passes --dangerously-skip-permissions and inspects the JSON response body (permission_denials, is_error) instead of trusting exit code alone (DECISIONS.md ADR-0013). Also hardened: every subprocess call now has an explicit timeout (scripts/ai/subprocess.ts), QUEUE_STATUS.json writes are atomic, a crash mid-task still produces a normal run summary, and the whole run now has a wall-clock ceiling (queue.max_run_duration_minutes, default 360 min). The fix's SUCCESS path is still unverified -- no claude binary was on PATH in this fix's own sandbox either. Both Market Radar tasks (001, 002) remain status: pending, unchanged in content, ready to retry once verified. No other feature branch or PR is in progress on the product/intelligence track -- main is caught up through PR #99.",
   "status": "active",
-  "last_verified_at": "2026-08-01T00:00:00Z",
-  "last_verified_branch": "ai-queue-v2-baseline-aware",
-  "last_verified_commit": "44d6db1",
-  "last_completed_task": "PR #98 — Prepare the first real controlled AI overnight queue run (Market Radar foundation + view) (merged into main); this branch adds Queue v2's baseline-aware quality gates on top of it",
+  "last_verified_at": "2026-08-02T00:00:00Z",
+  "last_verified_branch": "harden-ai-queue-unattended-execution",
+  "last_verified_commit": "dc537d2",
+  "last_completed_task": "PR #99 — Add Queue v2: baseline-aware quality gates for the AI overnight queue (merged into main); this branch fixes the permission-bypass bug that PR #99's own first live run surfaced, plus broader subprocess/state reliability hardening",
   "current_blockers": [
     "Unpatched High-severity security finding (ARCHITECTURE_REVIEW_2026.md §3.9): the public interactive-demo endpoint's rate limit key is derived from a spoofable x-forwarded-for header, allowing unbounded OpenAI cost abuse.",
     "Three competing 'what should this business do' systems (Marketing Recommendations, Tasks, Marketing Plan) plus Assisted Pilot as a fourth adjacent layer — called out in ARCHITECTURE_REVIEW_2026.md as the single biggest prerequisite decision before further Magic work, not yet resolved.",
@@ -382,12 +387,50 @@ None blocking this task's own completion. Two things carried forward, unchanged 
     "origin/publishing-concurrency-verification (commit 4e4a3de, 2026-07-13) is an unmerged branch with a real-DB concurrency verification script and no associated PR — status unclear.",
     "origin/project-magic/strategic-marketing-calendar has an unmerged commit (0631bfb) that appears to duplicate content already merged via PR #60 (project-magic/strategic-marketing-calendar-fixes) — likely a stale leftover branch, safe-to-delete candidate pending human confirmation.",
     "GET /api/publishing executes due jobs as a live side effect of a page load (RELEASE_CANDIDATE_END_TO_END_AUDIT.md) — architectural smell, not yet fixed.",
-    "Approval Center UI copy falsely claims full automation ('From AI draft to published — automatically'); GBP Disconnect button is a no-op; Regenerate silently severs the recommendation link; analytics-to-opportunities feedback loop is dead in production (all from RELEASE_CANDIDATE_END_TO_END_AUDIT.md)."
+    "Approval Center UI copy falsely claims full automation ('From AI draft to published — automatically'); GBP Disconnect button is a no-op; Regenerate silently severs the recommendation link; analytics-to-opportunities feedback loop is dead in production (all from RELEASE_CANDIDATE_END_TO_END_AUDIT.md).",
+    "The AI queue's Claude adapter fix (permission-bypass flag + response-body inspection, this branch) has not been verified end-to-end against a real claude invocation -- no claude CLI was available in this branch's own build sandbox. See OPEN_ITEMS.md's 'Live dry-run incident' entry."
   ],
-  "recommended_next_task": "Resolve the three-competing-decision-systems architecture question (ARCHITECTURE_REVIEW_2026.md) before adding further recommendation/decision surface area; in parallel, patch the spoofable rate-limit key (§3.9) since it is an active, unbounded-cost-abuse security gap. Separately, on the AI-tooling track: retry the attended daytime dry run of .ai/queue/RUN_QUEUE.yaml's two real tasks (npm run ai:queue) now that Queue v2's baseline-aware quality gate is in place, and confirm end-to-end that a task with zero regressions completes without being blocked by pre-existing debt.",
+  "recommended_next_task": "Resolve the three-competing-decision-systems architecture question (ARCHITECTURE_REVIEW_2026.md) before adding further recommendation/decision surface area; in parallel, patch the spoofable rate-limit key (§3.9) since it is an active, unbounded-cost-abuse security gap. Separately, on the AI-tooling track: run the attended daytime dry run of .ai/queue/RUN_QUEUE.yaml's two real tasks (npm run ai:queue) in an environment where the claude CLI is actually installed and authenticated -- confirm the permission-bypass fix actually lets a task complete real work end-to-end, not just that it fails safely when claude is absent.",
   "production_deploy_allowed": false,
   "automatic_merge_allowed": false,
   "automatic_migrations_allowed": false,
   "production_schedules_enabled": false
 }
 ```
+
+---
+
+## Latest overnight queue run
+
+# Run 2026-08-02T065749882Z
+
+Started: 2026-08-02T06:57:49.883Z
+Finished: 2026-08-02T07:14:42.110Z
+Stop reason: task 001 failed: no project-memory update
+
+## Repository baseline (captured before this run's first task)
+
+Baseline: TypeScript 18 error(s), ESLint 0 error(s)/7 warning(s), unit tests 0 failure(s), Playwright 0 failure(s), build succeeded.
+
+## Tasks attempted this run
+
+- **001 — Market Radar: owner-managed competitor & benchmark persistence foundation**: failed — blocker: task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.
+
+### Quality gate — 001 — Market Radar: owner-managed competitor & benchmark persistence foundation: PASS
+
+Auto-repair attempts used: 1.
+
+| Gate | Baseline | Current | Result |
+|---|---|---|---|
+| typescript | 18 error(s) | 18 error(s) | PASS |
+| eslint_errors | 0 error(s) | 0 error(s) | PASS |
+| eslint_warnings | 7 warning(s) | 7 warning(s) | PASS |
+| unit_tests | 0 failure(s) | 0 failure(s) | PASS |
+| playwright | 0 failure(s) | 0 failure(s) | PASS |
+| build | succeeded | succeeded | PASS |
+
+**New regressions:** none
+**Fixed regressions:** none
+**Remaining historical debt:** 18 pre-existing TypeScript error(s), unchanged; 7 pre-existing ESLint warning(s), unchanged
+
+
