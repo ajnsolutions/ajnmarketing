@@ -60,7 +60,7 @@ test("a RUNNING task is labeled distinctly from a stale one", () => {
 
 test("a stale task with a MERGED PR is labeled distinctly and points at the fix — the exact PR #101 situation", () => {
   const classifications = new Map<string, TaskClassification>([
-    ["001", { classification: "stale_pr_merged", pr: { number: 101, state: "MERGED", mergedAt: "2026-08-02T13:58:34Z", mergeCommitOid: "895f5d3", url: "https://github.com/x/y/pull/101" } }],
+    ["001", { classification: "stale_pr_merged", pr: { number: 101, state: "MERGED", mergedAt: "2026-08-02T13:58:34Z", mergeCommitOid: "895f5d3", url: "https://github.com/x/y/pull/101", baseRefName: "main" } }],
   ]);
   const report = formatQueueStatusReport(queueWith([task()]), stateWith(inProgressEntry()), classifications);
   assert.match(report, /STALE, but PR #101 is MERGED/);
@@ -77,7 +77,7 @@ test("a stale task with no PR evidence is labeled as a likely crash, distinct fr
 
 test("a stale task with an open (unmerged) PR is labeled as unverified, not assumed complete", () => {
   const classifications = new Map<string, TaskClassification>([
-    ["001", { classification: "stale_pr_open", pr: { number: 55, state: "OPEN", mergedAt: null, mergeCommitOid: null, url: "https://github.com/x/y/pull/55" } }],
+    ["001", { classification: "stale_pr_open", pr: { number: 55, state: "OPEN", mergedAt: null, mergeCommitOid: null, url: "https://github.com/x/y/pull/55", baseRefName: "main" } }],
   ]);
   const report = formatQueueStatusReport(queueWith([task()]), stateWith(inProgressEntry()), classifications);
   assert.match(report, /STALE — PR #55 exists but is still open/);

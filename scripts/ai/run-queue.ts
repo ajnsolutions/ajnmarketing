@@ -56,6 +56,26 @@
  * is ever bypassed. A run-lock file (scripts/ai/reconcile.ts's RUN_LOCK_PATH)
  * distinguishes "a queue process is genuinely still running" from "stale
  * and safe to reconcile" — see .ai/DECISIONS.md ADR-0014.
+ *
+ * Dependency-base resolution (2026-08-02, third fix same day) — Task 001
+ * merged as PR #101 and its local branch was (correctly) deleted. Task 002
+ * (depends_on: ["001"]) then failed outright trying to branch from Task
+ * 001's *recorded branch name* directly: `git checkout -b ai-queue/002-...
+ * ai-queue/001-market-radar-foundation` → "fatal:
+ * 'ai-queue/001-market-radar-foundation' is not a commit". The old
+ * determineBranchBase() unconditionally reused a completed dependency's
+ * branch forever, which required merged dependency branches to survive
+ * indefinitely — something no normal PR workflow (including this
+ * repository's own habit of deleting merged branches) guarantees. Fixed by
+ * scripts/ai/reconcile.ts's resolveDependencyBase(): a merged dependency
+ * now resolves to the real, GitHub-verified merge target (normally
+ * origin/main), with ancestry of the recorded merge commit checked before
+ * trusting it; an open (unmerged) dependency still uses its own branch,
+ * preferring the remote-tracking ref; and a dependency that's neither
+ * verifiably merged nor has a resolvable branch stops the run with an
+ * actionable error instead of guessing. This resolution now runs as a
+ * cheap preflight step — before the expensive quality-gate baseline is
+ * captured — so a resolution failure is caught in seconds, not minutes.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -67,7 +87,18 @@ import { DEFAULT_MAX_REPAIR_ATTEMPTS, DEFAULT_MAX_RUN_DURATION_MINUTES } from ".
 import { claudeAdapter } from "./adapters/claude.ts";
 import type { AgentAdapter } from "./adapters/types.ts";
 import { sh, runCommand } from "./subprocess.ts";
-import { writeRunLock, removeRunLock, isQueueProcessRunning, lookupPrForBranch, reconcileQueueState } from "./reconcile.ts";
+import {
+  writeRunLock,
+  removeRunLock,
+  isQueueProcessRunning,
+  lookupPrForBranch,
+  lookupPrByUrl,
+  reconcileQueueState,
+  resolveDependencyBase,
+  resolveGitRef,
+  isAncestorRef,
+  type BaseResolution,
+} from "./reconcile.ts";
 import {
   captureQualitySnapshot,
   compareQualitySnapshots,
@@ -84,7 +115,7 @@ const ADAPTERS: Record<string, AgentAdapter> = {
 // Per-command timeout budgets. Generous enough for normal operation, bounded
 // enough that a hang can never stall an unattended run indefinitely — see
 // subprocess.ts's header comment.
-const GIT_FETCH_TIMEOUT_MS = 5 * 60 * 1000;
+const GIT_FETCH_ALL_TIMEOUT_MS = 5 * 60 * 1000;
 const GIT_CHECKOUT_TIMEOUT_MS = 2 * 60 * 1000;
 const GIT_QUICK_TIMEOUT_MS = 2 * 60 * 1000;
 const GIT_PUSH_TIMEOUT_MS = 5 * 60 * 1000;
@@ -100,6 +131,8 @@ interface AttemptedTask {
   log: string;
   comparison?: QualityComparisonResult;
   repairAttempts?: number;
+  /** How the base ref for this task's branch was resolved — see resolveDependencyBase() in reconcile.ts. Recorded in task logs, RUN_SUMMARY.md, and RUN_STATUS.json (requirement: never leave this implicit). */
+  baseResolution?: BaseResolution;
 }
 
 /** Picks the next task eligible to run: status pending in both the queue file and live state, not disabled, all dependencies completed. Returns null when nothing is currently eligible (queue finished or blocked). */
@@ -121,17 +154,6 @@ function queueIsExhausted(queue: RunQueue, state: QueueState): boolean {
   return queue.tasks
     .filter((t) => t.status !== "disabled")
     .every((t) => ["completed", "failed", "skipped"].includes(stateById.get(t.id)?.status ?? ""));
-}
-
-export function determineBranchBase(queue: RunQueue, task: QueueTask, state: QueueState): string {
-  if (queue.queue.branch_strategy === "stacked" && task.depends_on.length > 0) {
-    const stateById = new Map(state.tasks.map((t) => [t.id, t]));
-    // Stacked: base on the last dependency's own branch so its changes are present.
-    const lastDep = task.depends_on[task.depends_on.length - 1];
-    const depBranch = stateById.get(lastDep)?.branch;
-    if (depBranch) return depBranch;
-  }
-  return `origin/${queue.queue.base_branch}`;
 }
 
 /** Pure — exported for testing. True once `elapsedMs` has reached the configured ceiling. */
@@ -196,8 +218,11 @@ function writeRunArtifacts(
   }
 
   summaryLines.push("## Tasks attempted this run", "");
-  for (const { task, state } of attempted) {
+  for (const { task, state, baseResolution } of attempted) {
     summaryLines.push(`- **${task.id} — ${task.name}**: ${state.status}${state.pr ? ` (PR: ${state.pr})` : ""}${state.blocker ? ` — blocker: ${state.blocker}` : ""}`);
+    if (baseResolution) {
+      summaryLines.push(baseResolution.ok ? `  - Base: \`${baseResolution.ref}\` — ${baseResolution.reason}` : `  - Base resolution failed: ${baseResolution.error}`);
+    }
   }
   summaryLines.push("");
 
@@ -214,7 +239,7 @@ function writeRunArtifacts(
     finished_at: finishedAt,
     stop_reason: stopReason,
     baseline,
-    tasks: attempted.map(({ task, state, comparison, repairAttempts }) => ({
+    tasks: attempted.map(({ task, state, comparison, repairAttempts, baseResolution }) => ({
       id: task.id,
       name: task.name,
       status: state.status,
@@ -222,6 +247,7 @@ function writeRunArtifacts(
       commit: state.commit,
       pr: state.pr,
       blocker: state.blocker,
+      base_resolution: baseResolution ? { ok: baseResolution.ok, ref: baseResolution.ref, reason: baseResolution.reason, error: baseResolution.error } : null,
       quality_gate: comparison
         ? {
             overall_status: comparison.overallStatus,
@@ -321,17 +347,6 @@ async function main(): Promise<void> {
     writeRunLock(repoRoot, { pid: process.pid, startedAt, runId });
     process.once("exit", () => removeRunLock(repoRoot));
 
-    // Only pay for a baseline capture (a full lint/typecheck/unit/Playwright/
-    // build pass) if a task is actually eligible to run this invocation.
-    if (selectNextEligibleTask(queue, state)) {
-      console.log("Capturing repository quality baseline before this run's first task (Queue v2)...");
-      baseline = captureQualitySnapshot(repoRoot);
-      const runDir = join(repoRoot, RUNS_DIR, runId);
-      mkdirSync(runDir, { recursive: true });
-      writeFileSync(join(runDir, "baseline.json"), JSON.stringify(baseline, null, 2) + "\n", "utf8");
-      console.log(formatSnapshotOneLine("Baseline captured", baseline));
-    }
-
     while (true) {
       if (runExceedsWallClockBudget(runStartedAtMs, Date.now(), maxRunDurationMinutes)) {
         stopReason = `run exceeded its maximum wall-clock budget (${maxRunDurationMinutes} minutes) — stopping for safety; remaining tasks are left pending for the next invocation`;
@@ -346,15 +361,53 @@ async function main(): Promise<void> {
         break;
       }
 
+      // Dependency-base preflight (2026-08-02 fix): resolve and verify the
+      // branch this task should build from BEFORE paying for an expensive
+      // quality-gate baseline capture or invoking the agent — a resolution
+      // failure (e.g. a merged dependency's branch was cleaned up and the
+      // merge can't be verified) should surface in seconds, not minutes.
+      // See resolveDependencyBase() in scripts/ai/reconcile.ts.
+      console.log(`--- Task ${next.id}: resolving dependency base ---`);
+      const fetchAll = sh("git fetch origin --prune", repoRoot, GIT_FETCH_ALL_TIMEOUT_MS);
+      if (!fetchAll.ok) {
+        const outcome = failPreflight(next, state, `git fetch origin --prune failed:\n${fetchAll.output}`, `task ${next.id} failed: could not fetch remote refs before resolving its base`);
+        attempted.push(outcome.attempted);
+        saveQueueState(repoRoot, state);
+        stopReason = outcome.stopReason;
+        break;
+      }
+      const baseResolution = resolveDependencyBase(queue, next, state, lookupPrByUrl(repoRoot), resolveGitRef(repoRoot), isAncestorRef(repoRoot));
+      if (!baseResolution.ok) {
+        const outcome = failPreflight(next, state, baseResolution.error ?? "dependency base could not be resolved", `task ${next.id} failed: dependency base resolution failed`, baseResolution);
+        attempted.push(outcome.attempted);
+        saveQueueState(repoRoot, state);
+        stopReason = outcome.stopReason;
+        break;
+      }
+      console.log(`Task ${next.id}: base resolved to ${baseResolution.ref} — ${baseResolution.reason}`);
+
+      // Only pay for a baseline capture (a full lint/typecheck/unit/
+      // Playwright/build pass) once we know at least one task is actually
+      // resolvable and about to run — captured once per run, reused by
+      // every task attempted in it.
+      if (baseline === null) {
+        console.log("Capturing repository quality baseline before this run's first task (Queue v2)...");
+        baseline = captureQualitySnapshot(repoRoot);
+        const runDir = join(repoRoot, RUNS_DIR, runId);
+        mkdirSync(runDir, { recursive: true });
+        writeFileSync(join(runDir, "baseline.json"), JSON.stringify(baseline, null, 2) + "\n", "utf8");
+        console.log(formatSnapshotOneLine("Baseline captured", baseline));
+      }
+
       const taskOutcome = await attemptTask({
         repoRoot,
         runId,
-        queue,
         state,
         task: next,
-        baseline: baseline!,
+        baseline,
         maxRepairAttempts,
         adapter,
+        baseResolution,
       });
       attempted.push(taskOutcome.attempted);
       saveQueueState(repoRoot, state);
@@ -393,12 +446,13 @@ async function main(): Promise<void> {
 interface AttemptTaskParams {
   repoRoot: string;
   runId: string;
-  queue: RunQueue;
   state: QueueState;
   task: QueueTask;
   baseline: QualitySnapshot;
   maxRepairAttempts: number;
   adapter: AgentAdapter;
+  /** Already resolved and verified by the preflight step in main() — see resolveDependencyBase() in reconcile.ts. */
+  baseResolution: BaseResolution;
 }
 
 interface AttemptTaskOutcome {
@@ -418,7 +472,7 @@ interface AttemptTaskOutcome {
  * task has started).
  */
 async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcome> {
-  const { repoRoot, runId, queue, state, task: next, baseline, maxRepairAttempts, adapter } = params;
+  const { repoRoot, runId, state, task: next, baseline, maxRepairAttempts, adapter, baseResolution } = params;
   const stateEntry = state.tasks.find((t) => t.id === next.id)!;
   stateEntry.status = "in_progress";
   stateEntry.started_at = new Date().toISOString();
@@ -427,15 +481,17 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
   saveQueueState(repoRoot, state);
   console.log(`--- Task ${next.id}: ${next.name} ---`);
 
+  // Recorded in the task's own log (requirement: never leave base
+  // resolution implicit) — remote refs were already fetched, and the base
+  // already resolved and verified, by main()'s preflight step before this
+  // function was even called.
+  let taskLog = `Base resolution: ${baseResolution.ref}\nReason: ${baseResolution.reason}\n\n`;
+
   try {
-    const branchBase = determineBranchBase(queue, next, state);
-    const fetchBase = sh(`git fetch origin ${queue.queue.base_branch}`, repoRoot, GIT_FETCH_TIMEOUT_MS);
-    if (!fetchBase.ok) {
-      return fail(next, stateEntry, `git fetch origin ${queue.queue.base_branch} failed:\n${fetchBase.output}`, fetchBase.output, `task ${next.id} failed: could not fetch base branch`);
-    }
+    const branchBase = baseResolution.ref!;
     const checkout = sh(`git checkout -b ${next.branch} ${branchBase}`, repoRoot, GIT_CHECKOUT_TIMEOUT_MS);
     if (!checkout.ok) {
-      return fail(next, stateEntry, `git checkout -b ${next.branch} ${branchBase} failed:\n${checkout.output}`, checkout.output, `task ${next.id} failed: could not create branch`);
+      return fail(next, stateEntry, `git checkout -b ${next.branch} ${branchBase} failed:\n${checkout.output}`, taskLog + checkout.output, `task ${next.id} failed: could not create branch`, undefined, undefined, baseResolution);
     }
     stateEntry.branch = next.branch;
 
@@ -450,13 +506,13 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
 
     const taskResult = await adapter.runTask({ prompt, cwd: repoRoot });
     if (!taskResult.success) {
-      return fail(next, stateEntry, taskResult.summary, taskResult.log, `task ${next.id} failed: agent invocation did not succeed`);
+      return fail(next, stateEntry, taskResult.summary, taskLog + taskResult.log, `task ${next.id} failed: agent invocation did not succeed`, undefined, undefined, baseResolution);
     }
 
     // Queue v2: baseline-aware quality gate, with a bounded auto-repair loop
     // for genuinely new regressions only. Pre-existing baseline debt never
     // blocks completion — see scripts/ai/qualityGates.ts.
-    let taskLog = taskResult.log;
+    taskLog += taskResult.log;
     let currentSnapshot = captureQualitySnapshot(repoRoot);
     let comparison = compareQualitySnapshots(baseline, currentSnapshot);
     let repairAttempts = 0;
@@ -488,7 +544,8 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
         taskLog,
         `task ${next.id} failed: new regressions could not be repaired within ${maxRepairAttempts} attempt(s)`,
         comparison,
-        repairAttempts
+        repairAttempts,
+        baseResolution
       );
     }
     stateEntry.tests = "passed";
@@ -506,7 +563,8 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
         taskLog,
         `task ${next.id} failed: no project-memory update`,
         comparison,
-        repairAttempts
+        repairAttempts,
+        baseResolution
       );
     }
 
@@ -514,14 +572,14 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
     const commitMessage = `${next.name}\n\nQueue task ${next.id} from .ai/queue/RUN_QUEUE.yaml.\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
     const commit = sh(`git commit -m ${JSON.stringify(commitMessage)}`, repoRoot, GIT_QUICK_TIMEOUT_MS);
     if (!commit.ok) {
-      return fail(next, stateEntry, `git commit failed:\n${commit.output}`, taskLog + "\n\n" + commit.output, `task ${next.id} failed: commit failed (nothing to commit, or a git error)`, comparison, repairAttempts);
+      return fail(next, stateEntry, `git commit failed:\n${commit.output}`, taskLog + "\n\n" + commit.output, `task ${next.id} failed: commit failed (nothing to commit, or a git error)`, comparison, repairAttempts, baseResolution);
     }
     const commitSha = sh("git rev-parse HEAD", repoRoot, GIT_QUICK_TIMEOUT_MS).output.trim();
     stateEntry.commit = commitSha;
 
     const push = sh(`git push -u origin ${next.branch}`, repoRoot, GIT_PUSH_TIMEOUT_MS);
     if (!push.ok) {
-      return fail(next, stateEntry, `git push failed:\n${push.output}`, taskLog + "\n\n" + push.output, `task ${next.id} failed: push failed`, comparison, repairAttempts);
+      return fail(next, stateEntry, `git push failed:\n${push.output}`, taskLog + "\n\n" + push.output, `task ${next.id} failed: push failed`, comparison, repairAttempts, baseResolution);
     }
 
     const prBaseBranch = branchBase.startsWith("origin/") ? branchBase.slice("origin/".length) : branchBase;
@@ -542,7 +600,7 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
       .join("\n");
     const prCreate = runCommand("gh", ["pr", "create", "--base", prBaseBranch, "--head", next.branch, "--title", next.name, "--body", prBody], repoRoot, GH_PR_CREATE_TIMEOUT_MS);
     if (!prCreate.ok) {
-      return fail(next, stateEntry, `gh pr create failed:\n${prCreate.output}`, taskLog + "\n\n" + prCreate.output, `task ${next.id} failed: PR creation failed (commit and push already succeeded — the branch exists on origin)`, comparison, repairAttempts);
+      return fail(next, stateEntry, `gh pr create failed:\n${prCreate.output}`, taskLog + "\n\n" + prCreate.output, `task ${next.id} failed: PR creation failed (commit and push already succeeded — the branch exists on origin)`, comparison, repairAttempts, baseResolution);
     }
 
     stateEntry.pr = prCreate.stdout.trim();
@@ -570,10 +628,10 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
       stateEntry.commit = finalize.commitSha;
     }
 
-    return { ok: true, stopReason: "", attempted: { task: next, state: stateEntry, log: taskLog, comparison, repairAttempts } };
+    return { ok: true, stopReason: "", attempted: { task: next, state: stateEntry, log: taskLog, comparison, repairAttempts, baseResolution } };
   } catch (error) {
     const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
-    return fail(next, stateEntry, `task crashed unexpectedly: ${message}`, message, `task ${next.id} failed: unexpected crash during execution`);
+    return fail(next, stateEntry, `task crashed unexpectedly: ${message}`, taskLog + message, `task ${next.id} failed: unexpected crash during execution`, undefined, undefined, baseResolution);
   }
 }
 
@@ -584,11 +642,30 @@ function fail(
   log: string,
   stopReason: string,
   comparison?: QualityComparisonResult,
-  repairAttempts?: number
+  repairAttempts?: number,
+  baseResolution?: BaseResolution
 ): AttemptTaskOutcome {
   stateEntry.status = "failed";
   stateEntry.blocker = blocker;
-  return { ok: false, stopReason, attempted: { task, state: stateEntry, log, comparison, repairAttempts } };
+  return { ok: false, stopReason, attempted: { task, state: stateEntry, log, comparison, repairAttempts, baseResolution } };
+}
+
+/**
+ * A cheap, pre-baseline failure path for when dependency-base resolution
+ * itself fails (fetch, or resolveDependencyBase()) — before any quality
+ * gate or agent invocation has run. Marks the task in_progress -> failed
+ * directly, matching attemptTask()'s own start-of-attempt bookkeeping, so
+ * this failure looks the same in QUEUE_STATUS.json/RUN_SUMMARY.md as any
+ * other task failure, just without the wasted expensive work first.
+ */
+function failPreflight(task: QueueTask, state: QueueState, blocker: string, stopReason: string, baseResolution?: BaseResolution): AttemptTaskOutcome {
+  const stateEntry = state.tasks.find((t) => t.id === task.id)!;
+  stateEntry.status = "in_progress";
+  stateEntry.started_at = new Date().toISOString();
+  state.current_task = task.id;
+  const outcome = fail(task, stateEntry, blocker, blocker, stopReason, undefined, undefined, baseResolution);
+  state.current_task = null;
+  return outcome;
 }
 
 interface FinalizeResult {

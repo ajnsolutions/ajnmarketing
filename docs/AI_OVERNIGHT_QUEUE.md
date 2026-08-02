@@ -39,7 +39,7 @@ Never trust a new or edited queue file's first real execution to happen unattend
 1. `npm run ai:queue:validate` — must pass.
 2. `git status` — must be clean (the runner refuses otherwise).
 3. Confirm prerequisites: `gh --version` (authenticated), and `claude --version` — the runner's own capability probe will refuse cleanly and tell you exactly what's missing if either isn't ready, including whether the installed CLI supports the permission-bypass flag this queue now requires (see "The Claude Code adapter's current honesty" below for why). No sandbox this project's own build/fix sessions have run in has had a `claude` binary on `PATH` — confirm it actually works in your real environment before trusting an overnight run.
-4. `RUN_QUEUE.yaml` currently holds two real Market Radar tasks: `001` (persistence foundation) is `status: pending` in `RUN_QUEUE.yaml` but already `status: completed` in `QUEUE_STATUS.json` (merged as PR #101 — see `.ai/HANDOFF.md` and `.ai/DECISIONS.md` ADR-0014 for the completion-state bug that entry's own correction fixed); `002` (owner-facing view, `depends_on: ["001"]`) is next. Before trusting a fully unattended overnight run, run `npm run ai:queue` attended once, in the foreground, watching it: confirm it correctly selects `002` (not `001` again), that `002`'s branch is based on `001`'s real merged content, that a real PR opens, and — critically, per the completion-state fix — that `QUEUE_STATUS.json` on `002`'s own branch actually says `"completed"` before the run finishes (`git show HEAD:.ai/queue/QUEUE_STATUS.json` on that branch), not just in the local working tree.
+4. `RUN_QUEUE.yaml` currently holds two real Market Radar tasks: `001` (persistence foundation) is `status: completed` in `QUEUE_STATUS.json`, merged as PR #101; `002` (owner-facing view, `depends_on: ["001"]`) is `status: pending` and next — its previous attempt failed on dependency-base resolution (`.ai/DECISIONS.md` ADR-0015), reset back to pending once that was fixed. Before trusting a fully unattended overnight run, run `npm run ai:queue` attended once, in the foreground, watching it: confirm the preflight resolves `002`'s base to `origin/main` (not a deleted branch), that a real PR opens, and — per the completion-state fix (ADR-0014) — that `QUEUE_STATUS.json` on `002`'s own branch actually says `"completed"` before the run finishes (`git show HEAD:.ai/queue/QUEUE_STATUS.json` on that branch), not just in the local working tree.
 5. Only after a real daytime run has produced a real, reviewed PR should you trust a first overnight run with real tasks.
 
 ## Running overnight (macOS)
@@ -85,6 +85,27 @@ Set once, queue-wide, via `RUN_QUEUE.yaml`'s `queue.branch_strategy`:
 - **`stacked`** — a task with `depends_on` branches from its dependency's own branch tip instead of `base_branch`, so its changes are actually present to build on. Use this whenever a later task genuinely needs an earlier task's files (the current Market Radar tasks demonstrate this — see `RUN_QUEUE.yaml`'s own header comment).
 
 Either way, **PRs must be reviewed and merged in dependency order** — `npm run ai:morning-brief`'s "Merge order" section states this explicitly for whatever ran last.
+
+## Dependency-base resolution (2026-08-02)
+
+Task 001 (Market Radar persistence foundation) merged as PR #101 and its local branch was, correctly, deleted afterward — completely normal PR hygiene. `npm run ai:queue` then correctly selected Task 002 (`depends_on: ["001"]`) — and immediately failed trying to branch it:
+
+```
+git checkout -b ai-queue/002-market-radar-view ai-queue/001-market-radar-foundation
+fatal: 'ai-queue/001-market-radar-foundation' is not a commit and a branch 'ai-queue/002-market-radar-view' cannot be created from it
+```
+
+**Root cause:** the old `determineBranchBase()` unconditionally reused a completed dependency's *recorded branch name* as the next task's git base, forever, with no check for whether that branch still existed. The queue was silently requiring every merged dependency branch to survive indefinitely — a guarantee no normal PR workflow makes.
+
+**Fixed:** `scripts/ai/reconcile.ts`'s `resolveDependencyBase()` (full reasoning: `.ai/DECISIONS.md` ADR-0015) replaces that single assumption with three explicit, GitHub-verified cases:
+
+1. **Dependency's PR is confirmed MERGED** (a real `gh pr view` lookup — never just trusting the locally-recorded branch or commit). The base resolves to the PR's actual merge target (normally `origin/main`), and the recorded merge commit's ancestry is independently verified (`git merge-base --is-ancestor`) before it's trusted. A merged dependency's branch is **never** required to still exist.
+2. **Dependency's PR is still OPEN.** The base is the dependency's own branch — preferring the remote-tracking ref (`origin/<branch>`) over a possibly-stale local one — for a genuinely stacked build. Fails clearly, not silently, if that branch can't be resolved either way.
+3. **Neither a verified merged PR nor a resolvable branch can be found** for a dependency marked `"completed"`. The queue stops with an actionable error. It **never** falls back to guessing `origin/main` in this case — a `"completed"` task with no verifiable evidence is a queue-state inconsistency to investigate (try `npm run ai:queue:reconcile` first), not something to paper over.
+
+This resolution now runs as a cheap **preflight** step — `git fetch origin --prune` followed by `resolveDependencyBase()` — before the expensive quality-gate baseline is captured. This is a direct, deliberate response to the real incident's own evidence: `.ai/runs/2026-08-02T151115309Z/` shows a full baseline (TypeScript, ESLint, unit tests, Playwright, build — about two minutes of work) was captured before the cheap branch-checkout failure was ever discovered. A resolution failure now surfaces in seconds.
+
+The resolved ref and the reasoning behind it are never left implicit — they're recorded in the task's own log, in `RUN_SUMMARY.md` (a `Base:` line per task), and in `RUN_STATUS.json` (a `base_resolution` field per task).
 
 ## Queue v2 — baseline-aware quality gates
 

@@ -109,9 +109,12 @@ export interface PrLookupResult {
   mergedAt: string | null;
   mergeCommitOid: string | null;
   url: string;
+  /** The branch this PR targets (e.g. "main") — needed to resolve a merged dependency's base without assuming it always matches queue.base_branch. */
+  baseRefName: string | null;
 }
 
 export type PrLookup = (branch: string) => PrLookupResult | null;
+export type PrLookupByUrl = (prUrl: string) => PrLookupResult | null;
 
 interface GhPrListEntry {
   number: number;
@@ -119,6 +122,7 @@ interface GhPrListEntry {
   mergedAt: string | null;
   mergeCommit: { oid: string } | null;
   url: string;
+  baseRefName?: string;
 }
 
 /** Real implementation — shells out to `gh`. Injected as a parameter everywhere else so reconciliation logic itself stays pure and unit-testable without a network call. */
@@ -126,7 +130,7 @@ export function lookupPrForBranch(repoRoot: string): PrLookup {
   return (branch: string): PrLookupResult | null => {
     const result = runCommand(
       "gh",
-      ["pr", "list", "--head", branch, "--state", "all", "--json", "number,state,mergedAt,mergeCommit,url", "--limit", "1"],
+      ["pr", "list", "--head", branch, "--state", "all", "--json", "number,state,mergedAt,mergeCommit,url,baseRefName", "--limit", "1"],
       repoRoot,
       GH_LOOKUP_TIMEOUT_MS
     );
@@ -146,7 +150,63 @@ export function lookupPrForBranch(repoRoot: string): PrLookup {
       mergedAt: pr.mergedAt,
       mergeCommitOid: pr.mergeCommit?.oid ?? null,
       url: pr.url,
+      baseRefName: pr.baseRefName ?? null,
     };
+  };
+}
+
+/**
+ * Looks up a PR by its known URL (e.g. the value already recorded in
+ * TaskState.pr for a completed task) rather than searching by branch name —
+ * an exact lookup against a specific PR number, more reliable than a
+ * branch-name search when the branch itself may no longer exist as a ref.
+ * Real implementation — shells out to `gh pr view`.
+ */
+export function lookupPrByUrl(repoRoot: string): PrLookupByUrl {
+  return (prUrl: string): PrLookupResult | null => {
+    const match = prUrl.match(/\/pull\/(\d+)/);
+    if (!match) return null;
+    const result = runCommand("gh", ["pr", "view", match[1], "--json", "number,state,mergedAt,mergeCommit,url,baseRefName"], repoRoot, GH_LOOKUP_TIMEOUT_MS);
+    if (!result.ok) return null;
+    let parsed: GhPrListEntry;
+    try {
+      parsed = JSON.parse(result.stdout) as GhPrListEntry;
+    } catch {
+      return null;
+    }
+    if (parsed.state !== "OPEN" && parsed.state !== "MERGED" && parsed.state !== "CLOSED") return null;
+    return {
+      number: parsed.number,
+      state: parsed.state,
+      mergedAt: parsed.mergedAt,
+      mergeCommitOid: parsed.mergeCommit?.oid ?? null,
+      url: parsed.url,
+      baseRefName: parsed.baseRefName ?? null,
+    };
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Git ref resolution — real implementations shell out to git; injected
+// everywhere else so the resolution logic itself stays pure and testable.
+// ---------------------------------------------------------------------------
+
+export type RefResolver = (ref: string) => string | null;
+export type AncestorCheck = (commit: string, ref: string) => boolean;
+
+/** Resolves a ref (branch, remote-tracking ref, or commit) to its commit SHA, or null if it doesn't exist. Never throws. */
+export function resolveGitRef(repoRoot: string): RefResolver {
+  return (ref: string): string | null => {
+    const result = runCommand("git", ["rev-parse", "--verify", `${ref}^{commit}`], repoRoot, GH_LOOKUP_TIMEOUT_MS);
+    return result.ok ? result.stdout.trim() : null;
+  };
+}
+
+/** True if `commit` is an ancestor of `ref` (i.e. already part of that ref's history) — the actual proof that a dependency's work really landed on the base being proposed, not just an assumption. */
+export function isAncestorRef(repoRoot: string): AncestorCheck {
+  return (commit: string, ref: string): boolean => {
+    const result = runCommand("git", ["merge-base", "--is-ancestor", commit, ref], repoRoot, GH_LOOKUP_TIMEOUT_MS);
+    return result.ok;
   };
 }
 
@@ -258,4 +318,190 @@ export function reconcileQueueState(queue: RunQueue, state: QueueState, lookupPr
     return stateEntry;
   });
   return { state: { ...state, tasks }, changes };
+}
+
+// ---------------------------------------------------------------------------
+// Dependency-base resolution (2026-08-02, second incident same day as the
+// completion-state fix above).
+//
+// Root cause: Task 001 completed and merged as PR #101, and its local
+// branch (correctly) got deleted. Task 002 (depends_on: ["001"]) then tried
+// to branch from Task 001's *recorded branch name*
+// (`ai-queue/001-market-radar-foundation`) directly — a plain, un-prefixed
+// local branch reference — which no longer existed, so
+// `git checkout -b ai-queue/002-... ai-queue/001-market-radar-foundation`
+// failed outright: "fatal: 'ai-queue/001-market-radar-foundation' is not a
+// commit". The old `determineBranchBase()` unconditionally used a
+// completed dependency's *branch*, forever, regardless of whether it had
+// since been merged and cleaned up — the queue was requiring a merged
+// dependency branch to survive indefinitely, which no normal PR workflow
+// (including this repository's own habit of deleting merged branches)
+// guarantees.
+//
+// resolveDependencyBase() replaces that with three explicit, verified
+// cases instead of one unconditional assumption:
+//   1. Dependency's PR is verified MERGED (via a real `gh pr view` lookup,
+//      not just trusting the locally-recorded branch/commit) — use the
+//      PR's actual merge target (normally origin/main), and REQUIRE that
+//      the recorded merge commit is a real ancestor of that ref
+//      (`git merge-base --is-ancestor`) before trusting it. A merged
+//      dependency's branch is never required to still exist.
+//   2. Dependency's PR is still OPEN — use its branch (preferring the
+//      remote-tracking ref, origin/<branch>, over a possibly-stale local
+//      one) for a genuinely stacked build. Fails clearly, not silently,
+//      if that branch can't be resolved either way.
+//   3. Neither a merged PR nor a resolvable branch can be found for a
+//      dependency marked "completed" — stop safely with an actionable
+//      error. NEVER falls back to guessing origin/main in this case; a
+//      "completed" task with no verifiable evidence is a queue-state
+//      inconsistency to investigate, not something to paper over.
+// ---------------------------------------------------------------------------
+
+export interface BaseResolution {
+  ok: boolean;
+  /** The resolved git ref (e.g. "origin/main" or "origin/ai-queue/001-foo") to branch the next task from. Null when ok is false. */
+  ref: string | null;
+  /** Human-readable explanation of why this ref was chosen — recorded in task logs, RUN_SUMMARY.md, RUN_STATUS.json, and queue-status output. Empty when ok is false (see `error` instead). */
+  reason: string;
+  /** Actionable explanation of what went wrong and what to do about it. Null when ok is true. */
+  error: string | null;
+}
+
+function uniqueDefined(values: (string | null | undefined)[]): string[] {
+  return [...new Set(values.filter((v): v is string => Boolean(v)))];
+}
+
+/**
+ * Resolves the git ref a task should branch from, given its queue
+ * definition, dependency chain, and current state. Pure aside from the
+ * three injected functions (`lookupPrByUrl`, `resolveRef`, `isAncestor`),
+ * which is what makes this fully unit-testable without a real git repo or
+ * network access — see unit-tests/ai-queue-base-resolution.test.ts.
+ */
+export function resolveDependencyBase(
+  queue: RunQueue,
+  task: QueueTask,
+  state: QueueState,
+  lookupPrByUrlFn: PrLookupByUrl,
+  resolveRef: RefResolver,
+  isAncestor: AncestorCheck
+): BaseResolution {
+  const baseBranchRef = `origin/${queue.queue.base_branch}`;
+
+  if (queue.queue.branch_strategy !== "stacked" || task.depends_on.length === 0) {
+    return { ok: true, ref: baseBranchRef, reason: "no stacked dependency for this task — using the queue base branch", error: null };
+  }
+
+  const lastDepId = task.depends_on[task.depends_on.length - 1];
+  const depTask = queue.tasks.find((t) => t.id === lastDepId);
+  const depState = state.tasks.find((t) => t.id === lastDepId);
+
+  if (!depTask || !depState) {
+    return { ok: false, ref: null, reason: "", error: `dependency task "${lastDepId}" was not found in the queue definition or state — cannot resolve a base for "${task.id}".` };
+  }
+  if (depState.status !== "completed") {
+    return {
+      ok: false,
+      ref: null,
+      reason: "",
+      error: `dependency "${lastDepId}" is not completed (status: "${depState.status}") — cannot resolve a base for "${task.id}" until it finishes. This should not normally happen (selectNextEligibleTask already requires completed dependencies) — investigate if seen.`,
+    };
+  }
+
+  const branchCandidates = uniqueDefined([depState.branch, depTask.branch]);
+
+  function resolveBranchDirectly(reasonPrefix: string): BaseResolution | null {
+    for (const branch of branchCandidates) {
+      const remoteRef = `origin/${branch}`;
+      if (resolveRef(remoteRef)) {
+        return { ok: true, ref: remoteRef, reason: `${reasonPrefix} — using its remote-tracking branch ${remoteRef}`, error: null };
+      }
+    }
+    for (const branch of branchCandidates) {
+      if (resolveRef(branch)) {
+        return { ok: true, ref: branch, reason: `${reasonPrefix} — using its local branch ${branch} (no remote-tracking ref found; prefer pushing so origin/${branch} exists)`, error: null };
+      }
+    }
+    return null;
+  }
+
+  if (!depState.pr) {
+    // No PR recorded at all for a "completed" dependency. Try its branch
+    // directly as a last resort before giving up — but this is already a
+    // weaker signal than a verified PR, so it's tried last, not first.
+    const direct = resolveBranchDirectly(`dependency "${lastDepId}" has no recorded PR`);
+    if (direct) return direct;
+    return {
+      ok: false,
+      ref: null,
+      reason: "",
+      error: `dependency "${lastDepId}" is marked completed, but it has no recorded PR and neither a remote nor local branch (${branchCandidates.join(" / ") || "none recorded"}) could be resolved. Cannot verify what it actually produced — refusing to guess ${baseBranchRef}. Investigate manually, or run "npm run ai:queue:reconcile".`,
+    };
+  }
+
+  const pr = lookupPrByUrlFn(depState.pr);
+  if (!pr) {
+    return {
+      ok: false,
+      ref: null,
+      reason: "",
+      error: `dependency "${lastDepId}" is marked completed with PR ${depState.pr}, but that PR could not be verified via "gh pr view" — stop, do not guess. Check network/auth ("gh auth status"), confirm the PR still exists, or run "npm run ai:queue:reconcile".`,
+    };
+  }
+
+  if (pr.state === "MERGED") {
+    const targetBranch = pr.baseRefName || queue.queue.base_branch;
+    const target = `origin/${targetBranch}`;
+    if (!pr.mergeCommitOid) {
+      return {
+        ok: false,
+        ref: null,
+        reason: "",
+        error: `dependency "${lastDepId}"'s PR #${pr.number} is merged, but GitHub recorded no merge commit — cannot verify ancestry, refusing to guess the base.`,
+      };
+    }
+    const targetSha = resolveRef(target);
+    if (!targetSha) {
+      return {
+        ok: false,
+        ref: null,
+        reason: "",
+        error: `base ref "${target}" does not resolve locally — fetch may have failed, or the branch was renamed/deleted. Run "git fetch origin" and retry.`,
+      };
+    }
+    if (!isAncestor(pr.mergeCommitOid, target)) {
+      return {
+        ok: false,
+        ref: null,
+        reason: "",
+        error: `dependency "${lastDepId}"'s merge commit ${pr.mergeCommitOid} (PR #${pr.number}) could not be verified as an ancestor of ${target} — refusing to guess the base. ${target} may be stale locally (try "git fetch origin"), or the merge history is not what was expected.`,
+      };
+    }
+    return {
+      ok: true,
+      ref: target,
+      reason: `dependency "${lastDepId}" completed via PR #${pr.number}, verified MERGED into ${targetBranch}; merge commit ${pr.mergeCommitOid} confirmed as an ancestor of ${target} — the merged dependency branch is not required to still exist.`,
+      error: null,
+    };
+  }
+
+  if (pr.state === "OPEN") {
+    const direct = resolveBranchDirectly(`dependency "${lastDepId}"'s PR #${pr.number} is still open (not yet merged)`);
+    if (direct) return direct;
+    return {
+      ok: false,
+      ref: null,
+      reason: "",
+      error: `dependency "${lastDepId}"'s PR #${pr.number} is open but unmerged, and its branch (${branchCandidates.join(" / ") || "none recorded"}) could not be resolved locally or remotely. Fetch and retry ("git fetch origin"), or investigate why the branch is missing.`,
+    };
+  }
+
+  // CLOSED without merging — should not happen for a task marked
+  // "completed", but never guess main just because a branch might resolve.
+  return {
+    ok: false,
+    ref: null,
+    reason: "",
+    error: `dependency "${lastDepId}" is marked completed, but its PR #${pr.number} was closed WITHOUT merging — queue state is inconsistent. Run "npm run ai:queue:reconcile" or investigate manually before retrying "${task.id}".`,
+  };
 }

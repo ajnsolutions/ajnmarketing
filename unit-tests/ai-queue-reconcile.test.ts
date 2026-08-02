@@ -69,6 +69,7 @@ function mergedPr(overrides: Partial<PrLookupResult> = {}): PrLookupResult {
     mergedAt: "2026-08-02T13:58:34Z",
     mergeCommitOid: "895f5d3360530938184588a07ae87cbe13e1477a",
     url: "https://github.com/ajnsolutions/ajnmarketing/pull/101",
+    baseRefName: "main",
     ...overrides,
   };
 }
