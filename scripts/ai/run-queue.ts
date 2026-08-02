@@ -39,6 +39,23 @@
  *      recorded as that task's failure, and still produces a normal
  *      RUN_SUMMARY.md/RUN_STATUS.json so a human checking in the morning
  *      has something to read regardless of how the run ended.
+ *
+ * Completion-state reconciliation (2026-08-02, second fix same day) — Task
+ * 001's real run (PR #101) exposed a second, more damaging bug: a
+ * successful task used to flip its in-memory status to "completed" only
+ * AFTER `git commit`/`git push`/`gh pr create` had already run, but
+ * `git add -A` (staging QUEUE_STATUS.json alongside the task's real files)
+ * happened before that flip — so the commit that became the PR always
+ * carried a stale "in_progress" snapshot, and merging that PR permanently
+ * baked the lie into main. Fixed two ways: (1) attemptTask() now pushes a
+ * second, final commit recording the true completed state onto the same
+ * branch/PR before returning — see finalizeCompletionState() below; (2)
+ * every invocation of this file now reconciles any stale "in_progress" task
+ * against real GitHub state (scripts/ai/reconcile.ts) before selecting a
+ * new task, as a defense-in-depth backstop that self-heals even if fix (1)
+ * is ever bypassed. A run-lock file (scripts/ai/reconcile.ts's RUN_LOCK_PATH)
+ * distinguishes "a queue process is genuinely still running" from "stale
+ * and safe to reconcile" — see .ai/DECISIONS.md ADR-0014.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -50,6 +67,7 @@ import { DEFAULT_MAX_REPAIR_ATTEMPTS, DEFAULT_MAX_RUN_DURATION_MINUTES } from ".
 import { claudeAdapter } from "./adapters/claude.ts";
 import type { AgentAdapter } from "./adapters/types.ts";
 import { sh, runCommand } from "./subprocess.ts";
+import { writeRunLock, removeRunLock, isQueueProcessRunning, lookupPrForBranch, reconcileQueueState } from "./reconcile.ts";
 import {
   captureQualitySnapshot,
   compareQualitySnapshots,
@@ -278,6 +296,31 @@ async function main(): Promise<void> {
       throw error;
     }
 
+    // Reconcile any stale "in_progress" task against real GitHub state
+    // before selecting anything new — the defense-in-depth half of the
+    // 2026-08-02 completion-state fix (see this file's header comment and
+    // .ai/DECISIONS.md ADR-0014). isQueueProcessRunning() checks BEFORE this
+    // invocation's own lock is written, so a task left in_progress by a
+    // still-running sibling process is correctly left alone, not reconciled
+    // out from under it.
+    const alreadyRunning = isQueueProcessRunning(repoRoot);
+    const reconciliation = reconcileQueueState(queue, state, lookupPrForBranch(repoRoot), alreadyRunning);
+    state = reconciliation.state;
+    if (reconciliation.changes.length > 0) {
+      console.log(`Reconciled ${reconciliation.changes.length} stale task state(s) before starting:`);
+      for (const change of reconciliation.changes) {
+        console.log(`  ${change.taskId}: ${change.before} -> ${change.after} (${change.reason})`);
+      }
+      saveQueueState(repoRoot, state);
+    }
+
+    // Claim this run with a lock file so a concurrent or later invocation's
+    // reconciliation pass can tell "genuinely still running" apart from
+    // "stale" — removed unconditionally on the way out via the process
+    // "exit" event, which fires even from an early process.exit() call.
+    writeRunLock(repoRoot, { pid: process.pid, startedAt, runId });
+    process.once("exit", () => removeRunLock(repoRoot));
+
     // Only pay for a baseline capture (a full lint/typecheck/unit/Playwright/
     // build pass) if a task is actually eligible to run this invocation.
     if (selectNextEligibleTask(queue, state)) {
@@ -505,7 +548,28 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
     stateEntry.pr = prCreate.stdout.trim();
     stateEntry.status = "completed";
     stateEntry.completed_at = new Date().toISOString();
+    stateEntry.tests = "passed";
     state.current_task = null;
+
+    // Completion-state fix (see this file's header comment): the commit
+    // that became the PR above still carries QUEUE_STATUS.json in its
+    // "in_progress" shape, because git add -A ran before this status flip.
+    // Push one final, small commit that records the true completed state
+    // onto this same branch — the PR's own diff, and therefore what gets
+    // merged, must never lie about whether this task actually finished.
+    const finalize = finalizeCompletionState(repoRoot, state, next.branch);
+    if (!finalize.ok) {
+      // The PR is real and the work is real — do not discard either. Log
+      // the discrepancy loudly rather than silently pretending the branch
+      // is fully consistent; scripts/ai/reconcile.ts's automatic startup
+      // check will correct QUEUE_STATUS.json from verified GitHub state on
+      // the next queue invocation even if this immediate fix-up failed.
+      taskLog += `\n\n--- Recording completed state back onto ${next.branch} failed (non-fatal — reconciliation will catch this on the next run) ---\n${finalize.output}`;
+      console.error(`Task ${next.id}: warning — could not push the completed-state commit to ${next.branch}: ${finalize.output.slice(0, 500)}`);
+    } else if (finalize.commitSha) {
+      stateEntry.commit = finalize.commitSha;
+    }
+
     return { ok: true, stopReason: "", attempted: { task: next, state: stateEntry, log: taskLog, comparison, repairAttempts } };
   } catch (error) {
     const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
@@ -525,6 +589,45 @@ function fail(
   stateEntry.status = "failed";
   stateEntry.blocker = blocker;
   return { ok: false, stopReason, attempted: { task, state: stateEntry, log, comparison, repairAttempts } };
+}
+
+interface FinalizeResult {
+  ok: boolean;
+  commitSha: string | null;
+  output: string;
+}
+
+/**
+ * Writes the current (already-updated-to-completed) `state` to
+ * QUEUE_STATUS.json and pushes it as one small, final commit on the task's
+ * own branch — see the completion-state fix in this file's header comment
+ * for why this exists and what it fixes. Exported for direct testing of the
+ * ordering (saveQueueState must happen before `git add`, which must happen
+ * before `git commit`) without needing a real git repo.
+ */
+export function finalizeCompletionState(repoRoot: string, state: QueueState, branch: string): FinalizeResult {
+  saveQueueState(repoRoot, state);
+  const add = sh("git add .ai/queue/QUEUE_STATUS.json", repoRoot, GIT_QUICK_TIMEOUT_MS);
+  if (!add.ok) return { ok: false, commitSha: null, output: `git add failed:\n${add.output}` };
+
+  const commitMessage = `Record queue completion state\n\nUpdates .ai/queue/QUEUE_STATUS.json to reflect this branch's task as completed — see scripts/ai/run-queue.ts's completion-state fix.\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
+  const commit = sh(`git commit -m ${JSON.stringify(commitMessage)}`, repoRoot, GIT_QUICK_TIMEOUT_MS);
+  if (!commit.ok) {
+    // "nothing to commit" is a real, if unlikely, possibility (e.g. this
+    // exact state was already pushed by a prior attempt) — not itself an
+    // error worth failing loudly over, since the branch is already correct
+    // in that case. Any other commit failure is reported as a real problem.
+    if (/nothing to commit/i.test(commit.output)) {
+      return { ok: true, commitSha: null, output: commit.output };
+    }
+    return { ok: false, commitSha: null, output: `git commit failed:\n${commit.output}` };
+  }
+
+  const push = sh(`git push origin ${branch}`, repoRoot, GIT_PUSH_TIMEOUT_MS);
+  if (!push.ok) return { ok: false, commitSha: null, output: `git push failed:\n${push.output}` };
+
+  const sha = sh("git rev-parse HEAD", repoRoot, GIT_QUICK_TIMEOUT_MS).output.trim();
+  return { ok: true, commitSha: sha || null, output: "" };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

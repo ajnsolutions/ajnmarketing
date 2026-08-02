@@ -39,7 +39,7 @@ Never trust a new or edited queue file's first real execution to happen unattend
 1. `npm run ai:queue:validate` — must pass.
 2. `git status` — must be clean (the runner refuses otherwise).
 3. Confirm prerequisites: `gh --version` (authenticated), and `claude --version` — the runner's own capability probe will refuse cleanly and tell you exactly what's missing if either isn't ready, including whether the installed CLI supports the permission-bypass flag this queue now requires (see "The Claude Code adapter's current honesty" below for why). No sandbox this project's own build/fix sessions have run in has had a `claude` binary on `PATH` — confirm it actually works in your real environment before trusting an overnight run.
-4. `RUN_QUEUE.yaml` currently holds two real, `status: pending` tasks (Market Radar's persistence foundation and its owner-facing view — see the file's own header comment and `.ai/HANDOFF.md` for how they were selected and their current status), prepared but not yet run. Before trusting an unattended overnight run, run `npm run ai:queue` attended once, in the foreground, watching it: confirm two real PRs open, in the right order (002 based on 001's branch, per `branch_strategy: stacked`), each with the `.ai/` memory updates present, each passing quality gates. This is a real run, not a throwaway demonstration — its PRs are meant to be reviewed and merged (in dependency order) like any other PR, not reverted.
+4. `RUN_QUEUE.yaml` currently holds two real Market Radar tasks: `001` (persistence foundation) is `status: pending` in `RUN_QUEUE.yaml` but already `status: completed` in `QUEUE_STATUS.json` (merged as PR #101 — see `.ai/HANDOFF.md` and `.ai/DECISIONS.md` ADR-0014 for the completion-state bug that entry's own correction fixed); `002` (owner-facing view, `depends_on: ["001"]`) is next. Before trusting a fully unattended overnight run, run `npm run ai:queue` attended once, in the foreground, watching it: confirm it correctly selects `002` (not `001` again), that `002`'s branch is based on `001`'s real merged content, that a real PR opens, and — critically, per the completion-state fix — that `QUEUE_STATUS.json` on `002`'s own branch actually says `"completed"` before the run finishes (`git show HEAD:.ai/queue/QUEUE_STATUS.json` on that branch), not just in the local working tree.
 5. Only after a real daytime run has produced a real, reviewed PR should you trust a first overnight run with real tasks.
 
 ## Running overnight (macOS)
@@ -62,7 +62,7 @@ In the morning: `npm run ai:morning-brief`, then read `.ai/exports/MORNING_BRIEF
 npm run ai:queue:status
 ```
 
-Reports: queue name, current task, completed/pending/in-progress/failed/disabled tasks, per-task branch/commit/PR/tests/blocker, and whether the queue is resume-eligible.
+Reports: queue name, current task, completed/pending/in-progress/failed/disabled tasks, per-task branch/commit/PR/tests/blocker, and whether the queue is resume-eligible. Since the 2026-08-02 completion-state fix (see below), any task shown `[in_progress]` also gets a `live status:` line distinguishing three genuinely different situations that used to be indistinguishable: `RUNNING` (an active queue process — a live-PID-verified run-lock file — currently owns it), `STALE, but PR merged` (it actually succeeded; the recorded state just never caught up — run `npm run ai:queue:reconcile` or `npm run ai:queue` to fix), or `STALE — no PR found`/`STALE — PR closed` (a real crash or failure, not a bookkeeping lag).
 
 ## Resuming after a failure
 
@@ -73,7 +73,9 @@ The queue **stops immediately** on the first failed task, an ambiguous requireme
 3. If the failure left a half-finished branch behind, decide by hand whether to fix it in place or delete it and let the queue recreate it (the queue will refuse to silently overwrite an existing branch it didn't expect — see `docs/AI_QUEUE_TROUBLESHOOTING.md`).
 4. Re-run `npm run ai:queue` — it picks up at the next eligible task, it does not re-run already-completed tasks.
 
-`npm run ai:queue:reset -- --confirm` is a different, more drastic action: it wipes `QUEUE_STATUS.json` back to everything-pending. It never touches remote branches, PRs, commits, or `.ai/runs/` logs — see `.ai/queue/README.md`.
+`npm run ai:queue:reconcile` is a different, much safer action for the specific case of a stale `"in_progress"` task whose PR actually merged (or was closed/never opened) — it corrects `QUEUE_STATUS.json` from real, verified GitHub state without touching anything else, and `npm run ai:queue` now also runs this automatically at startup before selecting a new task. See "Completion-state reconciliation" below.
+
+`npm run ai:queue:reset -- --confirm` is a different, more drastic action: it wipes `QUEUE_STATUS.json` back to everything-pending. It never touches remote branches, PRs, commits, or `.ai/runs/` logs — see `.ai/queue/README.md`. Prefer `ai:queue:reconcile` over `ai:queue:reset` whenever a task might have actually succeeded — reset throws away the real, recorded outcome; reconcile recovers it.
 
 ## Stacked vs. independent branches
 
@@ -116,6 +118,25 @@ Three smaller but related fixes shipped alongside these:
 - **`QUEUE_STATUS.json` writes are now atomic** (write-to-temp-then-rename, `queueIO.ts`) — a process killed mid-write (machine sleep despite `caffeinate`, `SIGKILL`, power loss) can no longer leave the state file corrupted.
 - **A crash mid-task no longer disappears silently.** `run-queue.ts` catches an unexpected exception during any single task's attempt, records it as that task's failure, and still writes a normal `RUN_SUMMARY.md`/`RUN_STATUS.json` — a human checking `npm run ai:morning-brief` the next morning always has something to read, regardless of how the run actually ended.
 - **The whole run now has a wall-clock ceiling** — `queue.max_run_duration_minutes` in `RUN_QUEUE.yaml` (default 360 minutes / 6 hours, `DEFAULT_MAX_RUN_DURATION_MINUTES` in `queueTypes.ts`). Checked at the top of every loop iteration; if exceeded, the run stops cleanly with remaining tasks left `pending` for the next invocation, rather than potentially running indefinitely.
+
+## Completion-state reconciliation (2026-08-02)
+
+Task 001 (Market Radar persistence foundation) genuinely succeeded and merged as PR #101 — but `QUEUE_STATUS.json` was left recording it as `"in_progress"` on `main`, which silently blocked Task 002 (`depends_on: ["001"]`) from ever becoming eligible (`selectNextEligibleTask` requires a dependency's status to be exactly `"completed"`).
+
+**Root cause**, found by direct `git show` archaeology, not speculation: `attemptTask()` used to flip the in-memory task status to `"completed"` only *after* `git add -A && git commit` had already run for the task's real deliverable files — but that `git add -A` staged `QUEUE_STATUS.json` exactly as it stood on disk at that moment, which was still `"in_progress"` (the only prior `saveQueueState()` call in the function recorded the task *starting*, not finishing). The "completed" update then only ever existed in the local working tree's file, never in any commit that reached the branch — so the PR a human reviewed and merged permanently carried the stale snapshot into `main`'s history.
+
+**Fixed two ways** (full reasoning: `.ai/DECISIONS.md` ADR-0014):
+
+1. **Ordering fix.** `attemptTask()` now calls `finalizeCompletionState()` immediately after `gh pr create` succeeds — this pushes one more small commit to the task's own branch recording the true completed state, so the PR's own diff (and therefore what gets merged) is correct from the start. Proven with a real, throwaway git repository in `unit-tests/ai-queue-completion-state.test.ts` — not mocked, since the bug was entirely about the relationship between disk state and git history.
+2. **Reconciliation backstop.** Every `npm run ai:queue` invocation now calls `reconcileQueueState()` (`scripts/ai/reconcile.ts`) right after loading `QUEUE_STATUS.json`, before selecting any new task. For any task still `"in_progress"`, it checks (in order): is a queue process genuinely still running right now (a local run-lock file, `.ai/queue/.run.lock`, gitignored, checked via a live-PID test — never trusted if the referenced process no longer exists)? If not, does `gh pr list --head <branch>` show a merged PR? If so, the task is reconciled to `"completed"` using **only** data from that real lookup (PR URL, merge commit SHA, merge timestamp) — never fabricated. If the PR was closed without merging, or no PR exists at all, the task is reconciled to `"failed"` with an explicit blocker explaining exactly what was and wasn't found — never silently resumed or guessed complete. An open-but-unmerged PR is left alone entirely; that's genuinely ambiguous, not stale.
+
+This backstop is what makes the fix self-healing even if the ordering fix is ever bypassed (a hand-edited `QUEUE_STATUS.json`, a task completed by an attended/manual session instead of a real `npm run ai:queue` invocation — which is exactly what happened with Task 001 itself, per `.ai/HANDOFF.md`). It is also available standalone:
+
+```bash
+npm run ai:queue:reconcile
+```
+
+Safe to run anytime — it only ever moves a task **out of** `"in_progress"`, never touches any other status, and never invents a value.
 
 ## The Claude Code adapter's current honesty
 

@@ -2,20 +2,20 @@
   "queue_name": "ajnmarketing-overnight-queue",
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
-  "current_task": "001",
+  "current_task": null,
   "last_run_id": "2026-08-02T134243291Z",
-  "resume_eligible": false,
+  "resume_eligible": true,
   "tasks": [
     {
       "id": "001",
       "name": "Market Radar: owner-managed competitor & benchmark persistence foundation",
-      "status": "in_progress",
-      "branch": null,
-      "commit": null,
-      "pr": null,
+      "status": "completed",
+      "branch": "ai-queue/001-market-radar-foundation",
+      "commit": "79f23901a431da39b41dd0f226976de40f4bcd76",
+      "pr": "https://github.com/ajnsolutions/ajnmarketing/pull/101",
       "started_at": "2026-08-02T13:46:35.636Z",
-      "completed_at": null,
-      "tests": null,
+      "completed_at": "2026-08-02T13:53:18Z",
+      "tests": "passed — unit 1745/1745 (5 new, market-radar-foundation.test.ts), lint clean, typecheck unchanged (18 pre-existing errors, none in this task's files), build succeeded, Playwright not run (persistence/types-only scope, no UI/route surface). Verified from PR #101's own merged HANDOFF.md, not re-run.",
       "blocker": null
     },
     {
