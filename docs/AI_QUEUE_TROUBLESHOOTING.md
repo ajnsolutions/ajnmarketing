@@ -6,10 +6,20 @@ Recovery and troubleshooting for `.ai/queue/`. Start with `npm run ai:queue:stat
 
 - [GitHub CLI (`gh`) problems](#troubleshooting-github-cli)
 - [Claude CLI problems](#troubleshooting-claude-cli)
+- [A task shows in_progress but its PR already merged](#a-task-shows-in_progress-but-its-pr-already-merged)
 - [Recovering from a failed task](#recovering-from-a-failed-task)
 - [Reviewing PRs in dependency order](#reviewing-prs-in-dependency-order)
 - [A queue file that won't validate](#a-queue-file-that-wont-validate)
 - [Something looks like it might contain a secret](#something-looks-like-it-might-contain-a-secret)
+
+## A task shows in_progress but its PR already merged
+
+This is the exact bug PR #101 (Task 001) surfaced on 2026-08-02 (see `.ai/DECISIONS.md` ADR-0014 and `.ai/OPEN_ITEMS.md`'s "Queue completion-state bug" entry) — `QUEUE_STATUS.json` said `"in_progress"` on `main` even though the task's PR had already merged. Two commands make this easy to distinguish and fix now:
+
+1. `npm run ai:queue:status` — an `in_progress` task now shows a `live status:` line telling you exactly which situation you're in: `RUNNING` (leave it alone, something is actually working on it), `STALE, but PR merged` (this is the fix case), or `STALE — no PR found`/`STALE — PR closed` (a real failure, not a bookkeeping lag).
+2. If it says `STALE, but PR merged`: run `npm run ai:queue:reconcile`. It corrects `QUEUE_STATUS.json` from the real, verified GitHub PR data — never fabricated — and only ever touches that one task. `npm run ai:queue` also runs this automatically before selecting a new task, so simply re-running the queue will self-heal this too.
+
+If you instead see `STALE — no PR found` for a task you believe actually did succeed, do not run `ai:queue:reconcile` expecting it to "find" the PR — it only trusts `gh pr list`, so if that genuinely returns nothing, either the branch was never pushed or the PR was deleted. Investigate by hand (check the branch exists: `git ls-remote origin <branch>`) before assuming reconciliation missed something; it is deliberately conservative and will mark the task `"failed"` rather than guess.
 
 ## Troubleshooting GitHub CLI
 

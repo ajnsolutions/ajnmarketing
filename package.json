@@ -15,6 +15,7 @@
     "ai:queue": "node --experimental-strip-types scripts/ai/run-queue.ts",
     "ai:queue:status": "node --experimental-strip-types scripts/ai/queue-status.ts",
     "ai:queue:reset": "node --experimental-strip-types scripts/ai/reset-queue.ts",
+    "ai:queue:reconcile": "node --experimental-strip-types scripts/ai/reconcile-queue.ts",
     "ai:memory:export": "node --experimental-strip-types scripts/ai/export-memory.ts",
     "ai:morning-brief": "node --experimental-strip-types scripts/ai/generate-morning-brief.ts"
   },

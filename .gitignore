@@ -48,6 +48,11 @@ yarn-error.log*
 # keep run summaries (RUN_SUMMARY.md / RUN_STATUS.json) committed, not these.
 /.ai/runs/*/task-*.log
 
+# AI overnight queue: local-machine-only lock file recording which PID owns
+# the current run (scripts/ai/reconcile.ts) — never meaningful across
+# machines/sessions, must never be committed as if it were shared state.
+/.ai/queue/.run.lock
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
