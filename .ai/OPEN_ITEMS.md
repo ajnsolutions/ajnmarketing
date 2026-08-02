@@ -1,6 +1,6 @@
 # Open Items
 
-Verified 2026-08-02 against `origin/main` @ `895f5d3` (merge of PR #101). Update this file whenever an item is resolved, deferred further, or a new one is discovered — do not let it silently go stale (see `ADR-0010`'s caveat in `DECISIONS.md` for why that matters).
+Verified 2026-08-02 against `origin/main` @ `952df6e` (merge of PR #102). Update this file whenever an item is resolved, deferred further, or a new one is discovered — do not let it silently go stale (see `ADR-0010`'s caveat in `DECISIONS.md` for why that matters).
 
 ## Active blockers
 
@@ -65,3 +65,20 @@ Task 001 (above) genuinely succeeded, but PR #101 merged into `main` with `.ai/q
 **Task 001's actual `QUEUE_STATUS.json` entry was corrected by hand** in this same PR, using only verified data: `branch: ai-queue/001-market-radar-foundation`, `commit: 79f23901a431da39b41dd0f226976de40f4bcd76` (the real tip commit of the merged PR #101 branch — confirmed via `git cat-file -t`), `pr: https://github.com/ajnsolutions/ajnmarketing/pull/101`, `completed_at: 2026-08-02T13:53:18Z` (the PR's own `createdAt`, matching the field's existing semantic meaning elsewhere in this codebase — "when the task's own work finished and the PR was opened," not when a human later merged it), `tests` summarized from PR #101's own merged `HANDOFF.md` (1745/1745 unit, lint clean, typecheck unchanged, build succeeded, Playwright not run — persistence/types-only scope). Nothing here was guessed — every value is independently verifiable via `git`/`gh`. **Task 002 is now correctly eligible** (verified: `selectNextEligibleTask` returns it against the corrected state).
 
 **Not yet verified:** the new `finalizeCompletionState()` ordering fix has real end-to-end test coverage against an actual git repository (`unit-tests/ai-queue-completion-state.test.ts`), but — same limitation as ADR-0013 — has not been exercised by a real unattended `npm run ai:queue` run, since no `claude` binary was available in this fix's own build sandbox either. The next real queue run (starting with Task 002) is the first live test of this fix.
+
+## Dependency-base resolution bug (2026-08-02, same day) — the predicted "next real queue run" test, and what it found
+
+The previous entry's own closing line ("the next real queue run — starting with Task 002 — is the first live test of this fix") turned out to be exactly right, and that live test found a second, real bug: `npm run ai:queue` correctly selected Task 002, but attempting to branch it failed outright:
+
+```
+git checkout -b ai-queue/002-market-radar-view ai-queue/001-market-radar-foundation
+fatal: 'ai-queue/001-market-radar-foundation' is not a commit and a branch 'ai-queue/002-market-radar-view' cannot be created from it
+```
+
+**Root cause:** the old `determineBranchBase()` (`scripts/ai/run-queue.ts`) unconditionally reused a completed dependency's *recorded branch name* as the next task's git base, forever — with no check for whether that branch still existed. Task 001's local branch had been (correctly) deleted after PR #101 merged, which is completely normal PR hygiene, not an error condition. The queue was silently requiring every merged dependency branch to survive indefinitely — a guarantee this repository's own workflow (and most others) doesn't make.
+
+**Fixed this session** (see `DECISIONS.md` ADR-0015): `scripts/ai/reconcile.ts`'s new `resolveDependencyBase()` replaces the single unconditional assumption with three explicit, GitHub-verified cases — merged (use the real, verified merge target, normally `origin/main`, with the merge commit's ancestry independently checked, never requiring the branch to still exist), open (use the dependency's own branch, preferring the remote-tracking ref), or unverifiable (stop with an actionable error, never guess `origin/main`). This resolution now runs as a cheap preflight step in `run-queue.ts`, before the expensive quality-gate baseline is captured — directly motivated by this real run's own evidence (`.ai/runs/2026-08-02T151115309Z/`), which shows a full baseline (TypeScript/ESLint/unit/Playwright/build, ~2 minutes) was captured before the cheap branch-checkout failure was ever discovered.
+
+**Task 002's `QUEUE_STATUS.json` entry was reset from `"failed"` back to `"pending"` in this same PR** (all fields cleared: branch/commit/pr/started_at/tests/blocker all `null`, matching a task that has never run). Task 001's own `"completed"` entry was left completely untouched. The failed run's evidence (`.ai/runs/2026-08-02T151115309Z/RUN_SUMMARY.md`, `RUN_STATUS.json`, `baseline.json`, `task-002.log`) is preserved, not deleted — `RUN_SUMMARY.md`/`RUN_STATUS.json`/`baseline.json` are committed in this PR as evidence; the raw `task-002.log` remains local-only per this repo's log policy. Verified live against the real repository (not just unit tests): `resolveDependencyBase()`, run against this repo's actual `gh`/`git` state, independently resolves Task 002's base to `origin/main` with PR #101's real merge commit confirmed as an ancestor — reproducing the fix's intended behavior exactly, not just its unit-test fakes.
+
+**Not yet verified:** same standing limitation as every fix in this file today — the ordering/preflight change has real end-to-end test coverage (including two tests against an actual git repository, not mocks — `unit-tests/ai-queue-base-resolution.test.ts`), and was independently confirmed against this repo's real, live GitHub state, but has not yet been exercised by an actual `npm run ai:queue` invocation completing Task 002 end-to-end (no `claude` binary was available in this fix's own build sandbox either). The next real queue run, in an environment with a working `claude` CLI, is the first live test of this specific fix.

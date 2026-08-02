@@ -1,0 +1,30 @@
+{
+  "run_id": "2026-08-02T151115309Z",
+  "started_at": "2026-08-02T15:11:15.310Z",
+  "finished_at": "2026-08-02T15:13:30.481Z",
+  "stop_reason": "task 002 failed: could not create branch",
+  "baseline": {
+    "generatedAt": "2026-08-02T15:11:16.821Z",
+    "typescriptErrorCount": 18,
+    "eslintErrorCount": 0,
+    "eslintWarningCount": 7,
+    "unitTestFailureCount": 0,
+    "unitTestFailureNames": [],
+    "playwrightFailureCount": 0,
+    "playwrightFailureNames": [],
+    "buildSucceeded": true,
+    "timedOutGates": []
+  },
+  "tasks": [
+    {
+      "id": "002",
+      "name": "Market Radar: owner-facing tracked competitors & benchmarks view",
+      "status": "failed",
+      "branch": null,
+      "commit": null,
+      "pr": null,
+      "blocker": "git checkout -b ai-queue/002-market-radar-view ai-queue/001-market-radar-foundation failed:\nfatal: 'ai-queue/001-market-radar-foundation' is not a commit and a branch 'ai-queue/002-market-radar-view' cannot be created from it\n",
+      "quality_gate": null
+    }
+  ]
+}

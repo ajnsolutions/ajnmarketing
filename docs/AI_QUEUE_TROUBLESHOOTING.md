@@ -7,10 +7,22 @@ Recovery and troubleshooting for `.ai/queue/`. Start with `npm run ai:queue:stat
 - [GitHub CLI (`gh`) problems](#troubleshooting-github-cli)
 - [Claude CLI problems](#troubleshooting-claude-cli)
 - [A task shows in_progress but its PR already merged](#a-task-shows-in_progress-but-its-pr-already-merged)
+- ["... is not a commit" when a task tries to branch](#is-not-a-commit-when-a-task-tries-to-branch)
 - [Recovering from a failed task](#recovering-from-a-failed-task)
 - [Reviewing PRs in dependency order](#reviewing-prs-in-dependency-order)
 - [A queue file that won't validate](#a-queue-file-that-wont-validate)
 - [Something looks like it might contain a secret](#something-looks-like-it-might-contain-a-secret)
+
+## "... is not a commit" when a task tries to branch
+
+This is the exact bug Task 002 surfaced on 2026-08-02, immediately after the completion-state fix above landed (`.ai/DECISIONS.md` ADR-0015, `.ai/OPEN_ITEMS.md`'s "Dependency-base resolution bug" entry): a dependent task tried to branch directly from its dependency's *recorded branch name*, which no longer existed because that dependency had already merged and its branch was (correctly) cleaned up.
+
+**This should no longer happen** — `scripts/ai/reconcile.ts`'s `resolveDependencyBase()` now resolves a merged dependency to its real, GitHub-verified merge target instead of assuming the old branch survives. If you see this error anyway:
+
+1. Check the task's blocker via `npm run ai:queue:status` — it now states exactly which of the three resolution cases failed (unverified PR, unresolvable open-PR branch, or no evidence at all) rather than a raw git error.
+2. If the blocker says a merge commit "could not be verified as an ancestor" of the base branch, your local `origin/<base>` may just be stale — run `git fetch origin` and retry.
+3. If the blocker says the dependency's PR "could not be verified via gh pr view", check `gh auth status` and confirm the PR referenced in `QUEUE_STATUS.json`'s `pr` field still exists.
+4. If none of those explain it, this may be a genuinely new gap in the resolution logic — check `.ai/runs/<run-id>/RUN_SUMMARY.md`'s `Base:` line (or the task's own log) for the full resolution reasoning before assuming it's the same known issue.
 
 ## A task shows in_progress but its PR already merged
 

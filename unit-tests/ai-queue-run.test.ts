@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { selectNextEligibleTask, determineBranchBase, runExceedsWallClockBudget } from "../scripts/ai/run-queue.ts";
+import { selectNextEligibleTask, runExceedsWallClockBudget } from "../scripts/ai/run-queue.ts";
 import type { QueueState, QueueTask, RunQueue, TaskState } from "../scripts/ai/queueTypes.ts";
 
 function task(overrides: Partial<QueueTask> = {}): QueueTask {
@@ -115,26 +115,12 @@ test("respects file order among multiple simultaneously-eligible tasks", () => {
   assert.equal(next?.id, "002", "the first eligible task in file order should be chosen, not sorted by id");
 });
 
-test("determineBranchBase uses the base branch for a task with no dependencies", () => {
-  const tasks = [task({ id: "001" })];
-  const queue = queueWith(tasks, "stacked");
-  const state = stateFor(tasks);
-  assert.equal(determineBranchBase(queue, tasks[0], state), "origin/main");
-});
-
-test("determineBranchBase (stacked) bases a dependent task on its dependency's own branch", () => {
-  const tasks = [task({ id: "001" }), task({ id: "002", branch: "ai-queue/002", depends_on: ["001"] })];
-  const queue = queueWith(tasks, "stacked");
-  const state = stateFor(tasks, { "001": { status: "completed", branch: "ai-queue/001" } });
-  assert.equal(determineBranchBase(queue, tasks[1], state), "ai-queue/001");
-});
-
-test("determineBranchBase (independent) always uses the base branch, even for a dependent task", () => {
-  const tasks = [task({ id: "001" }), task({ id: "002", branch: "ai-queue/002", depends_on: ["001"] })];
-  const queue = queueWith(tasks, "independent");
-  const state = stateFor(tasks, { "001": { status: "completed", branch: "ai-queue/001" } });
-  assert.equal(determineBranchBase(queue, tasks[1], state), "origin/main");
-});
+// determineBranchBase() was retired 2026-08-02 — it unconditionally reused a
+// completed dependency's recorded branch name forever, which broke as soon
+// as that branch was deleted after a normal merge (see the real PR #101 ->
+// Task 002 incident). Replaced by scripts/ai/reconcile.ts's
+// resolveDependencyBase(), covered in
+// unit-tests/ai-queue-base-resolution.test.ts.
 
 // ---------------------------------------------------------------------------
 // runExceedsWallClockBudget — reliability hardening, 2026-08-02. Without this,
