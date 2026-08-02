@@ -31,7 +31,7 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## PR
 
-Opened against `main` from this branch — see this repository's PR list for the number/URL (`gh pr list --head harden-ai-queue-unattended-execution`). Not merged. Not deployed.
+[#100](https://github.com/ajnsolutions/ajnmarketing/pull/100) — `harden-ai-queue-unattended-execution` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
