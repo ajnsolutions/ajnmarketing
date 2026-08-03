@@ -29,6 +29,42 @@
       "completed_at": "2026-08-02T16:51:18Z",
       "tests": "passed — unit 1791/1791 (4 new, market-radar-view.test.ts), lint clean (0 errors, 7 pre-existing warnings untouched), typecheck unchanged (18 pre-existing errors, none in this task's files), build succeeded, Playwright 311/311 (9 new, market-radar.spec.ts, run serially).",
       "blocker": null
+    },
+    {
+      "id": "003",
+      "name": "Competitor Observation Engine: evidence model, confidence scoring, persistence",
+      "status": "pending",
+      "branch": null,
+      "commit": null,
+      "pr": null,
+      "started_at": null,
+      "completed_at": null,
+      "tests": null,
+      "blocker": null
+    },
+    {
+      "id": "004",
+      "name": "Business Pulse Integration: verified observations, What Changed, evidence links, confidence filtering",
+      "status": "pending",
+      "branch": null,
+      "commit": null,
+      "pr": null,
+      "started_at": null,
+      "completed_at": null,
+      "tests": null,
+      "blocker": null
+    },
+    {
+      "id": "005",
+      "name": "Weekly Executive Brief: Market Radar section (executive summary, why it matters, suggested actions)",
+      "status": "pending",
+      "branch": null,
+      "commit": null,
+      "pr": null,
+      "started_at": null,
+      "completed_at": null,
+      "tests": null,
+      "blocker": null
     }
   ]
 }

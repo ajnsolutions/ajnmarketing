@@ -54,10 +54,55 @@
 # run-queue.ts/qualityGates.ts (every subprocess now has an explicit
 # timeout, QUEUE_STATUS.json writes are atomic, a crash mid-task still
 # produces a normal run summary, and this whole run now has a wall-clock
-# ceiling — max_run_duration_minutes below). The fix has NOT yet been
-# verified against a real `claude` invocation (no `claude` binary was on
-# PATH in the sandbox that built the fix either) — see .ai/OPEN_ITEMS.md and
-# docs/AI_OVERNIGHT_QUEUE.md before trusting an unattended run.
+# ceiling — max_run_duration_minutes below).
+#
+# Tasks 001 and 002 have since run for real, end to end, unattended (PRs
+# #101 and #104, both merged), and a third infrastructure bug (TypeScript
+# baseline non-determinism between the queue's baseline and comparison
+# quality-gate captures — PR #105, merged) was found and fixed along the
+# way. See .ai/DECISIONS.md ADR-0013 through ADR-0016 for the full history.
+#
+# Tasks 003-005 (added on branch prepare-market-radar-intelligence-tasks):
+# the first real, human-reviewed MULTI-TASK sprint, extending Market Radar
+# with the monitoring/detection layer that Tasks 001/002 explicitly deferred
+# (docs/project-magic/MARKET_RADAR.md's "How it surfaces" section, and
+# .ai/ROADMAP.md's Market Radar "Next" bullet). Dependency shape:
+#
+#   003 — Competitor Observation Engine (evidence model, confidence
+#         scoring, persistence; no UI). Depends on 001 (persists rows that
+#         reference lib/market-radar/'s entries by id) — deliberately NOT on
+#         002, since it needs none of 002's UI files.
+#   004 — Business Pulse Integration (verified observations, "What
+#         Changed" section, evidence links, confidence filtering). Depends
+#         on 003 (renders its output). A first, honest slice of the larger
+#         Business Pulse vision (docs/project-magic/BUSINESS_PULSE.md),
+#         scoped to Market Radar only — not the full Marketing Health +
+#         Growth Momentum composition, which stays gated per .ai/ROADMAP.md
+#         Wave IV ("depends on Waves I-III shipping real production signal
+#         first").
+#   005 — Weekly Executive Brief: Market Radar section (executive summary,
+#         why it matters, suggested actions). Depends on 003 only (an
+#         independent sibling of 004, not stacked on it — it extends the
+#         existing lib/executive-briefing/ engine directly and does not
+#         import anything 004 builds).
+#
+# This is the first time this queue has planned three tasks with a
+# non-linear dependency graph (004 and 005 are parallel siblings, both
+# depending on 003, not on each other) — branch_strategy: stacked below
+# still applies per-task via each task's own depends_on, resolved through
+# the same resolveDependencyBase() used for every prior stacked task (see
+# .ai/DECISIONS.md ADR-0015); it does not require every task to form one
+# single linear chain.
+#
+# estimated_duration_minutes (new, on tasks 003-005 below): informational
+# only, for a human scheduling/reviewing an overnight run — NOT read or
+# enforced by run-queue.ts or validate-queue.ts. The only duration ceiling
+# actually enforced in code remains queue.max_run_duration_minutes above
+# (the whole run's wall-clock budget) and each gate's own per-command
+# timeout in qualityGates.ts. Do not assume this field does anything at
+# runtime; if a future task wants it enforced, that is a separate,
+# deliberate infrastructure change to run-queue.ts/queueTypes.ts, not
+# something this field does implicitly just by being present.
 
 queue:
   name: "ajnmarketing-overnight-queue"
@@ -144,4 +189,74 @@ tasks:
     requires_secret_change: false
     activates_production_schedule: false
     stop_if_ambiguous: true
+    status: pending
+
+  - id: "003"
+    name: "Competitor Observation Engine: evidence model, confidence scoring, persistence"
+    prompt: "prompts/003-competitor-observation-engine.md"
+    branch: "ai-queue/003-competitor-observation-engine"
+    agent: claude
+    # Depends on 001 (not 002): persists rows that reference
+    # lib/market-radar/'s entries by id (001), but touches no UI file 002
+    # added. Under branch_strategy: stacked, this task's branch is created
+    # from 001's own branch tip (or main, once 001 is merged — see
+    # resolveDependencyBase(), .ai/DECISIONS.md ADR-0015).
+    depends_on: ["001"]
+    # Adds a new migration FILE (038_competitor_observations.sql, exact
+    # number confirmed by the agent against the repo state at run time) —
+    # writing it is ordinary task content; applying it is not (AGENTS.md
+    # rule 13), so this stays false, matching Task 001's own precedent.
+    requires_migration: false
+    requires_deployment: false
+    requires_secret_change: false
+    activates_production_schedule: false
+    stop_if_ambiguous: true
+    # Informational only — see this file's header comment. Backend-only:
+    # new migration, evidence/confidence model, scoring logic, persistence,
+    # unit tests. No UI, no Playwright suite to run.
+    estimated_duration_minutes: 45
+    status: pending
+
+  - id: "004"
+    name: "Business Pulse Integration: verified observations, What Changed, evidence links, confidence filtering"
+    prompt: "prompts/004-business-pulse-integration.md"
+    branch: "ai-queue/004-business-pulse-integration"
+    agent: claude
+    # Depends on 003 only: renders lib/competitor-observations/ (003's
+    # persistence layer) output. Does not depend on 002 or 005 — imports
+    # neither. Branches from 003's own branch tip (or main, once 003 is
+    # merged).
+    depends_on: ["003"]
+    requires_migration: false
+    requires_deployment: false
+    requires_secret_change: false
+    activates_production_schedule: false
+    stop_if_ambiguous: true
+    # Informational only — see this file's header comment. New route +
+    # component + nav link + unit tests + a Playwright spec (UI task, like
+    # Task 002).
+    estimated_duration_minutes: 45
+    status: pending
+
+  - id: "005"
+    name: "Weekly Executive Brief: Market Radar section (executive summary, why it matters, suggested actions)"
+    prompt: "prompts/005-weekly-executive-brief.md"
+    branch: "ai-queue/005-weekly-executive-brief"
+    agent: claude
+    # Depends on 003 only, as an independent sibling of 004 (not stacked on
+    # it) — extends the existing lib/executive-briefing/ engine directly
+    # and imports nothing 004 builds. Branches from 003's own branch tip
+    # (or main, once 003 is merged) — same base as 004, not from 004.
+    depends_on: ["003"]
+    requires_migration: false
+    requires_deployment: false
+    requires_secret_change: false
+    activates_production_schedule: false
+    stop_if_ambiguous: true
+    # Informational only — see this file's header comment. Extends an
+    # existing engine (new type/field + one new pure builder function +
+    # wiring + a UI section in an existing component) rather than building
+    # a new surface from scratch; smaller than Task 004 but still touches
+    # rendered UI, so the Playwright suite is in scope.
+    estimated_duration_minutes: 30
     status: pending

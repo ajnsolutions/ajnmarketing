@@ -1,0 +1,8 @@
+{
+  "run_id": "2026-08-03T042803904Z",
+  "started_at": "2026-08-03T04:28:03.905Z",
+  "finished_at": "2026-08-03T04:28:05.050Z",
+  "stop_reason": "queue exhausted — all tasks reached a terminal state",
+  "baseline": null,
+  "tasks": []
+}
