@@ -32,7 +32,7 @@ All run from a clean state on this branch before opening the PR:
 
 ## PR
 
-Being opened immediately after this commit is pushed — branch `ai-queue/003-competitor-observation-engine` → base `main` (Task 001 had already merged into `main` via PR #101 by the time this task started, so per `resolveDependencyBase()`/ADR-0015 the correct base is `main`, not Task 001's own now-deleted branch). See the final task report for the actual PR URL and commit SHA once created. Not merged. Not deployed.
+[#107](https://github.com/ajnsolutions/ajnmarketing/pull/107) — `ai-queue/003-competitor-observation-engine` → `main` (Task 001 had already merged into `main` via PR #101 by the time this task started, so per `resolveDependencyBase()`/ADR-0015 the correct base is `main`, not Task 001's own now-deleted branch). Not merged. Not deployed. Real work commit: `8261a20`.
 
 ## Blockers
 
