@@ -4,112 +4,60 @@ This file is the most recent agent-to-agent handoff. **Overwrite it wholesale on
 
 ## Branch
 
-`fix/queue-typescript-baseline-determinism` (based on `main` @ `912248a`, the merge of PR #103)
+`prepare-market-radar-intelligence-tasks` (based on `main` @ `7177304`, the merge of PR #105)
 
 ## Task status
 
-**Complete.** This is the third infrastructure bug found by successive attempts to actually run Task 002, after the completion-state fix (PR #102) and the dependency-base resolution fix (PR #103). With PR #103 merged, Task 002 started and correctly resolved its base — then failed its own quality gate.
-`ai-queue/002-market-radar-view` — created from (and, at the time this task started, already up to date with) `origin/main` @ `912248a` (merge of PR #103, the dependency-base resolution fix). `origin/main` at that commit already contains Task 001's work (PR #101, merged) as an ancestor — confirmed via `git merge-base --is-ancestor origin/ai-queue/001-market-radar-foundation HEAD` before starting.
+**Complete.** This is a **planning-only** task: populate `.ai/queue/RUN_QUEUE.yaml` with the next three Project Magic tasks (003, 004, 005) so the overnight runner can execute them later. No feature code was written, no per-task feature branches were created, and no PRs were opened for Tasks 003/004/005 themselves — only this one branch/PR, containing the queue definition and its supporting docs.
 
-## Task status
-
-**Complete.** This is Task 002 from `.ai/queue/RUN_QUEUE.yaml` — the owner-facing Market Radar view, depending on Task 001's persistence foundation (`lib/market-radar/`).
+Context: Tasks 001 and 002 (Market Radar persistence foundation + owner-facing view) have both since completed for real, end to end, unattended (PRs #101 and #104, merged), after three infrastructure fixes (PRs #100, #102, #103, #105 — see `.ai/DECISIONS.md` ADR-0013 through ADR-0016). The queue's core execution path is now proven. This task extends the queue with the next phase: Market Radar's monitoring/detection layer, which Tasks 001/002 explicitly deferred.
 
 ## What was built
 
-`.ai/runs/2026-08-02T163633130Z/baseline.json` recorded `typescriptErrorCount: 2`; the same run's later comparison capture for Task 002 (`task-002-quality.json`) reported `18`. `compareQualitySnapshots()` treated the gap as "16 new TypeScript error(s)" and failed the task; three independent auto-repair attempts each re-confirmed the same real 18 errors with nothing to actually fix.
-
-Per this task's explicit mandate, no prior repair-attempt conclusion was trusted — the discrepancy was independently reproduced from a clean `main` checkout before any code was touched. Baseline capture and comparison capture already called the exact same shared function (`captureQualitySnapshot()`), so the divergence could only come from ambient, on-disk state that function's `tsc` invocation reads — not from different commands or different source. Two distinct, real causes were confirmed:
-
-1. **Persistent, uncontrolled incremental cache.** The project's real `tsconfig.json` sets `incremental: true`, so a plain `tsc --noEmit` reads/writes a persistent, gitignored `tsconfig.tsbuildinfo` cache that is never reset between the queue's baseline and comparison captures, or between separate runs. `subprocess.ts`'s SIGKILL-on-timeout behavior can kill a `tsc` process mid-write of that cache; a later, faster run reading a cache corrupted that way can under-report by trusting stale per-file diagnostic state instead of re-checking. Proven experimentally (cold run 11.3s vs. warm run 2.9s, confirming the cache is read/reused across invocations); the exact byte-level corruption that produced "2" specifically was not force-reproduced, and the writeup is honest about that.
-2. **Stale `.next/` build artifacts leaking into the count.** `tsconfig.json`'s own `include` pulls in every `.ts` file under `.next/types/` and `.next/dev/types/` — Next.js's auto-generated route-type validator files. `.next/` is a gitignored build artifact never cleaned between branch switches or task attempts; a `.next/` last built from a branch with different routes (in this incident, `ai-queue/002-market-radar-view`) leaks phantom "Cannot find module" errors for routes that only exist on that other branch. Reproduced directly: 18 errors clean, 24 with the stale directory present, 18 again once removed.
-1. **`app/dashboard/market-radar/page.tsx`** — new route, redirects to `/dashboard/setup` if there's no business profile (exact pattern from `app/dashboard/business-brain/page.tsx`), otherwise fetches entries via Task 001's `listMarketRadarEntriesForUser` and renders the page.
-2. **`components/dashboard/market-radar-page.tsx`** — new client component, modeled directly on `components/dashboard/testimonials-page.tsx`'s established add/remove-list pattern (local state + `fetch` to an API route + `router.refresh()`). Renders "Tracking N competitors" and a separate "Benchmarking" section (copy: "For inspiration and pattern-matching — not a head-to-head comparison"), each with an inline add form and a per-entry Remove button, plus an honest empty state per section. Deliberately carries **no** "recent activity," "changes detected," or any competitive-signal copy anywhere — this repo has no monitoring/detection layer yet, and fabricating that would violate `MARKET_RADAR.md`'s "no fabricated competitive claims" rule. Covered by a Playwright test that greps the component source for exactly those forbidden words.
-3. **`lib/market-radar/display.ts`** (new file — not a change to Task 001's `persistence.ts`/`types.ts`) — `groupMarketRadarEntriesForDisplay()`, a pure function that calls Task 001's `sortMarketRadarEntries` and splits the result into `{ competitors, benchmarks }` for rendering. Reuses ordering logic rather than reimplementing it, per the task's explicit instruction.
-4. **`app/api/market-radar/route.ts`** (POST, add) and **`app/api/market-radar/[id]/route.ts`** (DELETE, remove) — new API routes, modeled on `app/api/testimonials/route.ts` / `app/api/testimonials/[id]/route.ts`'s exact shape: `supabase.auth.getUser()` auth check, then `getBusinessProfileForUser()` (POST only), then a call into Task 001's `addMarketRadarEntryForUser`/`removeMarketRadarEntryForUser`, both of which are tenant-scoped by `userId` per ADR-0001. No new persistence function was added or needed.
-5. **Navigation**: added `{ href: "/dashboard/market-radar", label: "Market Radar" }` to the existing "More tools" array in `components/dashboard/growth-advisor/supporting-context.tsx` — no new primary nav item.
-6. **Tests**:
-   - `unit-tests/market-radar-view.test.ts` (4 new tests) — `groupMarketRadarEntriesForDisplay`: splits competitors/benchmarks, preserves `sortMarketRadarEntries`' ordering within each group, handles the empty-list case, doesn't mutate its input.
-   - `tests/market-radar.spec.ts` (9 new tests) — modeled on `tests/business-brain-inspector.spec.ts`'s source-level wiring-check style: all new files exist; the route redirects to setup with no profile; the page renders both sections with add/remove actions; benchmark copy is inspiration-framed; **no fabricated activity/detection copy** (greps for `/detected/i`, `/recent activity/i`, `/days ago/i` and asserts none match); both API routes call `supabase.auth.getUser()` and the correct persistence function; the display helper actually calls `sortMarketRadarEntries`; the nav link is present in "More tools" and absent from the two primary-nav files (`dashboard-nav.tsx`, `dashboard-sidebar.tsx`); the cron gate (`ATTACH_DECLARATIVE_PRODUCTION_CRONS = false`) is unchanged.
-7. **Docs**: `docs/project-magic/MARKET_RADAR.md`'s "Implementation status" note extended to record the owner-facing view shipping, with an explicit list of what still depends on the not-yet-built monitoring/detection layer. `.ai/ROADMAP.md`, `.ai/CURRENT_STATUS.md`, `.ai/STATUS.json`, `.ai/OPEN_ITEMS.md` updated accordingly (see their diffs in this same branch).
-
-## A deliberate deviation from the task prompt's literal PR-base fallback — read before merging
-
-The task prompt says: open the PR against Task 001's branch, or if run outside the automated runner, `--base ai-queue/001-market-radar-foundation`. That branch (`origin/ai-queue/001-market-radar-foundation`, tip `79f2390`) still exists on GitHub, but its PR (#101) is **already merged into `main`**, and `main` has since gained two more merged PRs (#102, #103, both unrelated queue-tooling fixes) that are not reachable from that stale branch name. This session's own branch was created from (and stayed at) `origin/main`'s tip the entire time.
-
-1. **`tsconfig.quality-gate.json`** (new, repo root): `extends: "./tsconfig.json"`, overrides `incremental: false`, excludes `node_modules`, `scripts/**/*`, `.next/**/*`. Must live at the repo root, not `scripts/ai/` — a config's `exclude` globs resolve relative to that config file's own directory, so a first attempt placed at `scripts/ai/tsconfig.quality-gate.json` silently meant `scripts/ai/scripts/**/*` (nonexistent) and let 2 extra errors leak back in (20 instead of 18). `unit-tests/ai-queue-typescript-determinism.test.ts` asserts the file's location directly so this can't silently regress.
-2. **`scripts/ai/qualityGates.ts`**: extracted `buildTypescriptCheckArgs()` (pure, returns the exact `tsc` argv) and `runTypescriptCheck()` (runs it, parses the count) out of `captureQualitySnapshot()`, which now calls `runTypescriptCheck()` instead of inlining a bare `tsc --noEmit`. Both the baseline capture and every task's comparison capture already went through the same shared function — the fix makes the underlying `tsc` invocation itself immune to ambient cache/build-artifact state, not just textually identical. New header-comment paragraph documents the incident, both root causes, and the fix.
-3. **`unit-tests/ai-queue-typescript-determinism.test.ts`** (new, 6 tests, all real `tsc` invocations — not mocked, since the bug was in command construction and on-disk state, not parsing logic): argv determinism (pure); two consecutive real checks of unchanged source report identical counts; an injected stale `.next/types` fixture doesn't change the count; no tsbuildinfo file is left behind by the check itself (starts from a clean slate so a pre-existing real editor/typecheck cache doesn't produce a false failure); `compareQualitySnapshots()` reports zero TypeScript regressions across two real captures of unchanged source; the dedicated tsconfig's root-level location is asserted directly.
-4. **`.ai/DECISIONS.md`**: ADR-0016, full root cause / fix / alternatives-considered / consequences.
-5. **`.ai/OPEN_ITEMS.md`, `.ai/CURRENT_STATUS.md`, `.ai/STATUS.json`**: updated with this incident and fix, consistent with each other.
-
-## Self-caught issues during this build (both fixed before finishing, not left in the diff)
-
-- A JSDoc block comment I wrote containing the literal glob text `` `.next/types/**/*.ts` `` prematurely closed the `/** ... */` block (the substring `**/*` contains `*/`), producing 144 cascading parse errors in `qualityGates.ts` itself. Caught by direct investigation (raw byte inspection, standalone reproduction), not assumed external. Fixed by rewording the comment to avoid literal `**/*` glob syntax.
-- The Root-Cause-#1 regression test originally wrote its synthetic stale fixture to the real path `.next/types/validator.ts` (colliding with Next.js's own real output filename) and only deleted it conditionally (`if (!alreadyExisted)`). The first isolated test run left it behind (write succeeded, but a later `npm run typecheck` — run manually for verification, using the real project tsconfig which includes `.next/types/**` — then picked up the leaked garbage file and reported 19 errors instead of 18, a self-inflicted false regression). Fixed: the fixture now uses a uniquely-named file (`__typescript-determinism-test-fixture__.ts`) that can never collide with real Next.js output, and cleanup in the `finally` block is unconditional. The Root-Cause-#2 test had the same class of issue (asserted no `tsconfig.tsbuildinfo` exists at all, which false-failed against a legitimately-created real editor/typecheck cache from my own manual verification commands) — fixed by having the test start from a clean slate (delete both candidate files first) rather than asserting global absence. Re-verified clean after each fix: `npm run typecheck` and the quality-gate check both stayed at 18 across repeated runs, including after a real `npm run build` regenerated a legitimate `.next/`.
+1. **`.ai/queue/prompts/003-competitor-observation-engine.md`** (new) — Competitor Observation Engine. Depends on Task 001 only (not 002 — no UI files needed). Scope: a new Supabase migration (`038_competitor_observations.sql`, table `competitor_observations` FK'd to `market_radar_entries`), `lib/competitor-observations/types.ts` (`CompetitorObservationConfidence`, `CompetitorObservation`), `lib/competitor-observations/scoring.ts` (pure `scoreCompetitorSignal` — the actual "is this meaningful" judgment, unit-tested), `lib/competitor-observations/persistence.ts` (`listCompetitorObservationsForUser`, `recordCompetitorObservationForUser`, `generateCompetitorObservationsForUser`). Deliberately scoped to score the one real signal source this repo has (`lib/market-context/providers/competitorProvider.ts`, profile-declared data) against the owner's Market Radar tracked list — explicitly **not** a new scraper, external API, or live monitoring system; no new secrets. No UI.
+2. **`.ai/queue/prompts/004-business-pulse-integration.md`** (new) — Business Pulse Integration. Depends on Task 003. Scope: new route `/dashboard/business-pulse`, new component rendering a "What Changed" section (verified observations, evidence/source labels, confidence rendered via the existing `lib/recommendation-presentation/confidenceLabels.ts` pattern — never a raw score), and a confidence filter. Explicitly scoped as a **narrow first slice** of `docs/project-magic/BUSINESS_PULSE.md`'s larger vision — not the full Marketing Health + Growth Momentum composition, which stays gated behind `.ai/ROADMAP.md`'s Wave IV rule ("depends on Waves I–III shipping real production signal first").
+3. **`.ai/queue/prompts/005-weekly-executive-brief.md`** (new) — Weekly Executive Brief: Market Radar section. Depends on Task 003 only — a **sibling** of Task 004, not stacked on it (both depend on 003, neither imports the other's files). Scope: extends `lib/executive-briefing/types.ts` (`ExecutiveBrief` is deliberately flat — `ExecutiveBriefItem = { text: string }` cannot carry "why it matters"/"suggested action" — so this adds a genuinely new `marketRadarHighlights` field and type) and `lib/executive-briefing/buildBrief.ts` (a new pure `buildMarketRadarHighlights`, gated to `weekly_strategy_brief` only), wired through whatever real-data-assembly site the implementing agent finds by tracing `getExecutiveBriefForCurrentUser` → `getHeadOfMarketingBriefingForCurrentUser`. Explicitly does not touch the separate `ExecutiveReview` type/`/dashboard/executive-review` (`lib/head-of-marketing-orchestrator/`).
+4. **`.ai/queue/RUN_QUEUE.yaml`**: three new task entries (ids `003`/`004`/`005`), each with `branch`, `prompt`, `depends_on`, the required boolean safety fields (all `false`), `stop_if_ambiguous: true`, `status: pending`, and a new `estimated_duration_minutes` field (45/45/30 — **informational only**, documented in the file's own header comment as not read or enforced by `run-queue.ts`/`validate-queue.ts`; confirmed this doesn't break validation since YAML parsing here has no strict/exact-schema check that would reject an extra field). Header comment extended with the full dependency-shape rationale, including that this is the queue's first **non-linear** graph (004 and 005 are parallel siblings, not one linear chain) and that `resolveDependencyBase()` (ADR-0015) handles this without modification, since it resolves per-task.
+5. **`.ai/queue/QUEUE_STATUS.json`**: three new `pending` entries appended (matching `buildInitialQueueState`'s exact shape — `branch`/`commit`/`pr`/`started_at`/`completed_at`/`tests`/`blocker` all `null`). Task 001/002's `completed` entries left untouched. `resume_eligible` flipped from `false` to `true` (matching `computeResumeEligible`'s real semantics: no task in progress, at least one pending). Confirmed via `npm run ai:queue:status`: `Pending (3): 003, 004, 005`, `Resume eligible: yes`.
+6. **`.ai/ROADMAP.md`, `.ai/CURRENT_STATUS.md`, `.ai/OPEN_ITEMS.md`**: updated with this planning work and its scoping rationale (see `.ai/OPEN_ITEMS.md`'s new "First multi-task queue sprint" section for the full list of deliberate scope-narrowing decisions worth knowing before reviewing the PR).
+7. **`.ai/STATUS.json`**: also **fixed a pre-existing JSON syntax error** found on disk at the start of this task (a stray unkeyed string on line 9, left over from an earlier edit — the file failed to parse with Python's `json` module) while updating it for this task's own content. Verified valid JSON after the fix.
 
 ## Tests
 
-- **`unit-tests/ai-queue-typescript-determinism.test.ts`** (new, 6/6 passing): see above. All real, non-mocked `tsc` invocations against this actual repository.
-- **`unit-tests/ai-queue-quality-gates.test.ts`** (existing, 28/28 passing, unaffected by the `captureQualitySnapshot()` refactor).
-- **Full unit suite** (`npm run test:unit`): **1793/1793 passing** (1787 previously + 6 new).
-- **Lint** (`npm run lint`): clean — 0 errors, 7 pre-existing warnings in files this branch never touched.
-- **Typecheck, real project config** (`npm run typecheck`): **18 errors, identical set to before this branch** — verified repeatedly, including after a fresh real `npm run build`.
-- **Typecheck, quality-gate config** (`npx tsc --noEmit --project tsconfig.quality-gate.json --incremental false`): **18 errors**, deterministic across 3+ repeated runs, immune to an injected stale `.next` artifact.
-- **Build** (`npm run build`): succeeds.
-- **Playwright** (`npx playwright test --workers=1`): **302/302 passing**.
-- **`npm run ai:queue:validate`**: valid.
+This is a planning-only task — no application code, tests, lint, typecheck, or build were affected. What was actually run and verified:
+
+- **`npm run ai:queue:validate`**: passes — `.ai/queue/RUN_QUEUE.yaml is valid.` (verified twice: once after adding the three tasks to `RUN_QUEUE.yaml`, once again after updating `QUEUE_STATUS.json`).
+- **`npm run ai:queue:status`**: confirms `Completed (2): 001, 002`, `Pending (3): 003, 004, 005`, `In progress (0)`, `Failed (0)`, `Resume eligible: yes`.
+- **Queue-related unit suites** (`ai-queue-run.test.ts`, `ai-queue-validate.test.ts`, `ai-queue-status.test.ts`, `ai-queue-state.test.ts`): 42/42 passing, including "the real `.ai/queue/RUN_QUEUE.yaml` in this repository is itself valid" — confirms the new tasks validate correctly against the actual test suite, not just the standalone CLI.
+- **`.ai/STATUS.json`**: verified valid JSON via `python3 -m json.tool` equivalent, both before (failed — confirming the pre-existing bug) and after (passed) the fix.
+
+The full application quality suite (`npm run test:unit`, `npm run lint`, `npm run typecheck`, `npm run build`, `npx playwright test`) was **not** re-run in full for this task, since no application source file was touched — only `.ai/`, `.ai/queue/`, and this branch's own markdown prompt files. This matches the actual diff scope; there is nothing in it those gates would exercise.
 
 ## PR
 
-[#105](https://github.com/ajnsolutions/ajnmarketing/pull/105) — `fix/queue-typescript-baseline-determinism` → `main`. Not merged. Not deployed.
+Not yet created — see recommended next step below (this handoff is being written just before `git push` + `gh pr create`). Branch: `prepare-market-radar-intelligence-tasks`.
 
 ## Blockers
 
-None blocking this task's own completion. Standing limitation, same as every fix in this file today: real, non-mocked regression tests exist and were run directly against this repository, but the fix has not yet been exercised by an actual `npm run ai:queue` invocation completing Task 002 end-to-end (no `claude` binary was available in this fix's own build sandbox either). This is now the **third** infrastructure fix in a row surfaced by successive attempts to actually run Task 002 — the next real queue run is the first live test of all three fixes together.
+None. This task is fully self-contained (queue definition + docs only).
 
-Unrelated, pre-existing, not touched by this branch: the product-track blockers in `OPEN_ITEMS.md` (spoofable rate-limit key, three-competing-decision-systems question, production launch blockers, missing recommendation-engine trigger) and the 18 pre-existing historical TypeScript errors (unchanged, not this task's scope).
-
-Task 002's own in-progress work (stashed under `ai-queue/002-market-radar-view`, PR #104) was verified to still apply cleanly to its own branch and was left there, untouched and uncommitted by this fix, exactly as found.
+Standing, unrelated: the product-track blockers in `OPEN_ITEMS.md` (spoofable rate-limit key, three-competing-decision-systems question, production launch blockers, missing recommendation-engine trigger) and the 18 pre-existing historical TypeScript errors (unchanged, out of scope here).
 
 ## Confirmation of safety boundaries
 
-No deployment occurred. No Supabase migration was applied. No secrets, environment variables, or credentials were modified. No production schedule was activated (`ATTACH_DECLARATIVE_PRODUCTION_CRONS` untouched, still `false`). No merge was performed automatically.
+No deployment occurred. No Supabase migration was applied (Task 003's prompt only *specifies* a future migration file for its eventual implementer to write — none was written or applied by this task). No secrets, environment variables, or credentials were modified. No production schedule was activated (`ATTACH_DECLARATIVE_PRODUCTION_CRONS` untouched, still `false`). No merge was performed automatically. No feature branch was created for Tasks 003/004/005, and no PR was opened for any of them — only this one planning branch/PR.
 
 ## Recommended next step
 
-1. Review this PR (root cause, the dedicated `tsconfig.quality-gate.json`, the `runTypescriptCheck()` extraction, the 6 new tests — especially that they use real `tsc` invocations, not mocks) before doing anything else.
+1. Review this PR — the three prompt files (`.ai/queue/prompts/003-*.md` through `005-*.md`) are the real content; `RUN_QUEUE.yaml`'s new entries and `QUEUE_STATUS.json`'s new pending rows are comparatively mechanical. Pay particular attention to the three "deliberate scoping decisions" called out in `.ai/OPEN_ITEMS.md`'s new section — they're judgment calls made on your behalf and worth a human sanity-check before an agent starts building against them unattended.
 2. Once merged, in an environment where `claude --version`/`claude --help` actually work:
    ```bash
    npm run ai:queue:validate
    git checkout main && git pull
-   npm run ai:queue:status   # confirm: 001 completed, 002 pending or ready to retry
-   npm run ai:queue          # attended, in the foreground — runs Task 002
+   npm run ai:queue:status   # confirm: 001/002 completed, 003 pending, resume_eligible: true
+   npm run ai:queue          # attended, in the foreground — this is the queue's first genuinely
+                              # multi-task sprint (003, then 004 and 005 in either order)
    ```
-3. Watch for: the quality gate's baseline and every task's comparison both reporting the same TypeScript count when the repository hasn't changed; no phantom "N new TypeScript error(s)" regression on a task that didn't touch any `.ts` file logic.
-4. If a fourth infrastructure issue surfaces on the next real Task 002 attempt, treat it the same way this one was: reproduce independently from a clean checkout before trusting any prior log or conclusion.
-5. Separately, unrelated to this queue-tooling fix: the product-track recommendations in `OPEN_ITEMS.md` remain the highest-priority carried-forward items.
-Opening the PR with `--base ai-queue/001-market-radar-foundation` would therefore have pulled PR #102's and #103's entire diffs into this PR as if they were part of Task 002's own change — confusing for a reviewer and not an accurate reflection of what this task actually changed. Instead, **the PR was opened against `main` directly**, which is exactly what this repo's own `resolveDependencyBase()` (`scripts/ai/reconcile.ts`, added by PR #103 the same day) would compute for a dependency whose PR is confirmed merged: resolve to the real merge target, never require the dependency's branch name to still be meaningful. This is a judgment call under the task's own "when requirements are ambiguous" guidance, applied narrowly to a git-workflow mechanic (not a product requirement) — documented here and in `CURRENT_STATUS.md`/`STATUS.json` rather than silently deviating.
-
-## Tests
-
-- **Unit** (`npm run test:unit`): **1791/1791 passing** (1787 pre-existing + 4 new in `market-radar-view.test.ts`).
-- **Lint** (`npm run lint`): clean — 0 errors, 7 pre-existing warnings, none in files this branch touched.
-- **Typecheck** (`npm run typecheck`): 18 pre-existing errors, identical set to `OPEN_ITEMS.md`'s documented baseline — none in files this branch touched.
-- **Build** (`npm run build`): succeeds; `/dashboard/market-radar` compiles as a dynamic route alongside the other `/dashboard/*` pages.
-- **Playwright** (`npx playwright test --workers=1`): **311/311 passing** (302 pre-existing + 9 new in `market-radar.spec.ts`).
-
-## PR
-
-[#104](https://github.com/ajnsolutions/ajnmarketing/pull/104) — `ai-queue/002-market-radar-view` → `main` (see "A deliberate deviation..." above for why `main` and not `ai-queue/001-market-radar-foundation`). Not merged. Not deployed.
-
-## Blockers
-
-None. This task completed within its defined scope; nothing was deferred as a guess.
-
-## Recommended next step
-
-Both PRs are ready for human review, in dependency order: merge #101 (Task 001) before this task's PR (Task 002) — though note Task 002's PR is opened against `main` directly, not against #101's branch, per the deviation documented above (main already contains #101). After both merge:
-1. Manually exercise `/dashboard/market-radar` in a browser against a real authenticated session (add a competitor, add a benchmark, remove one of each, confirm the empty state) — this session's own verification was source-level (Playwright wiring checks) plus unit tests, not a live browser session against a running dev server with real auth.
-2. The next real Wave III scope item is Seasonal Intelligence (not started) — see `ROADMAP.md`.
-3. Separately, unrelated to Market Radar: the three-competing-decision-systems architecture question and the spoofable rate-limit key (`OPEN_ITEMS.md`'s active blockers) remain the highest-priority carried-forward items.
+3. Watch for: Task 003 branching from Task 001's resolved base (not 002's); Tasks 004 and 005 both branching from Task 003's resolved base independently (confirming the non-linear dependency shape works live, not just in the unit tests); each task staying within its documented "explicitly out of scope" boundaries (especially Task 003 not quietly growing into a real scraper, and Task 004 not quietly growing into the full Business Pulse vision).
+4. If a fourth infrastructure issue surfaces, treat it the same way the last three were: reproduce independently from a clean checkout before trusting any prior log or conclusion.
+5. Separately, unrelated to this queue-planning work: the product-track recommendations in `OPEN_ITEMS.md` remain the highest-priority carried-forward items.
