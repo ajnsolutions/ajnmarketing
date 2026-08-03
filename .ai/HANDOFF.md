@@ -46,7 +46,7 @@ Per this task's explicit mandate, no prior repair-attempt conclusion was trusted
 
 ## PR
 
-Not yet created — see recommended next step below (this handoff is being written just before `git push` + `gh pr create`). Branch: `fix/queue-typescript-baseline-determinism`.
+[#105](https://github.com/ajnsolutions/ajnmarketing/pull/105) — `fix/queue-typescript-baseline-determinism` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
