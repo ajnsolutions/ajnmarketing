@@ -3,7 +3,7 @@
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
   "current_task": null,
-  "last_run_id": "2026-08-02T151115309Z",
+  "last_run_id": "2026-08-02T163633130Z",
   "resume_eligible": true,
   "tasks": [
     {
@@ -21,13 +21,13 @@
     {
       "id": "002",
       "name": "Market Radar: owner-facing tracked competitors & benchmarks view",
-      "status": "pending",
-      "branch": null,
-      "commit": null,
-      "pr": null,
-      "started_at": null,
-      "completed_at": null,
-      "tests": null,
+      "status": "completed",
+      "branch": "ai-queue/002-market-radar-view",
+      "commit": "d4d9146607672d2c7534a9a75eccf9337422111d",
+      "pr": "https://github.com/ajnsolutions/ajnmarketing/pull/104",
+      "started_at": "2026-08-02T16:39:43.756Z",
+      "completed_at": "2026-08-02T16:51:18Z",
+      "tests": "passed — unit 1791/1791 (4 new, market-radar-view.test.ts), lint clean (0 errors, 7 pre-existing warnings untouched), typecheck unchanged (18 pre-existing errors, none in this task's files), build succeeded, Playwright 311/311 (9 new, market-radar.spec.ts, run serially).",
       "blocker": null
     }
   ]

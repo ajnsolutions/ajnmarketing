@@ -13,7 +13,7 @@ Verified 2026-08-02 against `origin/main` @ `952df6e` (merge of PR #102). Update
 
 - Approve/edit/comment/correct feedback loop that converts Assumed → Known insights on the Snapshot (Wave I, "still open" per `docs/project-magic/IMPLEMENTATION_ROADMAP.md`).
 - A durable, cross-24h-window store for the 7 snapshot-confirmation fields without an existing column (`docs/BUSINESS_DISCOVERY_CONTINUATION.md`, Recommended Phase 2B2).
-- Wave III: Market Radar and Seasonal Intelligence (scoped, not started).
+- Wave III: Seasonal Intelligence (scoped, not started). Market Radar's persistence foundation (PR #101) and owner-facing view (Task 002) have shipped; what remains scoped-but-not-built is the monitoring/detection layer and its four downstream surfacing points named in `docs/project-magic/MARKET_RADAR.md`'s "How it surfaces" section — Weekly Briefing, Marketing Director recommendation evidence, Growth Advisor "What I Noticed" observations, and Business Pulse. Task 002 deliberately did not touch `lib/market-context/providers/competitorProvider.ts` or fabricate any "recent activity"/"changes detected" copy — all of that requires the not-yet-built monitoring layer.
 - Wave IV: Business Pulse + Autopilot (scoped, explicitly blocked on Waves I–III producing real signal first).
 - P2/P3 items from `docs/RC1_AUTHENTICATED_PILOT_VALIDATION.md`: Approved/Published badge color parity, an unreachable legacy `/dashboard/[section]` route, SMS Approval Preview remains a mockup.
 

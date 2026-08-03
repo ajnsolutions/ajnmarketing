@@ -4,7 +4,9 @@
 
 Market Radar is continuous, low-noise monitoring of everything happening around a business that it doesn't control but needs to know about. It replaces the current assisted-pilot's manual, admin-driven competitor tracking with an owner-facing, continuous, self-service model.
 
-**Implementation status (2026-08-02):** the owner-managed persistence foundation for this doc's "Owner control" section has shipped — `supabase/migrations/037_market_radar.sql` and `lib/market-radar/` (types + tenant-scoped `*ForUser` functions) support add/remove/prioritize-competitor and benchmark tracking. This is persistence and types only, alongside the existing `lib/market-context/` signal pipeline (unmodified). The owner-facing Market Radar view described below is the next, already-queued phase.
+**Implementation status (2026-08-02):** the owner-managed persistence foundation for this doc's "Owner control" section has shipped — `supabase/migrations/037_market_radar.sql` and `lib/market-radar/` (types + tenant-scoped `*ForUser` functions) support add/remove/prioritize-competitor and benchmark tracking. This is persistence and types only, alongside the existing `lib/market-context/` signal pipeline (unmodified).
+
+The "dedicated Market Radar view" named in "How it surfaces" below has now also shipped: `/dashboard/market-radar` (`app/dashboard/market-radar/page.tsx`, `components/dashboard/market-radar-page.tsx`) lets an owner see, add, and remove tracked competitors and benchmarks, reachable via the "More tools" progressive-disclosure list (no new primary nav item). It shows only what the owner has told it — no monitoring/detection signal exists yet, so there is no "recent activity" or "changes detected" copy anywhere on this page; that remains a separate, unscoped future phase. The other four "How it surfaces" integrations (Weekly Briefing, Marketing Director recommendations, Business Pulse) are still not built — they all depend on that same not-yet-built monitoring/detection layer.
 
 ---
 
