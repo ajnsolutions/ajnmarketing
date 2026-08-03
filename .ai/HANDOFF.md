@@ -35,7 +35,7 @@ The full application quality suite (`npm run test:unit`, `npm run lint`, `npm ru
 
 ## PR
 
-Not yet created — see recommended next step below (this handoff is being written just before `git push` + `gh pr create`). Branch: `prepare-market-radar-intelligence-tasks`.
+[#106](https://github.com/ajnsolutions/ajnmarketing/pull/106) — `prepare-market-radar-intelligence-tasks` → `main`. Not merged. Not deployed.
 
 ## Blockers
 
