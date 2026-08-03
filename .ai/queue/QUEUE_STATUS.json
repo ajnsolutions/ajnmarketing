@@ -2,8 +2,8 @@
   "queue_name": "ajnmarketing-overnight-queue",
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
-  "current_task": null,
-  "last_run_id": "2026-08-02T163633130Z",
+  "current_task": "003",
+  "last_run_id": "2026-08-03T051052683Z",
   "resume_eligible": true,
   "tasks": [
     {
@@ -33,11 +33,11 @@
     {
       "id": "003",
       "name": "Competitor Observation Engine: evidence model, confidence scoring, persistence",
-      "status": "pending",
+      "status": "in_progress",
       "branch": null,
       "commit": null,
       "pr": null,
-      "started_at": null,
+      "started_at": "2026-08-03T05:14:17.676Z",
       "completed_at": null,
       "tests": null,
       "blocker": null
