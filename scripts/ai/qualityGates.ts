@@ -23,6 +23,39 @@
  * pattern). Every parsing and comparison function below is pure and is
  * unit-tested with canned sample output in
  * unit-tests/ai-queue-quality-gates.test.ts.
+ *
+ * TypeScript determinism (2026-08-02) — Task 002's real run recorded a
+ * baseline `typescriptErrorCount: 2` while an independent `tsc --noEmit`
+ * check of the exact same commit consistently reported 18. Baseline capture
+ * and the later comparison capture both call this same
+ * `captureQualitySnapshot()` — textually the same command — so the
+ * discrepancy could only come from ambient, on-disk state the command reads
+ * that isn't part of the committed source. Independently reproduced two
+ * real, distinct sources of exactly that kind of non-determinism:
+ *   1. This repo's root `tsconfig.json` sets `incremental: true`, so a
+ *      plain `tsc --noEmit` reads/writes a persistent, gitignored
+ *      `tsconfig.tsbuildinfo` cache that is never reset between the queue's
+ *      baseline capture and its later comparison capture, or between
+ *      separate runs. `subprocess.ts` can SIGKILL any gate that exceeds its
+ *      timeout — including a `tsc` process mid-write of that cache — and a
+ *      later, faster run reading a cache corrupted that way can silently
+ *      under-report real errors instead of re-checking every file.
+ *   2. `tsconfig.json`'s own `include` pulls in every `.ts` file under
+ *      `.next/types/` and `.next/dev/types/` — Next.js's auto-generated route-type
+ *      validator files. `.next/` is a gitignored build artifact never
+ *      cleaned between branch switches or queue task attempts; if it was
+ *      last built on a branch with different routes (confirmed: a
+ *      `.next/` built from the Market Radar branch, checked from `main`,
+ *      produced 6 phantom "Cannot find module" errors for routes that only
+ *      exist on that other branch — 24 reported vs. the real 18).
+ * Fixed by giving the quality gate's own TypeScript check a dedicated
+ * config (`tsconfig.quality-gate.json`, repo root) that disables
+ * `incremental` and excludes the entire `.next` directory, used identically by both the
+ * baseline and comparison capture (they already share one function — this
+ * makes the underlying `tsc` invocation itself immune to the cache/build-
+ * artifact state that command reads from, not just textually identical).
+ * See `.ai/DECISIONS.md` ADR-0016 and `unit-tests/ai-queue-typescript-
+ * determinism.test.ts` for the full reasoning and proof.
  */
 import { runCommand } from "./subprocess.ts";
 
@@ -33,6 +66,16 @@ const ESLINT_TIMEOUT_MS = 5 * 60 * 1000;
 const UNIT_TEST_TIMEOUT_MS = 8 * 60 * 1000;
 const PLAYWRIGHT_TIMEOUT_MS = 20 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * A dedicated tsconfig for the quality gate's own TypeScript check —
+ * deliberately separate from the project's real `tsconfig.json` (which
+ * stays `incremental: true` for fast local/editor rechecks; this file only
+ * governs what the automated queue itself measures). See this file's
+ * header comment for why both settings below are load-bearing, not
+ * cosmetic.
+ */
+const QUALITY_GATE_TSCONFIG = "tsconfig.quality-gate.json";
 
 export type QualitySnapshot = {
   generatedAt: string;
@@ -162,6 +205,31 @@ function runCapture(command: string, args: string[], cwd: string, timeoutMs: num
 }
 
 /**
+ * The exact argv used to check TypeScript for a quality snapshot. Pulled out
+ * as its own pure function — rather than inlined in captureQualitySnapshot —
+ * so a unit test can assert on the exact flags without shelling out, and so
+ * there is exactly one place in this file that can construct this command
+ * (baseline capture and comparison capture both call it, and cannot drift
+ * apart from each other). See this file's header comment for why --project
+ * and --incremental false are both load-bearing, not cosmetic.
+ */
+export function buildTypescriptCheckArgs(): string[] {
+  return ["tsc", "--noEmit", "--project", QUALITY_GATE_TSCONFIG, "--incremental", "false"];
+}
+
+/**
+ * Runs just the TypeScript check portion of a quality snapshot and returns
+ * the parsed error count. Extracted from captureQualitySnapshot so it can be
+ * exercised directly in a regression test without also running the full
+ * suite (eslint, unit tests, Playwright, build) — critically, without
+ * re-running the unit test gate from inside a unit test, which would recurse.
+ */
+export function runTypescriptCheck(repoRoot: string, timeoutMs: number = TSC_TIMEOUT_MS): { errorCount: number; timedOut: boolean } {
+  const tsResult = runCapture("npx", buildTypescriptCheckArgs(), repoRoot, timeoutMs);
+  return { errorCount: parseTypescriptErrorCount(tsResult.stdout + tsResult.stderr), timedOut: tsResult.timedOut };
+}
+
+/**
  * Runs the full quality suite (TypeScript, ESLint, unit tests, Playwright,
  * build) and returns one QualitySnapshot. Used both to capture the run's
  * baseline (once, before the first task) and to check every task's
@@ -174,8 +242,10 @@ function runCapture(command: string, args: string[], cwd: string, timeoutMs: num
  * output it produced before being killed), not silently skipped.
  */
 export function captureQualitySnapshot(repoRoot: string, now: Date = new Date()): QualitySnapshot {
-  const tsResult = runCapture("npx", ["tsc", "--noEmit"], repoRoot, TSC_TIMEOUT_MS);
-  const typescriptErrorCount = parseTypescriptErrorCount(tsResult.stdout + tsResult.stderr);
+  // Same helper, same argv, every time this function runs — baseline capture
+  // and the later comparison capture can never diverge due to on-disk
+  // cache/build state, only due to an actual change in the committed source.
+  const { errorCount: typescriptErrorCount, timedOut: tsTimedOut } = runTypescriptCheck(repoRoot, TSC_TIMEOUT_MS);
 
   const eslintResult = runCapture("npx", ["eslint", ".", "--format", "json"], repoRoot, ESLINT_TIMEOUT_MS);
   const { errorCount: eslintErrorCount, warningCount: eslintWarningCount } = parseEslintJson(eslintResult.stdout);
@@ -198,7 +268,7 @@ export function captureQualitySnapshot(repoRoot: string, now: Date = new Date())
   const buildResult = runCapture("npm", ["run", "build"], repoRoot, BUILD_TIMEOUT_MS);
 
   const timedOutGates: string[] = [];
-  if (tsResult.timedOut) timedOutGates.push("typescript");
+  if (tsTimedOut) timedOutGates.push("typescript");
   if (eslintResult.timedOut) timedOutGates.push("eslint");
   if (unitResult.timedOut) timedOutGates.push("unit_tests");
   if (playwrightResult.timedOut) timedOutGates.push("playwright");
