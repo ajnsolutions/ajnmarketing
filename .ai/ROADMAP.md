@@ -25,7 +25,7 @@ Nothing is currently mid-flight on the product track: no open PR, no unmerged pr
 ## Next
 
 Per `docs/project-magic/IMPLEMENTATION_ROADMAP.md`, Wave III's remaining scope:
-- **Market Radar** — owner-facing add/remove/prioritize/benchmark controls over the existing `lib/market-context/` competitor provider (expansion, not a rebuild, per `EXISTING_SYSTEM_AUDIT.md`). Persistence foundation shipped (`lib/market-radar/`, migration `037_market_radar.sql`, branch `ai-queue/001-market-radar-foundation`); the owner-facing view (Task 002) is next.
+- **Market Radar** — owner-facing add/remove/prioritize/benchmark controls over the existing `lib/market-context/` competitor provider (expansion, not a rebuild, per `EXISTING_SYSTEM_AUDIT.md`). Persistence foundation shipped (`lib/market-radar/`, migration `037_market_radar.sql`, PR #101). The owner-facing view (Task 002, branch `ai-queue/002-market-radar-view`) has now also shipped: `/dashboard/market-radar` (add/remove competitors and benchmarks, reachable via "More tools"). Not yet built: the monitoring/detection layer and its four downstream surfacing points (Weekly Briefing, Marketing Director recommendations, Business Pulse) — explicitly out of scope for Task 002, unscoped future work.
 - **Seasonal Intelligence** — forward-looking, lead-time-aware forecasts on top of the existing `lib/marketing-memory/seasonality.ts` recurrence classification (expansion, not a rebuild).
 
 Per `docs/ARCHITECTURE_REVIEW_2026.md`, the highest-priority non-feature work: resolve the three-competing-decision-systems question (Marketing Recommendations vs. Tasks vs. Marketing Plan, plus Assisted Pilot as a fourth adjacent layer) before shipping further recommendation surface area.
