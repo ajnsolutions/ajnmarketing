@@ -1,0 +1,45 @@
+{
+  "run_id": "2026-08-03T051052683Z",
+  "started_at": "2026-08-03T05:10:52.684Z",
+  "finished_at": "2026-08-03T05:28:01.275Z",
+  "stop_reason": "task 003 failed: no project-memory update",
+  "baseline": {
+    "generatedAt": "2026-08-03T05:10:55.247Z",
+    "typescriptErrorCount": 18,
+    "eslintErrorCount": 0,
+    "eslintWarningCount": 7,
+    "unitTestFailureCount": 0,
+    "unitTestFailureNames": [],
+    "playwrightFailureCount": 0,
+    "playwrightFailureNames": [],
+    "buildSucceeded": true,
+    "timedOutGates": []
+  },
+  "tasks": [
+    {
+      "id": "003",
+      "name": "Competitor Observation Engine: evidence model, confidence scoring, persistence",
+      "status": "failed",
+      "branch": "ai-queue/003-competitor-observation-engine",
+      "commit": null,
+      "pr": null,
+      "blocker": "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.",
+      "base_resolution": {
+        "ok": true,
+        "ref": "origin/main",
+        "reason": "dependency \"001\" completed via PR #101, verified MERGED into main; merge commit 895f5d3360530938184588a07ae87cbe13e1477a confirmed as an ancestor of origin/main — the merged dependency branch is not required to still exist.",
+        "error": null
+      },
+      "quality_gate": {
+        "overall_status": "pass",
+        "new_regressions": [],
+        "fixed_regressions": [],
+        "remaining_historical_debt": [
+          "18 pre-existing TypeScript error(s), unchanged",
+          "7 pre-existing ESLint warning(s), unchanged"
+        ],
+        "repair_attempts": 0
+      }
+    }
+  ]
+}
