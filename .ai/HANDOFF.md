@@ -68,11 +68,11 @@ A permanent, tested recovery path — `reconcileTaskAgainstMemoryCheckFailure`/`
 ## Branches / commits / PRs
 
 - **Task 003 recovery** — branch `ai-queue/003-competitor-observation-engine`, commits `d75d198` (QUEUE_STATUS.json completion-state correction via `finalizeCompletionState()`) and `8d4875e` (real run evidence). PR: [#107](https://github.com/ajnsolutions/ajnmarketing/pull/107) — OPEN, not merged. Product work only; this recovery touched no feature code.
-- **Queue hardening** — branch `fix/queue-project-memory-auto-repair`, based on `main` @ `7177304`. This PR (opened after this handoff, see below) contains only infrastructure: `scripts/ai/projectMemory.ts` (new), `scripts/ai/run-queue.ts`, `scripts/ai/reconcile.ts`, `scripts/ai/reconcile-queue.ts`, `scripts/ai/queueTypes.ts`, `scripts/ai/queue-status.ts`, `scripts/ai/generate-morning-brief.ts`, the four new/extended test files, `.ai/queue/prompts/004-*.md`/`005-*.md`, `.ai/DECISIONS.md` (ADR-0017), and this file plus `CURRENT_STATUS.md`/`STATUS.json`/`OPEN_ITEMS.md`.
+- **Queue hardening** — branch `fix/queue-project-memory-auto-repair`, commit `dc09f6d`, based on `main` @ `7177304`. Contains only infrastructure: `scripts/ai/projectMemory.ts` (new), `scripts/ai/run-queue.ts`, `scripts/ai/reconcile.ts`, `scripts/ai/reconcile-queue.ts`, `scripts/ai/queueTypes.ts`, `scripts/ai/queue-status.ts`, `scripts/ai/generate-morning-brief.ts`, the four new/extended test files, `.ai/queue/prompts/004-*.md`/`005-*.md`, `.ai/DECISIONS.md` (ADR-0017), and this file plus `CURRENT_STATUS.md`/`STATUS.json`/`OPEN_ITEMS.md`. PR: [#108](https://github.com/ajnsolutions/ajnmarketing/pull/108) — OPEN, not merged.
 
 ## Exact merge order
 
-No hard ordering dependency — the two PRs touch disjoint files and neither is based on the other. Either can merge first. Recommended: merge #107 (Task 003) first, since Tasks 004/005 are blocked on it either way; merge the queue-hardening PR before or immediately after so the *next* queue run (which will attempt Task 004) is protected by the fix.
+No hard ordering dependency — the two PRs touch disjoint files and neither is based on the other. Either can merge first. Recommended: merge #107 (Task 003) first, since Tasks 004/005 are blocked on it either way; merge #108 (queue hardening) before or immediately after so the *next* queue run (which will attempt Task 004) is protected by the fix.
 
 ## Blockers
 
