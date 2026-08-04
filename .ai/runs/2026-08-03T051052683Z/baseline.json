@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-08-03T05:10:55.247Z",
+  "typescriptErrorCount": 18,
+  "eslintErrorCount": 0,
+  "eslintWarningCount": 7,
+  "unitTestFailureCount": 0,
+  "unitTestFailureNames": [],
+  "playwrightFailureCount": 0,
+  "playwrightFailureNames": [],
+  "buildSucceeded": true,
+  "timedOutGates": []
+}
