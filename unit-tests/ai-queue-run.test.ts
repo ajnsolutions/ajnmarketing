@@ -150,3 +150,32 @@ test("runExceedsWallClockBudget is true well past the budget", () => {
   const wayPast = start + 500 * 60 * 1000;
   assert.equal(runExceedsWallClockBudget(start, wayPast, 360), true);
 });
+
+test("a dependent task never becomes eligible while its dependency is 'failed' with an invalid Project Memory update (ADR-0017) — the memory check is a real gate, not cosmetic", () => {
+  const dep = task({ id: "003", depends_on: [] });
+  const dependent = task({ id: "004", depends_on: ["003"] });
+  const queue = queueWith([dep, dependent], "stacked");
+  const state = stateFor([dep, dependent], {
+    "003": {
+      status: "failed",
+      blocker: "task completed and passed quality gates, but its Project Memory update is invalid after 3 repair attempt(s): .ai/HANDOFF.md was not updated",
+      memory_validation: { passed: false, changed_files: [], reasons: [".ai/HANDOFF.md was not updated"], repair_attempts: 3 },
+    },
+  });
+  assert.equal(selectNextEligibleTask(queue, state), null, "004 depends on 003, which never reached 'completed' — it must stay ineligible, not start on top of an incomplete dependency");
+});
+
+test("a dependent task becomes eligible once its dependency's Project Memory update genuinely passes and it reaches 'completed'", () => {
+  const dep = task({ id: "003", depends_on: [] });
+  const dependent = task({ id: "004", depends_on: ["003"] });
+  const queue = queueWith([dep, dependent], "stacked");
+  const state = stateFor([dep, dependent], {
+    "003": {
+      status: "completed",
+      pr: "https://github.com/x/y/pull/107",
+      memory_validation: { passed: true, changed_files: [".ai/HANDOFF.md", ".ai/CURRENT_STATUS.md", ".ai/STATUS.json"], reasons: [], repair_attempts: 0 },
+    },
+  });
+  const next = selectNextEligibleTask(queue, state);
+  assert.equal(next?.id, "004");
+});

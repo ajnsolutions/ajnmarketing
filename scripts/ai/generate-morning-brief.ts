@@ -11,6 +11,13 @@ import { redactSecrets } from "./redact.ts";
 import { loadRunQueue, QueueFileError } from "./queueIO.ts";
 import type { RunQueue } from "./queueTypes.ts";
 
+interface RunTaskMemoryValidation {
+  passed: boolean;
+  changed_files: string[];
+  reasons: string[];
+  repair_attempts: number;
+}
+
 interface RunTaskStatus {
   id: string;
   name: string;
@@ -19,6 +26,7 @@ interface RunTaskStatus {
   commit: string | null;
   pr: string | null;
   blocker: string | null;
+  memory_validation?: RunTaskMemoryValidation | null;
 }
 
 interface RunStatusFile {
@@ -74,7 +82,14 @@ export function buildMorningBriefMarkdown(queue: RunQueue | null, run: RunStatus
   lines.push("## Blockers");
   const blockers = failed.filter((t) => t.blocker);
   if (blockers.length === 0) lines.push("None.");
-  for (const t of blockers) lines.push(`- ${t.id}: ${t.blocker}`);
+  for (const t of blockers) {
+    lines.push(`- ${t.id}: ${t.blocker}`);
+    if (t.memory_validation && !t.memory_validation.passed) {
+      lines.push(
+        `  - Project Memory check failed (${t.memory_validation.repair_attempts} repair attempt(s) tried): ${t.memory_validation.reasons.join("; ")}`
+      );
+    }
+  }
   lines.push("");
 
   lines.push("## Safe recommended next action");

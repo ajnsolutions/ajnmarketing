@@ -94,6 +94,7 @@ import {
   lookupPrForBranch,
   lookupPrByUrl,
   reconcileQueueState,
+  reconcileFailedMemoryChecks,
   resolveDependencyBase,
   resolveGitRef,
   isAncestorRef,
@@ -107,6 +108,7 @@ import {
   type QualitySnapshot,
   type QualityComparisonResult,
 } from "./qualityGates.ts";
+import { validateProjectMemoryUpdate, runMemoryValidationWithRepair, formatMemoryValidationMarkdown, type MemoryValidationResult } from "./projectMemory.ts";
 
 const ADAPTERS: Record<string, AgentAdapter> = {
   claude: claudeAdapter,
@@ -133,6 +135,9 @@ interface AttemptedTask {
   repairAttempts?: number;
   /** How the base ref for this task's branch was resolved — see resolveDependencyBase() in reconcile.ts. Recorded in task logs, RUN_SUMMARY.md, and RUN_STATUS.json (requirement: never leave this implicit). */
   baseResolution?: BaseResolution;
+  /** Project Memory validation result — see scripts/ai/projectMemory.ts and .ai/DECISIONS.md ADR-0017. */
+  memoryValidation?: MemoryValidationResult;
+  memoryRepairAttempts?: number;
 }
 
 /** Picks the next task eligible to run: status pending in both the queue file and live state, not disabled, all dependencies completed. Returns null when nothing is currently eligible (queue finished or blocked). */
@@ -231,6 +236,11 @@ function writeRunArtifacts(
     summaryLines.push(formatQualityComparisonMarkdown(`${task.id} — ${task.name}`, comparison, repairAttempts ?? 0), "");
   }
 
+  for (const { task, memoryValidation, memoryRepairAttempts } of attempted) {
+    if (!memoryValidation) continue;
+    summaryLines.push(formatMemoryValidationMarkdown(`${task.id} — ${task.name}`, memoryValidation, memoryRepairAttempts ?? 0), "");
+  }
+
   writeFileSync(join(runDir, "RUN_SUMMARY.md"), summaryLines.join("\n") + "\n", "utf8");
 
   const statusJson = {
@@ -239,7 +249,7 @@ function writeRunArtifacts(
     finished_at: finishedAt,
     stop_reason: stopReason,
     baseline,
-    tasks: attempted.map(({ task, state, comparison, repairAttempts, baseResolution }) => ({
+    tasks: attempted.map(({ task, state, comparison, repairAttempts, baseResolution, memoryValidation, memoryRepairAttempts }) => ({
       id: task.id,
       name: task.name,
       status: state.status,
@@ -255,6 +265,14 @@ function writeRunArtifacts(
             fixed_regressions: comparison.fixedRegressions,
             remaining_historical_debt: comparison.remainingHistoricalDebt,
             repair_attempts: repairAttempts ?? 0,
+          }
+        : null,
+      memory_validation: memoryValidation
+        ? {
+            passed: memoryValidation.passed,
+            changed_files: memoryValidation.changedFiles,
+            reasons: memoryValidation.reasons,
+            repair_attempts: memoryRepairAttempts ?? 0,
           }
         : null,
     })),
@@ -332,9 +350,20 @@ async function main(): Promise<void> {
     const alreadyRunning = isQueueProcessRunning(repoRoot);
     const reconciliation = reconcileQueueState(queue, state, lookupPrForBranch(repoRoot), alreadyRunning);
     state = reconciliation.state;
-    if (reconciliation.changes.length > 0) {
-      console.log(`Reconciled ${reconciliation.changes.length} stale task state(s) before starting:`);
-      for (const change of reconciliation.changes) {
+
+    // Second pass: any task "failed" specifically by the known Project
+    // Memory false-failure pattern (ADR-0017), with a real PR that
+    // independently re-validates as containing a genuinely valid memory
+    // update, is reconciled to completed here too — so a human doesn't
+    // have to remember to run `npm run ai:queue:reconcile` by hand before
+    // resuming a run that hit this exact failure mode.
+    const memoryReconciliation = reconcileFailedMemoryChecks(repoRoot, queue, state, lookupPrForBranch(repoRoot), validateProjectMemoryUpdate, resolveGitRef(repoRoot));
+    state = memoryReconciliation.state;
+
+    const allStartupChanges = [...reconciliation.changes, ...memoryReconciliation.changes];
+    if (allStartupChanges.length > 0) {
+      console.log(`Reconciled ${allStartupChanges.length} stale task state(s) before starting:`);
+      for (const change of allStartupChanges) {
         console.log(`  ${change.taskId}: ${change.before} -> ${change.after} (${change.reason})`);
       }
       saveQueueState(repoRoot, state);
@@ -501,7 +530,14 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
       promptBody,
       "",
       "---",
-      "Standing instructions (do not skip): read AGENTS.md and every file under .ai/ before starting, per this repository's rules. Before finishing, update the relevant .ai/ memory files (at minimum CURRENT_STATUS.md, STATUS.json, and HANDOFF.md) and commit them in this same branch. Never merge, deploy, change secrets, apply a production migration, or activate a production schedule.",
+      "Standing instructions (do not skip; see .ai/DECISIONS.md ADR-0017 for why every line below is load-bearing, not boilerplate):",
+      "- Read AGENTS.md and every file under .ai/ before starting, per this repository's rules.",
+      "- Before finishing, update the relevant .ai/ memory files — at minimum CURRENT_STATUS.md, STATUS.json, and HANDOFF.md (required every task), plus ROADMAP.md/ARCHITECTURE.md/DECISIONS.md/OPEN_ITEMS.md wherever actually applicable — with a truthful account of what you built, what you tested, and the real results. Never fabricate completion, invent test results, or write generic/boilerplate text in place of a real update.",
+      "- .ai/STATUS.json must remain valid JSON. Leave no unresolved Git conflict markers in any file you touch.",
+      "- HANDOFF.md is a snapshot, not a log — overwrite it wholesale with this task's own branch/status/tests/PR/blockers/recommended-next-step, per its own header instructions.",
+      "- Commit your changes in this same branch (you may commit, push, and open the PR yourself — the queue's own post-task steps are idempotent and will not duplicate or fight your work either way).",
+      "- Never edit .ai/queue/QUEUE_STATUS.json's status/commit/pr/completed_at fields yourself — queue state is recorded only through this orchestrator's own supported completion path, never by hand.",
+      "- Never merge, deploy, change secrets, apply a production migration, or activate a production schedule.",
     ].join("\n");
 
     const taskResult = await adapter.runTask({ prompt, cwd: repoRoot });
@@ -549,64 +585,146 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
       );
     }
     stateEntry.tests = "passed";
+    const testsSummary = formatSnapshotOneLine("Result", currentSnapshot);
 
-    const memoryDiff = sh(
-      "git status --porcelain -- .ai/CURRENT_STATUS.md .ai/STATUS.json .ai/HANDOFF.md .ai/ROADMAP.md .ai/ARCHITECTURE.md .ai/DECISIONS.md .ai/OPEN_ITEMS.md",
+    // Project Memory validation (ADR-0017): detects a real update whether
+    // the agent left it uncommitted (for the commit step below to pick up)
+    // or already committed it itself — the exact case that produced Task
+    // 003's false "no project-memory update" failure. Bounded repair loop,
+    // reusing the same maxRepairAttempts budget as the quality-gate loop
+    // above (Part 3's "aligned with the existing repair architecture").
+    const memoryOutcome = await runMemoryValidationWithRepair({
       repoRoot,
-      GIT_QUICK_TIMEOUT_MS
-    );
-    if (memoryDiff.output.trim().length === 0) {
+      baseRef: branchBase,
+      taskId: next.id,
+      taskName: next.name,
+      branch: next.branch,
+      testsSummary,
+      maxAttempts: maxRepairAttempts,
+      validateMemory: validateProjectMemoryUpdate,
+      runRepairAgent: async (repairPrompt: string) => {
+        const result = await adapter.runTask({ prompt: repairPrompt, cwd: repoRoot });
+        return { success: result.success, log: result.log };
+      },
+    });
+    taskLog += memoryOutcome.log;
+    const memoryValidation = memoryOutcome.finalResult;
+    const memoryRepairAttempts = memoryOutcome.attempts;
+
+    if (!memoryValidation.passed) {
       return fail(
         next,
         stateEntry,
-        "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.",
+        `task completed and passed quality gates, but its Project Memory update is invalid after ${memoryRepairAttempts} repair attempt(s): ${memoryValidation.reasons.join("; ")}`,
         taskLog,
-        `task ${next.id} failed: no project-memory update`,
+        `task ${next.id} failed: no valid project-memory update`,
         comparison,
         repairAttempts,
-        baseResolution
+        baseResolution,
+        memoryValidation,
+        memoryRepairAttempts
       );
     }
 
-    sh("git add -A", repoRoot, GIT_QUICK_TIMEOUT_MS);
-    const commitMessage = `${next.name}\n\nQueue task ${next.id} from .ai/queue/RUN_QUEUE.yaml.\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
-    const commit = sh(`git commit -m ${JSON.stringify(commitMessage)}`, repoRoot, GIT_QUICK_TIMEOUT_MS);
-    if (!commit.ok) {
-      return fail(next, stateEntry, `git commit failed:\n${commit.output}`, taskLog + "\n\n" + commit.output, `task ${next.id} failed: commit failed (nothing to commit, or a git error)`, comparison, repairAttempts, baseResolution);
+    // Idempotent from here on: the agent may have already committed (and
+    // even pushed and opened its own PR) as part of following its own
+    // prompt's standing instructions — exactly what happened for Task 003.
+    // Every step below checks real state first rather than assuming a
+    // fixed "nothing has happened yet" starting point.
+    const preCommitStatus = sh("git status --porcelain", repoRoot, GIT_QUICK_TIMEOUT_MS);
+    if (preCommitStatus.output.trim().length > 0) {
+      sh("git add -A", repoRoot, GIT_QUICK_TIMEOUT_MS);
+      const commitMessage = `${next.name}\n\nQueue task ${next.id} from .ai/queue/RUN_QUEUE.yaml.\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
+      const commit = runCommand("git", ["commit", "-m", commitMessage], repoRoot, GIT_QUICK_TIMEOUT_MS);
+      if (!commit.ok) {
+        return fail(
+          next,
+          stateEntry,
+          `git commit failed:\n${commit.output}`,
+          taskLog + "\n\n" + commit.output,
+          `task ${next.id} failed: commit failed`,
+          comparison,
+          repairAttempts,
+          baseResolution,
+          memoryValidation,
+          memoryRepairAttempts
+        );
+      }
     }
     const commitSha = sh("git rev-parse HEAD", repoRoot, GIT_QUICK_TIMEOUT_MS).output.trim();
     stateEntry.commit = commitSha;
 
     const push = sh(`git push -u origin ${next.branch}`, repoRoot, GIT_PUSH_TIMEOUT_MS);
     if (!push.ok) {
-      return fail(next, stateEntry, `git push failed:\n${push.output}`, taskLog + "\n\n" + push.output, `task ${next.id} failed: push failed`, comparison, repairAttempts, baseResolution);
+      return fail(
+        next,
+        stateEntry,
+        `git push failed:\n${push.output}`,
+        taskLog + "\n\n" + push.output,
+        `task ${next.id} failed: push failed`,
+        comparison,
+        repairAttempts,
+        baseResolution,
+        memoryValidation,
+        memoryRepairAttempts
+      );
     }
 
     const prBaseBranch = branchBase.startsWith("origin/") ? branchBase.slice("origin/".length) : branchBase;
-    const prBody = [
-      `Queue task \`${next.id}\` from \`.ai/queue/RUN_QUEUE.yaml\`.`,
-      "",
-      `Prompt: \`.ai/queue/${next.prompt}\``,
-      "",
-      "Quality gate (Queue v2, baseline-aware): PASS.",
-      comparison.remainingHistoricalDebt.length > 0
-        ? `Remaining historical debt (pre-existing, unrelated to this task): ${comparison.remainingHistoricalDebt.join("; ")}`
-        : "No historical debt remains.",
-      repairAttempts > 0 ? `Auto-repair attempts used: ${repairAttempts}.` : "",
-      "",
-      "This PR was opened by the unattended overnight queue (`npm run ai:queue`). It has not been merged, deployed, or otherwise activated automatically — see AGENTS.md.",
-    ]
-      .filter((line) => line !== "")
-      .join("\n");
-    const prCreate = runCommand("gh", ["pr", "create", "--base", prBaseBranch, "--head", next.branch, "--title", next.name, "--body", prBody], repoRoot, GH_PR_CREATE_TIMEOUT_MS);
-    if (!prCreate.ok) {
-      return fail(next, stateEntry, `gh pr create failed:\n${prCreate.output}`, taskLog + "\n\n" + prCreate.output, `task ${next.id} failed: PR creation failed (commit and push already succeeded — the branch exists on origin)`, comparison, repairAttempts, baseResolution);
+    // Check for a PR the agent may have already opened itself before
+    // creating a new one — gh pr create errors on a duplicate, which would
+    // otherwise fail an already-successful task a second, different way.
+    const existingPr = lookupPrForBranch(repoRoot)(next.branch);
+    let prUrl: string;
+    if (existingPr && existingPr.state !== "CLOSED") {
+      prUrl = existingPr.url;
+      taskLog += `\n\nReused existing PR #${existingPr.number} (${existingPr.state}) already open for ${next.branch} — not creating a duplicate.`;
+    } else {
+      const prBody = [
+        `Queue task \`${next.id}\` from \`.ai/queue/RUN_QUEUE.yaml\`.`,
+        "",
+        `Prompt: \`.ai/queue/${next.prompt}\``,
+        "",
+        "Quality gate (Queue v2, baseline-aware): PASS.",
+        comparison.remainingHistoricalDebt.length > 0
+          ? `Remaining historical debt (pre-existing, unrelated to this task): ${comparison.remainingHistoricalDebt.join("; ")}`
+          : "No historical debt remains.",
+        repairAttempts > 0 ? `Auto-repair attempts used: ${repairAttempts}.` : "",
+        "Project Memory: verified.",
+        memoryRepairAttempts > 0 ? `Memory repair attempts used: ${memoryRepairAttempts}.` : "",
+        "",
+        "This PR was opened by the unattended overnight queue (`npm run ai:queue`). It has not been merged, deployed, or otherwise activated automatically — see AGENTS.md.",
+      ]
+        .filter((line) => line !== "")
+        .join("\n");
+      const prCreate = runCommand("gh", ["pr", "create", "--base", prBaseBranch, "--head", next.branch, "--title", next.name, "--body", prBody], repoRoot, GH_PR_CREATE_TIMEOUT_MS);
+      if (!prCreate.ok) {
+        return fail(
+          next,
+          stateEntry,
+          `gh pr create failed:\n${prCreate.output}`,
+          taskLog + "\n\n" + prCreate.output,
+          `task ${next.id} failed: PR creation failed (commit and push already succeeded — the branch exists on origin)`,
+          comparison,
+          repairAttempts,
+          baseResolution,
+          memoryValidation,
+          memoryRepairAttempts
+        );
+      }
+      prUrl = prCreate.stdout.trim();
     }
 
-    stateEntry.pr = prCreate.stdout.trim();
+    stateEntry.pr = prUrl;
     stateEntry.status = "completed";
     stateEntry.completed_at = new Date().toISOString();
     stateEntry.tests = "passed";
+    stateEntry.memory_validation = {
+      passed: memoryValidation.passed,
+      changed_files: memoryValidation.changedFiles,
+      reasons: memoryValidation.reasons,
+      repair_attempts: memoryRepairAttempts,
+    };
     state.current_task = null;
 
     // Completion-state fix (see this file's header comment): the commit
@@ -628,7 +746,11 @@ async function attemptTask(params: AttemptTaskParams): Promise<AttemptTaskOutcom
       stateEntry.commit = finalize.commitSha;
     }
 
-    return { ok: true, stopReason: "", attempted: { task: next, state: stateEntry, log: taskLog, comparison, repairAttempts, baseResolution } };
+    return {
+      ok: true,
+      stopReason: "",
+      attempted: { task: next, state: stateEntry, log: taskLog, comparison, repairAttempts, baseResolution, memoryValidation, memoryRepairAttempts },
+    };
   } catch (error) {
     const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
     return fail(next, stateEntry, `task crashed unexpectedly: ${message}`, taskLog + message, `task ${next.id} failed: unexpected crash during execution`, undefined, undefined, baseResolution);
@@ -643,11 +765,21 @@ function fail(
   stopReason: string,
   comparison?: QualityComparisonResult,
   repairAttempts?: number,
-  baseResolution?: BaseResolution
+  baseResolution?: BaseResolution,
+  memoryValidation?: MemoryValidationResult,
+  memoryRepairAttempts?: number
 ): AttemptTaskOutcome {
   stateEntry.status = "failed";
   stateEntry.blocker = blocker;
-  return { ok: false, stopReason, attempted: { task, state: stateEntry, log, comparison, repairAttempts, baseResolution } };
+  if (memoryValidation) {
+    stateEntry.memory_validation = {
+      passed: memoryValidation.passed,
+      changed_files: memoryValidation.changedFiles,
+      reasons: memoryValidation.reasons,
+      repair_attempts: memoryRepairAttempts ?? 0,
+    };
+  }
+  return { ok: false, stopReason, attempted: { task, state: stateEntry, log, comparison, repairAttempts, baseResolution, memoryValidation, memoryRepairAttempts } };
 }
 
 /**
@@ -687,8 +819,15 @@ export function finalizeCompletionState(repoRoot: string, state: QueueState, bra
   const add = sh("git add .ai/queue/QUEUE_STATUS.json", repoRoot, GIT_QUICK_TIMEOUT_MS);
   if (!add.ok) return { ok: false, commitSha: null, output: `git add failed:\n${add.output}` };
 
+  // runCommand (real argv, no shell) — not sh() — because this message has
+  // embedded newlines: sh() runs the whole line through /bin/sh, where a
+  // \n inside a JSON.stringify'd double-quoted string is NOT interpreted
+  // as a real newline (that's bash's $'...' quoting, not plain "..."), so
+  // the commit subject used to literally contain the two characters `\n`
+  // instead of a line break. Discovered live during Task 003's recovery —
+  // this exact line had never actually executed successfully before then.
   const commitMessage = `Record queue completion state\n\nUpdates .ai/queue/QUEUE_STATUS.json to reflect this branch's task as completed — see scripts/ai/run-queue.ts's completion-state fix.\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
-  const commit = sh(`git commit -m ${JSON.stringify(commitMessage)}`, repoRoot, GIT_QUICK_TIMEOUT_MS);
+  const commit = runCommand("git", ["commit", "-m", commitMessage], repoRoot, GIT_QUICK_TIMEOUT_MS);
   if (!commit.ok) {
     // "nothing to commit" is a real, if unlikely, possibility (e.g. this
     // exact state was already pushed by a prior attempt) — not itself an

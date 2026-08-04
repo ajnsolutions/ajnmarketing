@@ -18,7 +18,8 @@
  */
 import { pathToFileURL } from "node:url";
 import { loadRunQueue, loadQueueState, saveQueueState, computeResumeEligible, QueueFileError } from "./queueIO.ts";
-import { isQueueProcessRunning, lookupPrForBranch, reconcileQueueState } from "./reconcile.ts";
+import { isQueueProcessRunning, lookupPrForBranch, reconcileQueueState, reconcileFailedMemoryChecks, resolveGitRef } from "./reconcile.ts";
+import { validateProjectMemoryUpdate } from "./projectMemory.ts";
 import type { RunQueue } from "./queueTypes.ts";
 
 function main(): void {
@@ -42,17 +43,27 @@ function main(): void {
 
   const { state: reconciledState, changes } = reconcileQueueState(queue, state, lookupPrForBranch(repoRoot), running);
 
-  if (changes.length === 0) {
+  // Second, independent reconciliation pass: any task "failed" specifically
+  // by the known Project Memory false-failure pattern (see
+  // scripts/ai/projectMemory.ts and .ai/DECISIONS.md ADR-0017), with a real
+  // PR whose actual base branch re-validates as genuinely containing a
+  // valid memory update. Runs against reconciledState so both passes
+  // compose correctly in one invocation.
+  const memoryReconciliation = reconcileFailedMemoryChecks(repoRoot, queue, reconciledState, lookupPrForBranch(repoRoot), validateProjectMemoryUpdate, resolveGitRef(repoRoot));
+  const finalState = memoryReconciliation.state;
+  const allChanges = [...changes, ...memoryReconciliation.changes];
+
+  if (allChanges.length === 0) {
     console.log("--- confirmed clean ---");
-    console.log("No stale in_progress task state found — nothing to reconcile.");
+    console.log("No stale in_progress task state or Project-Memory false-failure found — nothing to reconcile.");
     return;
   }
 
-  reconciledState.resume_eligible = computeResumeEligible(reconciledState);
-  saveQueueState(repoRoot, reconciledState);
+  finalState.resume_eligible = computeResumeEligible(finalState);
+  saveQueueState(repoRoot, finalState);
 
-  console.log(`Reconciled ${changes.length} task(s):`);
-  for (const change of changes) {
+  console.log(`Reconciled ${allChanges.length} task(s):`);
+  for (const change of allChanges) {
     console.log(`  ${change.taskId}: ${change.before} -> ${change.after}`);
     console.log(`    ${change.reason}`);
   }

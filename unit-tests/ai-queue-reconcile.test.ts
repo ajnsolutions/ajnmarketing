@@ -7,6 +7,9 @@ import {
   classifyTaskState,
   reconcileTaskState,
   reconcileQueueState,
+  reconcileTaskAgainstMemoryCheckFailure,
+  reconcileFailedMemoryChecks,
+  isMemoryCheckFailureBlocker,
   isProcessAlive,
   writeRunLock,
   readRunLock,
@@ -14,6 +17,8 @@ import {
   isQueueProcessRunning,
   type PrLookup,
   type PrLookupResult,
+  type MemoryValidationLike,
+  type RefResolver,
 } from "../scripts/ai/reconcile.ts";
 import { selectNextEligibleTask } from "../scripts/ai/run-queue.ts";
 import type { QueueState, QueueTask, RunQueue, TaskState } from "../scripts/ai/queueTypes.ts";
@@ -291,4 +296,194 @@ test("isQueueProcessRunning is false for a lock left behind by a process that no
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Project Memory false-failure reconciliation (2026-08-03) — the exact real
+// incident: Task 003 genuinely completed its implementation AND its Project
+// Memory update, in the same commit, and opened a real PR — but the OLD
+// memory check only detected UNCOMMITTED changes, so it failed the task
+// anyway. reconcileTaskAgainstMemoryCheckFailure is the permanent, reusable
+// supported recovery path for exactly this failure mode.
+// ---------------------------------------------------------------------------
+
+function memoryFailedState(overrides: Partial<TaskState> = {}): TaskState {
+  return {
+    id: "003",
+    name: "Competitor Observation Engine",
+    status: "failed",
+    branch: "ai-queue/003-competitor-observation-engine",
+    commit: null,
+    pr: null,
+    started_at: "2026-08-03T05:14:17.676Z",
+    completed_at: null,
+    tests: "passed",
+    blocker: "task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work.",
+    ...overrides,
+  };
+}
+
+function passingValidator(changedFiles: string[] = [".ai/HANDOFF.md"]): MemoryValidationLike {
+  return { passed: true, changedFiles, reasons: [] };
+}
+
+function failingValidator(reasons: string[] = ["still no update"]): MemoryValidationLike {
+  return { passed: false, changedFiles: [], reasons };
+}
+
+function resolverReturning(sha: string | null): RefResolver {
+  return () => sha;
+}
+
+test("isMemoryCheckFailureBlocker matches the real historical blocker text and its replacement, not unrelated failures", () => {
+  assert.equal(isMemoryCheckFailureBlocker("task completed and passed quality gates, but did not update any .ai/ memory file — AGENTS.md requires this before completing work."), true);
+  assert.equal(isMemoryCheckFailureBlocker("task completed and passed quality gates, but its Project Memory update is invalid after 3 repair attempt(s): X"), true);
+  assert.equal(isMemoryCheckFailureBlocker("quality gate failed after 3 auto-repair attempt(s) — new regression(s): typescript"), false);
+  assert.equal(isMemoryCheckFailureBlocker("git push failed: network error"), false);
+  assert.equal(isMemoryCheckFailureBlocker(null), false);
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure: the real PR #107 incident — real PR, valid re-validation, reconciles to completed", () => {
+  const pr = mergedPr({ number: 107, state: "OPEN", mergedAt: null, baseRefName: "main" });
+  const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task({ id: "003", branch: "ai-queue/003-competitor-observation-engine" }),
+    memoryFailedState(),
+    lookupReturning(pr),
+    () => passingValidator([".ai/CURRENT_STATUS.md", ".ai/STATUS.json", ".ai/HANDOFF.md"]),
+    resolverReturning("8261a201b52ea8770cad62beee346148c2cb3536")
+  );
+  assert.equal(stateEntry.status, "completed");
+  assert.equal(stateEntry.pr, pr.url);
+  assert.equal(stateEntry.commit, "8261a201b52ea8770cad62beee346148c2cb3536");
+  assert.equal(stateEntry.blocker, null);
+  assert.equal(stateEntry.memory_validation?.passed, true);
+  assert.ok(change);
+  assert.equal(change?.before, "failed");
+  assert.equal(change?.after, "completed");
+  assert.match(change!.reason, /#107/);
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure preserves the task's real implementation — never touches branch/commit files, only the state entry", () => {
+  // "Preserves valid implementation work": the reconciliation is a pure
+  // state-object transform. It must never shell out to touch the working
+  // tree, checkout a branch, or modify any file other than the returned
+  // TaskState — verified here by construction (the function takes no
+  // filesystem-mutating dependency at all, only lookupPr/validateMemory/
+  // resolveRef, all read-only injected functions).
+  const pr = mergedPr({ number: 107, state: "OPEN", mergedAt: null, baseRefName: "main" });
+  let validateCalls = 0;
+  const { stateEntry } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task({ id: "003", branch: "ai-queue/003-competitor-observation-engine" }),
+    memoryFailedState({ tests: "passed — 11/11 new, 1808/1808 full suite" }),
+    lookupReturning(pr),
+    () => {
+      validateCalls++;
+      return passingValidator();
+    },
+    resolverReturning("8261a20")
+  );
+  assert.equal(validateCalls, 1, "must re-validate against real state exactly once, not skip verification");
+  assert.equal(stateEntry.tests, "passed — 11/11 new, 1808/1808 full suite", "the task's own recorded test evidence must survive reconciliation untouched");
+  assert.equal(stateEntry.branch, "ai-queue/003-competitor-observation-engine", "branch must be preserved, not fabricated or cleared");
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure does NOT reconcile a task whose blocker is unrelated to the memory check", () => {
+  const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task(),
+    memoryFailedState({ blocker: "quality gate failed after 3 auto-repair attempt(s) — new regression(s): typescript" }),
+    lookupReturning(mergedPr({ state: "OPEN" })),
+    () => passingValidator(),
+    resolverReturning("abc123")
+  );
+  assert.equal(stateEntry.status, "failed", "an unrelated failure must never be silently reclassified as completed");
+  assert.equal(change, null);
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure does NOT reconcile when no PR exists — refuses to fabricate", () => {
+  const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task(),
+    memoryFailedState(),
+    lookupReturning(null),
+    () => passingValidator(),
+    resolverReturning("abc123")
+  );
+  assert.equal(stateEntry.status, "failed");
+  assert.equal(change, null);
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure does NOT reconcile when the PR was closed without merging", () => {
+  const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task(),
+    memoryFailedState(),
+    lookupReturning(mergedPr({ state: "CLOSED", mergedAt: null })),
+    () => passingValidator(),
+    resolverReturning("abc123")
+  );
+  assert.equal(stateEntry.status, "failed");
+  assert.equal(change, null);
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure does NOT reconcile when re-validation genuinely still fails — the memory update really is still missing", () => {
+  const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task(),
+    memoryFailedState(),
+    lookupReturning(mergedPr({ state: "OPEN" })),
+    () => failingValidator(["HANDOFF.md was not updated"]),
+    resolverReturning("abc123")
+  );
+  assert.equal(stateEntry.status, "failed", "a task genuinely still missing its memory update must stay failed, never waved through");
+  assert.equal(change, null);
+});
+
+test("reconcileTaskAgainstMemoryCheckFailure is a no-op for a task that isn't failed at all", () => {
+  const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(
+    "/fake/repo",
+    task(),
+    memoryFailedState({ status: "completed", blocker: null }),
+    lookupReturning(mergedPr({ state: "OPEN" })),
+    () => passingValidator(),
+    resolverReturning("abc123")
+  );
+  assert.equal(stateEntry.status, "completed");
+  assert.equal(change, null);
+});
+
+test("reconcileFailedMemoryChecks: batch version reconciles matching failed tasks and leaves everything else untouched", () => {
+  const queue: RunQueue = {
+    queue: { name: "q", project: "p", execution_mode: "sequential", stop_on_failure: true, branch_strategy: "stacked", base_branch: "main", default_agent: "claude" },
+    safety: { allow_merge: false, allow_deploy: false, allow_production_migrations: false, allow_secret_changes: false, allow_production_schedule_activation: false },
+    tasks: [task({ id: "001", branch: "ai-queue/001" }), task({ id: "003", branch: "ai-queue/003", depends_on: ["001"] })],
+  };
+  const state: QueueState = {
+    queue_name: "q",
+    generated_at: "2026-08-03T00:00:00Z",
+    generated_by: "test",
+    current_task: null,
+    last_run_id: "run",
+    resume_eligible: true,
+    tasks: [
+      { id: "001", name: "t", status: "completed", branch: "ai-queue/001", commit: "aaa", pr: "https://github.com/x/y/pull/101", started_at: null, completed_at: null, tests: "passed", blocker: null },
+      memoryFailedState({ id: "003", branch: "ai-queue/003" }),
+    ],
+  };
+  const { state: reconciled, changes } = reconcileFailedMemoryChecks(
+    "/fake/repo",
+    queue,
+    state,
+    lookupReturning(mergedPr({ number: 107, state: "OPEN", baseRefName: "main" })),
+    () => passingValidator([".ai/HANDOFF.md"]),
+    resolverReturning("8261a20")
+  );
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].taskId, "003");
+  const t001 = reconciled.tasks.find((t) => t.id === "001")!;
+  const t003 = reconciled.tasks.find((t) => t.id === "003")!;
+  assert.equal(t001.status, "completed", "an already-completed, unrelated task must be left byte-for-byte alone");
+  assert.equal(t003.status, "completed");
 });
