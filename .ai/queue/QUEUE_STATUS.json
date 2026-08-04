@@ -2,7 +2,7 @@
   "queue_name": "ajnmarketing-overnight-queue",
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
-  "current_task": "003",
+  "current_task": null,
   "last_run_id": "2026-08-03T051052683Z",
   "resume_eligible": true,
   "tasks": [
@@ -33,13 +33,13 @@
     {
       "id": "003",
       "name": "Competitor Observation Engine: evidence model, confidence scoring, persistence",
-      "status": "in_progress",
-      "branch": null,
-      "commit": null,
-      "pr": null,
+      "status": "completed",
+      "branch": "ai-queue/003-competitor-observation-engine",
+      "commit": "8261a201b52ea8770cad62beee346148c2cb3536",
+      "pr": "https://github.com/ajnsolutions/ajnmarketing/pull/107",
       "started_at": "2026-08-03T05:14:17.676Z",
-      "completed_at": null,
-      "tests": null,
+      "completed_at": "2026-08-03T05:24:40Z",
+      "tests": "passed — unit 11/11 new (competitor-observation-engine.test.ts), full suite 1808/1808, lint clean (0 errors, 7 pre-existing warnings untouched), typecheck unchanged (18 pre-existing errors, none new), build succeeded, Playwright not run (persistence/scoring-only scope, no UI/route change, matching Task 001's own precedent). Verified from the real agent invocation's own report (.ai/runs/2026-08-03T051052683Z/task-003.log, is_error:false) and PR #107's actual committed diff — not re-run by this recovery.",
       "blocker": null
     },
     {
