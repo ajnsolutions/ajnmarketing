@@ -70,6 +70,15 @@ export function formatQueueStatusReport(queue: RunQueue, state: QueueState, clas
     if (s.pr) lines.push(`      PR: ${s.pr}`);
     if (s.tests) lines.push(`      tests: ${s.tests}`);
     if (s.blocker) lines.push(`      blocker: ${s.blocker}`);
+    if (s.memory_validation) {
+      const mv = s.memory_validation;
+      lines.push(
+        `      memory: ${mv.passed ? "PASS" : "FAIL"} — changed: ${mv.changed_files.length > 0 ? mv.changed_files.join(", ") : "(none)"}${mv.repair_attempts > 0 ? `, repair attempts: ${mv.repair_attempts}` : ""}`
+      );
+      if (!mv.passed) {
+        for (const reason of mv.reasons) lines.push(`        - ${reason}`);
+      }
+    }
   }
 
   lines.push("");

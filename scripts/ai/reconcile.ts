@@ -321,6 +321,126 @@ export function reconcileQueueState(queue: RunQueue, state: QueueState, lookupPr
 }
 
 // ---------------------------------------------------------------------------
+// Project Memory false-failure reconciliation (2026-08-03 — see
+// scripts/ai/projectMemory.ts's header comment and .ai/DECISIONS.md
+// ADR-0017 for the incident this recovers from: Task 003 genuinely
+// completed its implementation AND its Project Memory update, in the same
+// commit, and even opened a real PR — but the OLD memory check only ever
+// looked for UNCOMMITTED changes, so it failed the task anyway).
+//
+// This is a permanent, reusable supported recovery path (used both for
+// this specific incident and for any future task that somehow gets
+// mis-failed the same way, e.g. if the check ever regresses) — it never
+// fabricates a branch, commit, PR, or timestamp; every field it fills in
+// comes from a real `gh pr view`/`gh pr list` lookup and a real,
+// independently-run projectMemory.ts validation against that PR's actual
+// base branch. A task is only ever reconciled here if BOTH a real PR
+// exists AND re-validation genuinely passes — a task that's really still
+// missing its memory update is correctly left alone (failed), not silently
+// waved through.
+// ---------------------------------------------------------------------------
+
+export interface MemoryValidationLike {
+  passed: boolean;
+  changedFiles: string[];
+  reasons: string[];
+}
+
+export type MemoryValidator = (repoRoot: string, baseRef: string) => MemoryValidationLike;
+
+/**
+ * True only for the specific, known false-failure blocker text this
+ * reconciliation exists to fix — never matches an unrelated failure.
+ * Matches both the OLD blocker text ("did not update any .ai/ memory
+ * file", from before this fix) and the NEW one ("Project Memory update is
+ * invalid", from scripts/ai/projectMemory.ts) — a QUEUE_STATUS.json entry
+ * written before this fix shipped still needs to be recoverable by it.
+ */
+export function isMemoryCheckFailureBlocker(blocker: string | null): boolean {
+  if (!blocker) return false;
+  const lower = blocker.toLowerCase();
+  return lower.includes("memory file") || lower.includes("project memory") || lower.includes("project-memory");
+}
+
+/**
+ * Reconciles one task, if and only if: it's currently "failed" with a
+ * blocker matching the known Project Memory false-failure pattern, a real
+ * (open or merged) PR exists for its branch, and independently re-running
+ * projectMemory.ts's validation against that PR's own real base branch
+ * genuinely passes. Otherwise returns the entry unchanged — in particular,
+ * a task whose memory update really is still missing/invalid stays failed.
+ */
+export function reconcileTaskAgainstMemoryCheckFailure(
+  repoRoot: string,
+  task: QueueTask,
+  stateEntry: TaskState,
+  lookupPr: PrLookup,
+  validateMemory: MemoryValidator,
+  resolveRef: RefResolver
+): { stateEntry: TaskState; change: ReconciliationChange | null } {
+  if (stateEntry.status !== "failed" || !isMemoryCheckFailureBlocker(stateEntry.blocker)) {
+    return { stateEntry, change: null };
+  }
+  const branch = stateEntry.branch ?? task.branch;
+  if (!branch) return { stateEntry, change: null };
+
+  const pr = lookupPr(branch);
+  if (!pr || pr.state === "CLOSED") return { stateEntry, change: null };
+  if (!pr.baseRefName) return { stateEntry, change: null };
+
+  const baseRef = `origin/${pr.baseRefName}`;
+  const validation = validateMemory(repoRoot, baseRef);
+  if (!validation.passed) return { stateEntry, change: null };
+
+  const remoteCommit = resolveRef(`origin/${branch}`);
+
+  const reconciled: TaskState = {
+    ...stateEntry,
+    status: "completed",
+    branch,
+    pr: pr.url,
+    commit: remoteCommit ?? stateEntry.commit,
+    completed_at: pr.mergedAt ?? stateEntry.completed_at ?? new Date().toISOString(),
+    tests: stateEntry.tests ?? "passed",
+    blocker: null,
+    memory_validation: {
+      passed: true,
+      changed_files: validation.changedFiles,
+      reasons: [],
+      repair_attempts: stateEntry.memory_validation?.repair_attempts ?? 0,
+    },
+  };
+  return {
+    stateEntry: reconciled,
+    change: {
+      taskId: task.id,
+      before: "failed",
+      after: "completed",
+      reason: `blocker matched the known Project Memory false-failure pattern; PR #${pr.number} for ${branch} is real (${pr.state}), and independently re-validating Project Memory against its actual base (${baseRef}) genuinely passes (changed: ${validation.changedFiles.join(", ") || "(none)"}) — reconciled from real GitHub/git state, not fabricated.`,
+    },
+  };
+}
+
+export function reconcileFailedMemoryChecks(
+  repoRoot: string,
+  queue: RunQueue,
+  state: QueueState,
+  lookupPr: PrLookup,
+  validateMemory: MemoryValidator,
+  resolveRef: RefResolver
+): ReconciliationResult {
+  const changes: ReconciliationChange[] = [];
+  const tasks = state.tasks.map((entry) => {
+    const task = queue.tasks.find((t) => t.id === entry.id);
+    if (!task) return entry;
+    const { stateEntry, change } = reconcileTaskAgainstMemoryCheckFailure(repoRoot, task, entry, lookupPr, validateMemory, resolveRef);
+    if (change) changes.push(change);
+    return stateEntry;
+  });
+  return { state: { ...state, tasks }, changes };
+}
+
+// ---------------------------------------------------------------------------
 // Dependency-base resolution (2026-08-02, second incident same day as the
 // completion-state fix above).
 //

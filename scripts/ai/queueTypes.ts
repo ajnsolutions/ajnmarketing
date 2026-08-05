@@ -97,6 +97,13 @@ export interface ValidationResult {
 
 // --- QUEUE_STATUS.json ---
 
+export interface TaskMemoryValidationState {
+  passed: boolean;
+  changed_files: string[];
+  reasons: string[];
+  repair_attempts: number;
+}
+
 export interface TaskState {
   id: string;
   name: string;
@@ -108,6 +115,15 @@ export interface TaskState {
   completed_at: string | null;
   tests: string | null;
   blocker: string | null;
+  /**
+   * Project Memory validation result for this task's most recent attempt —
+   * see scripts/ai/projectMemory.ts. Optional/absent on older state entries
+   * written before this field existed (e.g. Tasks 001/002), and on tasks
+   * that never reached the memory-check step (failed earlier). Records
+   * which memory files satisfied the requirement and, on failure, exactly
+   * why — required to be reviewable per .ai/DECISIONS.md ADR-0017.
+   */
+  memory_validation?: TaskMemoryValidationState | null;
 }
 
 export interface QueueState {

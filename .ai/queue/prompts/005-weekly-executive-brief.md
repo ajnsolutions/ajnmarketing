@@ -51,6 +51,14 @@ Add a Market Radar section to the **weekly** Executive Brief (`weekly_strategy_b
 - Never weaken, skip, bypass, disable, or delete a meaningful test to make a quality gate pass.
 - If any requirement above turns out to be materially ambiguous once you're actually working in the code, stop. Record the specific ambiguity and what you'd need to know in both `.ai/OPEN_ITEMS.md` (as a blocker) and `.ai/HANDOFF.md` (as the reason work stopped), then end the task cleanly — do not half-implement a guess.
 
+## Project Memory and truthfulness (see `.ai/DECISIONS.md` ADR-0017 for the incident this codifies)
+
+- Before your final commit, update `.ai/CURRENT_STATUS.md`, `.ai/STATUS.json`, and `.ai/HANDOFF.md` — required every task — plus `.ai/ROADMAP.md`/`.ai/ARCHITECTURE.md`/`.ai/DECISIONS.md`/`.ai/OPEN_ITEMS.md` wherever actually applicable. `HANDOFF.md` is a snapshot, not a log — overwrite it wholesale per its own header, don't append.
+- Every claim in your Project Memory update must be truthful: report tests and their real results, never fabricate completion, and never write generic boilerplate in place of a real, specific account of what you built.
+- `.ai/STATUS.json` must remain valid JSON. Leave no unresolved Git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) in any file you touch.
+- You may commit, push, and open the PR yourself, or leave changes uncommitted for the queue's own orchestration to finish — both are supported and neither will duplicate or fight the other's work.
+- Never hand-edit `.ai/queue/QUEUE_STATUS.json`'s `status`/`commit`/`pr`/`completed_at` fields — queue completion state is recorded only through the orchestrator's own supported path, never by hand.
+
 ## Workflow requirements
 
 - Use the feature branch `ai-queue/005-weekly-executive-brief`, created from Task 003's branch tip (or `main`, if Task 003 has since merged — do not create it from Task 004's branch).
