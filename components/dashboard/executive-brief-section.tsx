@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { ExecutiveBrief } from "@/lib/executive-briefing/types";
+import type { ExecutiveBrief, ExecutiveMarketRadarHighlight } from "@/lib/executive-briefing/types";
 import { LastUpdatedIndicator, ReadOnlyNotice } from "@/components/dashboard/ui/page-chrome";
 
 function ItemList({
@@ -29,6 +29,30 @@ function ItemList({
             }
           >
             {item.text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function MarketRadarHighlightList({ items }: { items: ExecutiveMarketRadarHighlight[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="sm:col-span-2">
+      <h3 className="text-sm font-semibold text-navy-900">Market Radar</h3>
+      <ul className="mt-2 space-y-3">
+        {items.map((item, index) => (
+          <li key={`${item.observation}:${index}`} className="text-sm leading-6 text-text-muted">
+            <p className="font-medium text-navy-900">{item.observation}</p>
+            <p className="mt-1">
+              <span className="font-medium text-navy-900">Why it matters:</span>{" "}
+              {item.whyItMatters}
+            </p>
+            <p className="mt-1">
+              <span className="font-medium text-navy-900">Suggested action:</span>{" "}
+              {item.suggestedAction}
+            </p>
           </li>
         ))}
       </ul>
@@ -151,6 +175,7 @@ export function ExecutiveBriefSection({ brief }: { brief: ExecutiveBrief }) {
           <ItemList title="Wins" items={liveBrief.wins} />
           <ItemList title="Watch items" items={liveBrief.watchItems} />
           <ItemList title="Important changes" items={liveBrief.recentChanges} />
+          <MarketRadarHighlightList items={liveBrief.marketRadarHighlights} />
           <div className="sm:col-span-2">
             <h3 className="text-sm font-semibold text-navy-900">Supporting context</h3>
             <ul className="mt-2 space-y-2">

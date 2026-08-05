@@ -6,6 +6,8 @@
  * recommendations. Marketing Director remains the sole decision-maker.
  */
 
+import type { CompetitorObservationConfidence } from "@/lib/competitor-observations/types";
+
 export const ExecutiveBriefTypes = {
   MORNING: "morning_brief",
   WEEKLY_STRATEGY: "weekly_strategy_brief",
@@ -42,6 +44,20 @@ export type ExecutiveBriefItem = {
   text: string;
 };
 
+/**
+ * A single Market Radar observation surfaced on the weekly brief only (see
+ * buildMarketRadarHighlights in buildBrief.ts). Richer than ExecutiveBriefItem
+ * because a competitor observation needs "why it matters" and "suggested
+ * action" alongside the observation itself — deliberately not retrofitted
+ * onto the flat { text } shape used everywhere else in this brief.
+ */
+export type ExecutiveMarketRadarHighlight = {
+  observation: string;
+  whyItMatters: string;
+  suggestedAction: string;
+  confidence: CompetitorObservationConfidence;
+};
+
 export type ExecutiveBrief = {
   briefType: ExecutiveBriefType;
   headline: string;
@@ -52,6 +68,8 @@ export type ExecutiveBrief = {
   today: ExecutiveBriefItem[];
   recentChanges: ExecutiveBriefItem[];
   supportingEvidence: ExecutiveSupportingEvidence[];
+  /** Weekly-brief-only; always [] on the morning brief and monthly report. */
+  marketRadarHighlights: ExecutiveMarketRadarHighlight[];
   generatedAt: string;
 };
 

@@ -4,6 +4,11 @@
  */
 
 import type { CommandCenterWeeklyWins } from "@/lib/command-center/types";
+import {
+  CompetitorObservationConfidences,
+  type CompetitorObservation,
+  type CompetitorObservationConfidence,
+} from "@/lib/competitor-observations/types";
 import type { MarketingHealthState } from "@/lib/head-of-marketing/types";
 import type { MarketingDirectorCandidate, MarketingDirectorDecision } from "@/lib/marketing-director/types";
 import type { MarketingMemoryEvidencePackage } from "@/lib/marketing-memory/evidenceTypes";
@@ -14,6 +19,7 @@ import {
   type ExecutiveBrief,
   type ExecutiveBriefItem,
   type ExecutiveBriefType,
+  type ExecutiveMarketRadarHighlight,
   type ExecutiveSupportingEvidence,
 } from "@/lib/executive-briefing/types";
 
@@ -34,6 +40,10 @@ export type BuildExecutiveBriefInput = {
   memoryEvidence: MarketingMemoryEvidencePackage | null;
   thisWeekHandled: string[];
   noticed: string[];
+  /** Task 003's confirmed observations — only ever surfaced on the weekly brief;
+   * see buildMarketRadarHighlights. Optional because the morning brief and
+   * monthly report paths do not fetch or pass this. */
+  marketRadarObservations?: CompetitorObservation[];
   now?: Date;
 };
 
@@ -328,6 +338,53 @@ function buildSupportingEvidence(input: BuildExecutiveBriefInput): ExecutiveSupp
   return evidence.slice(0, 12);
 }
 
+const MARKET_RADAR_FALLBACK_SUGGESTED_ACTION =
+  "Review this observation before your next planning session.";
+
+/** Deterministic, honest framing tied to the observation's own confidence level —
+ * never invented from the observation's free-text content. */
+function marketRadarWhyItMatters(confidence: CompetitorObservationConfidence): string {
+  switch (confidence) {
+    case CompetitorObservationConfidences.HIGH:
+      return "This is the strongest evidence Market Radar currently produces — worth factoring into this week's strategy.";
+    case CompetitorObservationConfidences.MEDIUM:
+      return "This comes from real, self-reported competitor information, though it hasn't been independently confirmed.";
+    case CompetitorObservationConfidences.LOW:
+    default:
+      return "This is an early signal with limited evidence behind it — worth knowing about, not yet a firm conclusion.";
+  }
+}
+
+/** Only high confidence earns a more specific action; anything less falls back to
+ * the calm, generic-but-honest default rather than inventing false specificity. */
+function marketRadarSuggestedAction(confidence: CompetitorObservationConfidence): string {
+  if (confidence === CompetitorObservationConfidences.HIGH) {
+    return "This is well-supported enough to raise at your next strategy conversation.";
+  }
+  return MARKET_RADAR_FALLBACK_SUGGESTED_ACTION;
+}
+
+/**
+ * Weekly-brief-only: surfaces Task 003's already-confirmed competitor
+ * observations without re-scoring or re-judging them. Returns [] for the
+ * morning brief and monthly report, and when there is nothing to show.
+ */
+export function buildMarketRadarHighlights(
+  input: BuildExecutiveBriefInput,
+): ExecutiveMarketRadarHighlight[] {
+  if (input.briefType !== ExecutiveBriefTypes.WEEKLY_STRATEGY) return [];
+
+  const observations = input.marketRadarObservations;
+  if (!observations || observations.length === 0) return [];
+
+  return observations.map((observation) => ({
+    observation: observation.summary,
+    whyItMatters: marketRadarWhyItMatters(observation.confidence),
+    suggestedAction: marketRadarSuggestedAction(observation.confidence),
+    confidence: observation.confidence,
+  }));
+}
+
 /**
  * Build any supported brief type from the same input. Morning is the surfaced default;
  * weekly/monthly adjust summary framing only — priorities still come from MD.
@@ -355,6 +412,7 @@ export function buildExecutiveBrief(input: BuildExecutiveBriefInput): ExecutiveB
     today: buildToday(input),
     recentChanges: buildRecentChanges(input),
     supportingEvidence: buildSupportingEvidence(input),
+    marketRadarHighlights: buildMarketRadarHighlights(input),
     generatedAt: now.toISOString(),
   };
 }

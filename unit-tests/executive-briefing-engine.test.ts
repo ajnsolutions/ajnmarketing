@@ -18,6 +18,7 @@ import { resolveMarketingDirectorDecision } from "../lib/marketing-director/reso
 import type { MarketingDirectorDecision, MarketingDirectorInput } from "../lib/marketing-director/types.ts";
 import type { MarketingMemoryEvidencePackage } from "../lib/marketing-memory/evidenceTypes.ts";
 import { buildWeeklyBriefing } from "../lib/head-of-marketing/weeklyBriefing.ts";
+import type { CompetitorObservation } from "../lib/competitor-observations/types.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const NOW = new Date("2026-07-18T14:00:00.000Z");
@@ -234,6 +235,38 @@ test("all three brief types are supported with distinct briefType", () => {
   );
   assert.match(buildWeeklyStrategyBrief(input).summary, /weekly/i);
   assert.match(buildMonthlyExecutiveReport(input).summary, /monthly/i);
+});
+
+test("marketRadarHighlights is always present and only populated on the weekly brief", () => {
+  const observations: CompetitorObservation[] = [
+    {
+      id: "obs-1",
+      userId: "user-1",
+      businessProfileId: "biz-1",
+      marketRadarEntryId: "entry-1",
+      summary: "Competitor updated their public pricing page.",
+      confidence: "high",
+      sourceLabel: "AJN Market Context (competitor)",
+      occurredAt: null,
+      createdAt: NOW.toISOString(),
+      updatedAt: NOW.toISOString(),
+    },
+  ];
+  const input = briefBase({ marketRadarObservations: observations });
+
+  assert.deepEqual(buildMorningBrief(input).marketRadarHighlights, []);
+  assert.deepEqual(buildMonthlyExecutiveReport(input).marketRadarHighlights, []);
+
+  const weekly = buildWeeklyStrategyBrief(input);
+  assert.equal(weekly.marketRadarHighlights.length, 1);
+  assert.equal(weekly.marketRadarHighlights[0]?.confidence, "high");
+  assert.equal(
+    weekly.marketRadarHighlights[0]?.observation,
+    "Competitor updated their public pricing page.",
+  );
+
+  // Absent altogether stays [] too — never omitted from the shape.
+  assert.deepEqual(buildWeeklyStrategyBrief(briefBase()).marketRadarHighlights, []);
 });
 
 test("headline rules stay deterministic and MD-aligned", () => {
