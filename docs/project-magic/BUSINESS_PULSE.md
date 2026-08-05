@@ -4,6 +4,8 @@
 
 Business Pulse is the executive view of the Growth Engine — a superset of Marketing Health, not a replacement for it. Marketing Health stays exactly as designed and continues to be the primary results language for marketing outcomes. Business Pulse adds the layer above it for the owner who wants the fuller growth picture.
 
+**Implementation status (2026-08-04):** the first real slice of Business Pulse has shipped — a Market Radar-only "What Changed" view, not the full Layer 3 composition described below. `/dashboard/business-pulse` (`app/dashboard/business-pulse/page.tsx`, `components/dashboard/business-pulse-page.tsx`) lists the owner's verified `CompetitorObservation` rows (Task 003, `lib/competitor-observations/persistence.ts`'s `listCompetitorObservationsForUser`), each joined back to its tracked competitor's name, rendered with a plain-language confidence label (`lib/competitor-observations/confidenceLabels.ts`, never a raw score or a raw `low`/`medium`/`high` string) and its real source provenance (`sourceLabel` as plain text — the persisted data carries no evidence URL, so nothing is linked that isn't real), filterable to high-only / medium-and-above / all (`lib/competitor-observations/display.ts`). Reachable via the "More tools" progressive-disclosure list, no new primary nav item. This is explicitly **not** Growth Momentum, Marketing Health integration, or a composition of Customer Voice + Market Radar + Seasonal Intelligence — the page's own copy says so directly. That fuller Layer 3 vision below remains future, unscoped work, gated (per `.ai/ROADMAP.md`'s Wave IV entry) on Waves I–III shipping real production signal first. The monthly-report delivery surface in the table below is likewise still unbuilt.
+
 ---
 
 ## Three layers
