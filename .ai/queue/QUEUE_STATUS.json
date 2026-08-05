@@ -2,7 +2,7 @@
   "queue_name": "ajnmarketing-overnight-queue",
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
-  "current_task": "004",
+  "current_task": null,
   "last_run_id": "2026-08-05T050814949Z",
   "resume_eligible": true,
   "tasks": [
@@ -45,14 +45,26 @@
     {
       "id": "004",
       "name": "Business Pulse Integration: verified observations, What Changed, evidence links, confidence filtering",
-      "status": "in_progress",
-      "branch": null,
-      "commit": null,
-      "pr": null,
+      "status": "completed",
+      "branch": "ai-queue/004-business-pulse-integration",
+      "commit": "1bc36b6cd49f97b6eee7b247bdc5fef6dd665881",
+      "pr": "https://github.com/ajnsolutions/ajnmarketing/pull/109",
       "started_at": "2026-08-05T05:11:35.278Z",
-      "completed_at": null,
-      "tests": null,
-      "blocker": null
+      "completed_at": "2026-08-05T05:31:12.678Z",
+      "tests": "passed",
+      "blocker": null,
+      "memory_validation": {
+        "passed": true,
+        "changed_files": [
+          ".ai/CURRENT_STATUS.md",
+          ".ai/STATUS.json",
+          ".ai/HANDOFF.md",
+          ".ai/ROADMAP.md",
+          ".ai/OPEN_ITEMS.md"
+        ],
+        "reasons": [],
+        "repair_attempts": 0
+      }
     },
     {
       "id": "005",
