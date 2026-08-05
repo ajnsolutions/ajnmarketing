@@ -1,0 +1,74 @@
+{
+  "baseline": {
+    "generatedAt": "2026-08-05T05:08:18.589Z",
+    "typescriptErrorCount": 18,
+    "eslintErrorCount": 0,
+    "eslintWarningCount": 7,
+    "unitTestFailureCount": 0,
+    "unitTestFailureNames": [],
+    "playwrightFailureCount": 0,
+    "playwrightFailureNames": [],
+    "buildSucceeded": true,
+    "timedOutGates": []
+  },
+  "current": {
+    "generatedAt": "2026-08-05T05:28:22.031Z",
+    "typescriptErrorCount": 18,
+    "eslintErrorCount": 0,
+    "eslintWarningCount": 7,
+    "unitTestFailureCount": 0,
+    "unitTestFailureNames": [],
+    "playwrightFailureCount": 0,
+    "playwrightFailureNames": [],
+    "buildSucceeded": true,
+    "timedOutGates": []
+  },
+  "comparison": {
+    "overallStatus": "pass",
+    "gates": [
+      {
+        "gate": "typescript",
+        "baselineValue": "18 error(s)",
+        "currentValue": "18 error(s)",
+        "status": "pass"
+      },
+      {
+        "gate": "eslint_errors",
+        "baselineValue": "0 error(s)",
+        "currentValue": "0 error(s)",
+        "status": "pass"
+      },
+      {
+        "gate": "eslint_warnings",
+        "baselineValue": "7 warning(s)",
+        "currentValue": "7 warning(s)",
+        "status": "pass"
+      },
+      {
+        "gate": "unit_tests",
+        "baselineValue": "0 failure(s)",
+        "currentValue": "0 failure(s)",
+        "status": "pass"
+      },
+      {
+        "gate": "playwright",
+        "baselineValue": "0 failure(s)",
+        "currentValue": "0 failure(s)",
+        "status": "pass"
+      },
+      {
+        "gate": "build",
+        "baselineValue": "succeeded",
+        "currentValue": "succeeded",
+        "status": "pass"
+      }
+    ],
+    "newRegressions": [],
+    "fixedRegressions": [],
+    "remainingHistoricalDebt": [
+      "18 pre-existing TypeScript error(s), unchanged",
+      "7 pre-existing ESLint warning(s), unchanged"
+    ]
+  },
+  "repairAttempts": 0
+}
