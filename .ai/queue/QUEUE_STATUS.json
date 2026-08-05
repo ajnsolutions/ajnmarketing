@@ -2,7 +2,7 @@
   "queue_name": "ajnmarketing-overnight-queue",
   "generated_at": "2026-07-31T14:52:06.092Z",
   "generated_by": "scripts/ai/reset-queue.ts",
-  "current_task": "005",
+  "current_task": null,
   "last_run_id": "2026-08-05T133738781Z",
   "resume_eligible": true,
   "tasks": [
@@ -69,14 +69,26 @@
     {
       "id": "005",
       "name": "Weekly Executive Brief: Market Radar section (executive summary, why it matters, suggested actions)",
-      "status": "in_progress",
-      "branch": null,
-      "commit": null,
-      "pr": null,
+      "status": "completed",
+      "branch": "ai-queue/005-weekly-executive-brief",
+      "commit": "63db00477d4577e0240472007eecd244004c287f",
+      "pr": "https://github.com/ajnsolutions/ajnmarketing/pull/110",
       "started_at": "2026-08-05T13:41:27.950Z",
-      "completed_at": null,
-      "tests": null,
-      "blocker": null
+      "completed_at": "2026-08-05T14:05:09.166Z",
+      "tests": "passed",
+      "blocker": null,
+      "memory_validation": {
+        "passed": true,
+        "changed_files": [
+          ".ai/CURRENT_STATUS.md",
+          ".ai/STATUS.json",
+          ".ai/HANDOFF.md",
+          ".ai/ROADMAP.md",
+          ".ai/OPEN_ITEMS.md"
+        ],
+        "reasons": [],
+        "repair_attempts": 0
+      }
     }
   ]
 }
