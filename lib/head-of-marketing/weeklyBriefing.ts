@@ -4,6 +4,7 @@ import type {
   CommandCenterCalendarItem,
   CommandCenterWeeklyWins,
 } from "@/lib/command-center/types";
+import type { CompetitorObservation } from "@/lib/competitor-observations/types";
 import { buildHeadOfMarketingJournal } from "@/lib/head-of-marketing/journal";
 import { buildMonthlyFocus } from "@/lib/head-of-marketing/monthlyFocus";
 import { buildProactivePresence } from "@/lib/head-of-marketing/proactive";
@@ -56,6 +57,9 @@ export type WeeklyBriefingInput = {
   topRecommendationDetail?: MarketingDirectorTopRecommendationDetail | null;
   /** Optional Marketing Memory evidence — null/omitted preserves pre-Phase-4 decisions. */
   memoryEvidence?: MarketingMemoryEvidencePackage | null;
+  /** Task 003's confirmed observations for this business. Only ever surfaced on
+   * the weekly strategy brief — see buildMarketRadarHighlights. */
+  marketRadarObservations?: CompetitorObservation[];
   now?: Date;
 };
 
@@ -408,6 +412,7 @@ export function buildWeeklyBriefing(input: WeeklyBriefingInput): HeadOfMarketing
     memoryEvidence: input.memoryEvidence ?? null,
     thisWeekHandled: thisWeek,
     noticed,
+    marketRadarObservations: input.marketRadarObservations,
     now: input.now,
   };
   const executiveBriefs = {

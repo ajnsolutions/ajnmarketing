@@ -47,6 +47,7 @@ All three share the same structured shape and the same Marketing Director priori
 - `topPriorities[]` — explained from MD primary action / deferred  
 - `wins[]` / `watchItems[]` / `today[]` / `recentChanges[]`  
 - `supportingEvidence[]` — internal context kinds (preference, learning, market context, etc.) without raw scores  
+- `marketRadarHighlights[]` — **weekly brief only** (always `[]` on morning/monthly); each entry is `{ observation, whyItMatters, suggestedAction, confidence }`, sourced from Task 003's already-confirmed `lib/competitor-observations/` observations and never re-scored or re-judged here — see §9  
 - `generatedAt`, `briefType`  
 
 No markdown. No HTML.
@@ -101,3 +102,11 @@ None are implemented. `getExecutiveBriefForCurrentUser(briefType)` is the adapte
 - Strategic Marketing Calendar may surface brief `today` items as dated priority markers; it does not create a second briefing system (see [`STRATEGIC_MARKETING_CALENDAR.md`](./STRATEGIC_MARKETING_CALENDAR.md)).  
 
 - No background refresh jobs  
+
+---
+
+## 9. Market Radar section (weekly brief only)
+
+**Status: shipped (Task 005, 2026-08-05).** `lib/head-of-marketing/service.ts`'s `getHeadOfMarketingBriefingForCurrentUser` fetches the current user's confirmed observations via `listCompetitorObservationsForUser` (`lib/competitor-observations/persistence.ts`, Task 003) once, and threads them through `WeeklyBriefingInput.marketRadarObservations` → `BuildExecutiveBriefInput.marketRadarObservations`. `buildMarketRadarHighlights` (`lib/executive-briefing/buildBrief.ts`) is a pure function that returns `[]` for `morning_brief`/`monthly_executive_report` and for an empty/absent observation list; for `weekly_strategy_brief` it maps each `CompetitorObservation` into an `ExecutiveMarketRadarHighlight` — `observation` (the signal's own summary text, verbatim), `whyItMatters` and `suggestedAction` (deterministic copy keyed off the observation's own `confidence`, never invented from its free-text content), and `confidence` (passed through unchanged). This never re-scores or re-ranks Task 003's confidence judgment — it presents it.
+
+`components/dashboard/executive-brief-section.tsx` renders `marketRadarHighlights` as a "Market Radar" block inside the existing expandable detail section, shown only when the array is non-empty — no separate empty state, since the brief already has its own overall empty/loading handling.

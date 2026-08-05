@@ -10,6 +10,7 @@ import {
 } from "@/lib/command-center/scoring";
 import { getDashboardSessionContext } from "@/lib/dashboard/session-context";
 import { getBusinessProfileForUser } from "@/lib/business-profile-server";
+import { listCompetitorObservationsForUser } from "@/lib/competitor-observations/persistence";
 import { createClient } from "@/lib/supabase/server";
 import { buildWeeklyBriefing } from "@/lib/head-of-marketing/weeklyBriefing";
 import type { HeadOfMarketingBriefing } from "@/lib/head-of-marketing/types";
@@ -167,6 +168,7 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     publishing,
     approvals,
     marketBrief,
+    marketRadarObservations,
   ] = await Promise.all([
     countOpenRecommendations(supabase, profile.id),
     buildMarketingMemoryEvidencePackage(supabase, profile.user_id, profile.id, {
@@ -182,6 +184,10 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     getPublishingQueueForUser(supabase, profile.user_id),
     getContentApprovalsForUser(supabase, profile.user_id),
     getLatestMarketContextBriefWithItemsForUser(supabase, profile.user_id),
+    // Task 003's confirmed observations — only ever surfaced on the weekly
+    // strategy brief (buildMarketRadarHighlights), fetched once here since
+    // buildWeeklyBriefing builds all three brief types from one shared input.
+    listCompetitorObservationsForUser(supabase, profile.user_id, profile.id),
   ]);
   const experiments = { pendingProposals, ...experimentDashboard };
 
@@ -220,6 +226,7 @@ export async function getHeadOfMarketingBriefingForCurrentUser(): Promise<HeadOf
     candidateRecommendations,
     topRecommendationDetail,
     memoryEvidence,
+    marketRadarObservations,
   });
 
   const withCampaignsAndExperiments = { ...briefing, campaigns, experiments };
