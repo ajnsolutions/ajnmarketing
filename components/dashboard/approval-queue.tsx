@@ -112,6 +112,21 @@ function RecommendationPackagePanel({ pkg }: { pkg: ClientRecommendationDecision
             </ul>
           )}
 
+          {pkg.competitorEvidence.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Market Radar context</p>
+              {pkg.competitorEvidence.map((item, index) => (
+                <div key={index} className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+                  <p className="text-sm font-semibold text-navy-900">{item.competitorName}</p>
+                  <p className="mt-1">{item.observation}</p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {item.confidenceLabel} — {item.sourceLabel}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
             <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Expected benefit</p>
             <p className="mt-1">{pkg.expectedBenefit}</p>

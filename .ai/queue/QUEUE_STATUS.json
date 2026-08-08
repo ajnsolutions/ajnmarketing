@@ -89,6 +89,18 @@
         "reasons": [],
         "repair_attempts": 0
       }
+    },
+    {
+      "id": "006",
+      "name": "Integrate Market Radar Evidence into Marketing Director Recommendations",
+      "status": "pending",
+      "branch": null,
+      "commit": null,
+      "pr": null,
+      "started_at": null,
+      "completed_at": null,
+      "tests": null,
+      "blocker": null
     }
   ]
 }

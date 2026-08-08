@@ -214,6 +214,7 @@ function samplePackage(overrides: Partial<WeeklyApprovalPackage> = {}): WeeklyAp
         recommendedAction: "Create seasonal content",
         whyNow: "Independence Day weekend",
         supportingReasons: [{ text: "Local demand is rising" }],
+        competitorEvidence: [],
         expectedBenefit: "Attract nearby customers searching for local services.",
         confidenceLabel: "good_opportunity",
         confidenceLabelText: "Good opportunity",

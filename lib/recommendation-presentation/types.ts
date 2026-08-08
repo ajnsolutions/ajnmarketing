@@ -48,6 +48,27 @@ export type OutcomeStatusPresentation = {
   detail: string | null;
 };
 
+/**
+ * One real, current, sufficiently-confident competitor observation shown as
+ * business-level competitive context alongside a recommendation -- never
+ * claimed as the specific cause of that recommendation (see
+ * lib/recommendation-presentation/competitorEvidence.ts's header comment).
+ * Kept as its own type (not folded into ClientReason) because it needs to
+ * stay traceable: a source label and its own honest confidence framing,
+ * which ClientReason's flat `{ text }` shape can't carry.
+ */
+export type ClientCompetitorEvidence = {
+  /** The observation's own summary, verbatim -- an observed fact, never embellished. */
+  observation: string;
+  /** The tracked competitor's own name. */
+  competitorName: string;
+  /** Plain-language confidence label, from lib/competitor-observations/confidenceLabels.ts -- never a raw score or raw low/medium/high string. */
+  confidenceLabel: string;
+  confidenceExplanation: string;
+  /** Real provenance -- what produced this observation. */
+  sourceLabel: string;
+};
+
 export type ClientRecommendationDecisionPackage = {
   recommendationId: string;
   contentApprovalId: string | null;
@@ -57,6 +78,8 @@ export type ClientRecommendationDecisionPackage = {
   whyNow: string;
   /** 2-4 short, client-safe supporting reasons -- deterministic, never AI-generated. */
   supportingReasons: ClientReason[];
+  /** Real, current Market Radar evidence for this business -- always present, [] when none qualifies. Business-level competitive context, not a claimed cause of this specific recommendation. */
+  competitorEvidence: ClientCompetitorEvidence[];
   expectedBenefit: string;
   confidenceLabel: ConfidenceLabel;
   confidenceLabelText: string;
