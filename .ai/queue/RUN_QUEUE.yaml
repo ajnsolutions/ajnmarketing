@@ -103,6 +103,26 @@
 # runtime; if a future task wants it enforced, that is a separate,
 # deliberate infrastructure change to run-queue.ts/queueTypes.ts, not
 # something this field does implicitly just by being present.
+#
+# Task 006 (added 2026-08-08): the fourth and last of Market Radar's
+# originally-planned "How it surfaces" points — Marketing Director
+# recommendation evidence. Depends on 003 only, a sibling of 004/005, same
+# non-linear shape as before. A would-be Task 007 (Seasonal Intelligence)
+# was investigated alongside this one, specifically to prove a single
+# `npm run ai:queue` invocation can complete a task and automatically
+# continue to the next — the one queue behavior never yet observed for
+# real (every real run to date processed exactly one task per invocation).
+# Task 007 was explicitly NOT added: `lib/marketing-memory/seasonality.ts`
+# and the actual owner-facing "seasonal hint" shown today are two
+# architecturally disconnected mechanisms, and implementing real Seasonal
+# Intelligence requires a genuine product decision no doc or code
+# resolves — see `.ai/OPEN_ITEMS.md`'s "Task 007 stop condition" for full
+# detail. Task 006 was implemented directly in this session rather than
+# through this queue's own subprocess mechanism, since a single-task run
+# would not have demonstrated the N->N+1 continuation the exercise was
+# meant to prove. That continuation remains unproven — the next real test
+# is whenever a second real, well-defined task exists to queue alongside a
+# new one.
 
 queue:
   name: "ajnmarketing-overnight-queue"
@@ -258,5 +278,28 @@ tasks:
     # wiring + a UI section in an existing component) rather than building
     # a new surface from scratch; smaller than Task 004 but still touches
     # rendered UI, so the Playwright suite is in scope.
+    estimated_duration_minutes: 30
+    status: pending
+
+  - id: "006"
+    name: "Integrate Market Radar Evidence into Marketing Director Recommendations"
+    prompt: "prompts/006-marketing-director-evidence.md"
+    branch: "ai-queue/006-marketing-director-evidence"
+    agent: claude
+    # Depends on 003 only (not 004 or 005 — genuine siblings, no shared
+    # files). Reads lib/competitor-observations/persistence.ts and
+    # display.ts (Task 003/004's read/filter helpers), not Task 004's own
+    # UI or Task 005's Executive Brief work.
+    depends_on: ["003"]
+    requires_migration: false
+    requires_deployment: false
+    requires_secret_change: false
+    activates_production_schedule: false
+    stop_if_ambiguous: true
+    # Informational only — see this file's header comment. Extends
+    # lib/recommendation-presentation/ (new pure function + one new field +
+    # wiring into two existing call sites + a UI block in an existing
+    # component) rather than building a new surface from scratch — similar
+    # shape and size to Task 005.
     estimated_duration_minutes: 30
     status: pending

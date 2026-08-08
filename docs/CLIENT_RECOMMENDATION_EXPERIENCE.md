@@ -124,8 +124,20 @@ Two sources, both real data, **never AI-generated or rewritten**:
    `stale_website_content`) behind the recommendation's related opportunities.
    **The task brief's illustrative "competitor_activity_detected" example does not
    correspond to any real opportunity category or evidence field in this codebase** —
-   there is no competitor-detection opportunity type today. It is deliberately **not**
-   implemented, to avoid fabricating a signal the platform doesn't actually produce.
+   there is no competitor-detection opportunity type today, and this specific
+   `OpportunityCategory`-keyed mechanism still deliberately does not add one, to avoid
+   fabricating a causal link between a specific recommendation and a specific
+   competitor that no opportunity-detection logic in this codebase actually produces.
+   **Update (Task 006, `.ai/queue/prompts/006-marketing-director-evidence.md`):** real
+   competitor evidence (Market Radar's Competitor Observation Engine, Task 003) is now
+   surfaced on the recommendation package, but as a genuinely separate, dedicated field
+   — `competitorEvidence: ClientCompetitorEvidence[]`
+   (`lib/recommendation-presentation/competitorEvidence.ts`) — not folded into this
+   `OpportunityCategory` mechanism. It presents real, current, sufficiently-confident
+   observations as general business-level competitive context, never as the specific
+   cause of any one recommendation. See §13 and
+   `lib/recommendation-presentation/competitorEvidence.ts`'s own header comment for the
+   full reasoning.
 2. **Historical reasons** (`translateHistoricalReasons`): translates PR #28's
    `AdaptiveScoreBreakdown.reasons` by `reasonType` + the **sign** of `reasonWeight`
    only — the raw weight/percentage/description is never read into the client string,
@@ -265,9 +277,11 @@ forms, and every existing button all work exactly as before.
   raw `priority_score`/`confidence` numbers directly — a pre-existing pattern, out of
   scope for this milestone (Phase 6 only targets the Approval Center). Worth revisiting
   in a future pass for consistency.
-- The task brief's "competitor activity detected" and similar richer per-evidence market
-  reasons are not implemented — no real opportunity category/evidence field in this
-  codebase corresponds to them today (§4).
+- The task brief's "competitor activity detected" as an `OpportunityCategory`-keyed
+  reason is still not implemented — no opportunity-detection logic in this codebase
+  links a specific recommendation to a specific competitor (§4). Real competitor
+  evidence **is** now surfaced (Task 006), but through a separate, dedicated
+  `competitorEvidence` field rather than this mechanism — see the Task 006 update in §4.
 - No React component-rendering test infrastructure exists in this codebase (no
   `@testing-library/react`, no jsdom) — confirmed again during this milestone. Coverage
   is at the presentation-service/content-approval-service level (56 new tests), not

@@ -8,6 +8,9 @@ import type { MarketingRecommendation } from "@/lib/marketing-decisions/types";
 import { getMarketingOpportunitiesByIdsForUser } from "@/lib/marketing-opportunities/persistence";
 import type { MarketingOpportunity } from "@/lib/marketing-opportunities/types";
 import type { ContentApproval } from "@/lib/content-approval/types";
+import { listCompetitorObservationsForUser } from "@/lib/competitor-observations/persistence";
+import { listMarketRadarEntriesForUser } from "@/lib/market-radar/persistence";
+import { buildCompetitorEvidence } from "@/lib/recommendation-presentation/competitorEvidence";
 import { inferPlatformFromContentType } from "@/lib/publishing-queue/persistence";
 import {
   getContentApprovalForRecommendation,
@@ -28,6 +31,7 @@ import { buildSupportingReasons } from "@/lib/recommendation-presentation/reason
 import { presentOutcomeStatus } from "@/lib/recommendation-presentation/outcomeStatus";
 import {
   ClientRecommendationActions,
+  type ClientCompetitorEvidence,
   type ClientRecommendationAction,
   type ClientRecommendationDecisionPackage,
 } from "@/lib/recommendation-presentation/types";
@@ -65,8 +69,10 @@ function buildPackage(input: {
   relatedOpportunities: MarketingOpportunity[];
   outcomeSummary: RecommendationOutcomeSummary;
   breakdown: AdaptiveScoreBreakdown;
+  /** Already computed once per business by the caller — see this file's call sites. */
+  competitorEvidence: ClientCompetitorEvidence[];
 }): ClientRecommendationDecisionPackage {
-  const { recommendation, approval, relatedOpportunities, outcomeSummary, breakdown } = input;
+  const { recommendation, approval, relatedOpportunities, outcomeSummary, breakdown, competitorEvidence } = input;
 
   const confidenceLabel = resolveConfidenceLabel({
     finalConfidence: breakdown.finalConfidence,
@@ -83,6 +89,7 @@ function buildPackage(input: {
     recommendedAction: formatRecommendedActionType(recommendation.recommended_action_type),
     whyNow: recommendation.reasoning || "This recommendation is based on current activity for your business.",
     supportingReasons: buildSupportingReasons(categories, breakdown),
+    competitorEvidence,
     expectedBenefit: getExpectedBenefit(recommendation.recommended_action_type),
     confidenceLabel,
     confidenceLabelText: confidenceLabelText(confidenceLabel),
@@ -139,11 +146,13 @@ export async function getRecommendationDecisionPackageForUser(
     return null;
   }
 
-  const [approvalRow, relatedOpportunities, outcomeSummary, signals] = await Promise.all([
+  const [approvalRow, relatedOpportunities, outcomeSummary, signals, competitorObservations, marketRadarEntries] = await Promise.all([
     getContentApprovalForRecommendation(supabase, userId, recommendationId),
     getMarketingOpportunitiesByIdsForUser(supabase, userId, recommendation.related_opportunity_ids),
     summarizeRecommendationOutcomeForUser(userId, recommendationId, supabase),
     getHistoricalRecommendationSignalsForUser(userId, recommendation.business_profile_id, supabase),
+    listCompetitorObservationsForUser(supabase, userId, recommendation.business_profile_id),
+    listMarketRadarEntriesForUser(supabase, userId, recommendation.business_profile_id),
   ]);
 
   // getContentApprovalForRecommendation already selects the full row with the exact
@@ -151,6 +160,7 @@ export async function getRecommendationDecisionPackageForUser(
   const approval = approvalRow ? (approvalRow as unknown as ContentApproval) : null;
 
   const breakdown = computeRecommendationScoreBreakdown(recommendation, relatedOpportunities, signals);
+  const competitorEvidence = buildCompetitorEvidence(competitorObservations, marketRadarEntries, recommendation.business_profile_id);
 
   logPackageRetrieval({
     recommendationId,
@@ -159,7 +169,7 @@ export async function getRecommendationDecisionPackageForUser(
     found: true,
   });
 
-  return buildPackage({ recommendation, approval, relatedOpportunities, outcomeSummary, breakdown });
+  return buildPackage({ recommendation, approval, relatedOpportunities, outcomeSummary, breakdown, competitorEvidence });
 }
 
 export async function getRecommendationDecisionPackageForCurrentUser(
@@ -193,10 +203,16 @@ export async function getRecommendationDecisionPackagesForApprovals(
   const recommendationLinked = approvals.filter((a) => a.marketing_recommendation_id);
   if (recommendationLinked.length === 0) return result;
 
-  const [signals, allRecommendations] = await Promise.all([
+  const [signals, allRecommendations, competitorObservations, marketRadarEntries] = await Promise.all([
     getHistoricalRecommendationSignalsForUser(userId, businessProfileId, supabase),
     getRecommendationsForBusiness(supabase, userId, businessProfileId),
+    listCompetitorObservationsForUser(supabase, userId, businessProfileId),
+    listMarketRadarEntriesForUser(supabase, userId, businessProfileId),
   ]);
+
+  // Computed once for the whole batch (not once per approval) — same
+  // "no N+1" discipline this function already applies to `signals`.
+  const competitorEvidence = buildCompetitorEvidence(competitorObservations, marketRadarEntries, businessProfileId);
 
   const recommendationById = new Map(allRecommendations.map((r) => [String(r.id), r]));
   const allOpportunityIds = [
@@ -238,7 +254,7 @@ export async function getRecommendationDecisionPackagesForApprovals(
 
     result.set(
       approval.id,
-      buildPackage({ recommendation, approval, relatedOpportunities, outcomeSummary, breakdown })
+      buildPackage({ recommendation, approval, relatedOpportunities, outcomeSummary, breakdown, competitorEvidence })
     );
 
     logPackageRetrieval({
