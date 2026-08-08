@@ -1,0 +1,57 @@
+{
+  "run_id": "2026-08-05T133738781Z",
+  "started_at": "2026-08-05T13:37:38.783Z",
+  "finished_at": "2026-08-05T14:05:11.707Z",
+  "stop_reason": "queue exhausted — all tasks reached a terminal state",
+  "baseline": {
+    "generatedAt": "2026-08-05T13:37:48.806Z",
+    "typescriptErrorCount": 18,
+    "eslintErrorCount": 0,
+    "eslintWarningCount": 7,
+    "unitTestFailureCount": 0,
+    "unitTestFailureNames": [],
+    "playwrightFailureCount": 0,
+    "playwrightFailureNames": [],
+    "buildSucceeded": true,
+    "timedOutGates": []
+  },
+  "tasks": [
+    {
+      "id": "005",
+      "name": "Weekly Executive Brief: Market Radar section (executive summary, why it matters, suggested actions)",
+      "status": "completed",
+      "branch": "ai-queue/005-weekly-executive-brief",
+      "commit": "e8508367c4379ac1f15f89b4cf211ac44253e603",
+      "pr": "https://github.com/ajnsolutions/ajnmarketing/pull/110",
+      "blocker": null,
+      "base_resolution": {
+        "ok": true,
+        "ref": "origin/main",
+        "reason": "dependency \"003\" completed via PR #107, verified MERGED into main; merge commit b73999c9e4dfb9013f1feb0bd093d646dd4e5c0d confirmed as an ancestor of origin/main — the merged dependency branch is not required to still exist.",
+        "error": null
+      },
+      "quality_gate": {
+        "overall_status": "pass",
+        "new_regressions": [],
+        "fixed_regressions": [],
+        "remaining_historical_debt": [
+          "18 pre-existing TypeScript error(s), unchanged",
+          "7 pre-existing ESLint warning(s), unchanged"
+        ],
+        "repair_attempts": 1
+      },
+      "memory_validation": {
+        "passed": true,
+        "changed_files": [
+          ".ai/CURRENT_STATUS.md",
+          ".ai/STATUS.json",
+          ".ai/HANDOFF.md",
+          ".ai/ROADMAP.md",
+          ".ai/OPEN_ITEMS.md"
+        ],
+        "reasons": [],
+        "repair_attempts": 0
+      }
+    }
+  ]
+}
